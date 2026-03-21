@@ -12,11 +12,12 @@
  */
 
 import { encodeToken } from '../sharing/token-codec.js';
+import { buildIndex } from '../sharing/question-index.js';
 
 // ── Configuration ──────────────────────────────────────────────────────────
 const CONFIG = {
   ENABLED: true,
-  ENDPOINT_URL: '', // Google Apps Script deployment URL — empty = disabled
+  ENDPOINT_URL: 'https://script.google.com/macros/s/AKfycbwYNqjfV0-6FDHxBoLxpq7bK9HJZfD9EydHQoRgFztfn0ijwelEaIvD_uRMhOlMUu0V/exec',
   INTERVAL: 10,     // Send every N responses
 };
 
@@ -87,18 +88,20 @@ function sendToken(token, responseCount, domain) {
  * Called after each response is added to the store.
  *
  * @param {Array} responses - current $responses.get() array
- * @param {object} questionIndex - { version, toIndex, toId } from buildIndex()
+ * @param {Array} allQuestions - full question array (for building token index)
  * @param {string} activeDomain - current $activeDomain value
  */
-export function maybeCollect(responses, questionIndex, activeDomain) {
+export function maybeCollect(responses, allQuestions, activeDomain) {
   if (!CONFIG.ENABLED) return;
   if (!CONFIG.ENDPOINT_URL) return;
   if (IS_SHARED_VIEW) return;
   if (!isCollectionEnabled()) return;
   if (!responses || responses.length === 0) return;
   if (responses.length % CONFIG.INTERVAL !== 0) return;
+  if (!allQuestions || allQuestions.length === 0) return;
 
-  const token = encodeToken(responses, questionIndex);
+  const tokenIndex = buildIndex(allQuestions);
+  const token = encodeToken(responses, tokenIndex);
   if (!token) return;
 
   sendToken(token, responses.length, activeDomain);
