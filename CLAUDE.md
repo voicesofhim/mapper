@@ -11,6 +11,8 @@ Auto-generated from all feature plans. Last updated: 2026-02-27
 - localStorage (user progress), file-based JSON (question banks) (007-fix-mobile-mode)
 - JavaScript ES2022+ (ES modules), HTML5, CSS3 + nanostores 1.1, Vite 7.3, deck.gl 9.2, KaTeX (CDN), pako (new — for deflate compression) (008-shareable-map-links)
 - localStorage (user progress), URL query parameter (shared state) (008-shareable-map-links)
+- JavaScript ES2022+ (ES modules), HTML5, CSS3 + nanostores 1.1, Vite 7.3, pako (existing — for token deflate), GoatCounter (external CDN script) (010-analytics-data-collection)
+- localStorage (opt-out preference), Google Sheets (collection records via GAS) (010-analytics-data-collection)
 
 - JavaScript ES2022+ (ES modules), HTML5, CSS3 + nanostores 1.1.0, Vite 7.3.1, Canvas 2D API, KaTeX (CDN) (003-ux-bugfix-cleanup)
 
@@ -31,9 +33,9 @@ npm test && npm run lint
 JavaScript ES2022+ (ES modules), HTML5, CSS3: Follow standard conventions
 
 ## Recent Changes
+- 010-analytics-data-collection: Added JavaScript ES2022+ (ES modules), HTML5, CSS3 + nanostores 1.1, Vite 7.3, pako (existing — for token deflate), GoatCounter (external CDN script)
 - 008-shareable-map-links: Added JavaScript ES2022+ (ES modules), HTML5, CSS3 + nanostores 1.1, Vite 7.3, deck.gl 9.2, KaTeX (CDN), pako (new — for deflate compression)
 - 007-fix-mobile-mode: Added JavaScript ES2022+ (ES modules), HTML5, CSS3 + nanostores 1.1, Vite 7.3, deck.gl 9.2, KaTeX (CDN)
-- 006-performance-and-ux-refinement: Added JavaScript ES2022+ (ES modules), HTML5, CSS3 + nanostores 1.1, Vite 7.3, Canvas 2D API, KaTeX (CDN), deck.gl 9.2
 
 
 <!-- MANUAL ADDITIONS START -->
