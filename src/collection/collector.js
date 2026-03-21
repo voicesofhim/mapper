@@ -19,7 +19,7 @@ import { buildIndex } from '../sharing/question-index.js';
 // ── Configuration ──────────────────────────────────────────────────────────
 const CONFIG = {
   ENABLED: true,
-  ENDPOINT_URL: 'https://script.google.com/macros/s/AKfycbwYNqjfV0-6FDHxBoLxpq7bK9HJZfD9EydHQoRgFztfn0ijwelEaIvD_uRMhOlMUu0V/exec',
+  ENDPOINT_URL: 'https://script.google.com/macros/s/AKfycbw55yM6nkllMydqg5LJmofcxd8kxlB85J4xMDSF35N_HmliVXdu_MgkMJmsHmkLYIKP/exec',
   INTERVAL: 10,     // Send every N responses
 };
 
@@ -74,8 +74,17 @@ function sendToken(token, responseCount, useBeacon = false) {
     response_count: responseCount,
   });
 
-  if (useBeacon && navigator.sendBeacon) {
-    navigator.sendBeacon(CONFIG.ENDPOINT_URL, new Blob([body], { type: 'application/json' }));
+  if (useBeacon) {
+    // Use fetch with keepalive (survives page unload, follows redirects — unlike sendBeacon)
+    try {
+      fetch(CONFIG.ENDPOINT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        keepalive: true,
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      }).catch(() => {});
+    } catch { /* noop */ }
     return;
   }
 
