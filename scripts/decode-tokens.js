@@ -120,7 +120,6 @@ function parseCSVInput(content) {
       session_id: parts[1],
       token: parts[2],
       response_count: parseInt(parts[3], 10) || 0,
-      domain: parts[4] || 'all',
     });
   }
   return records;
@@ -175,9 +174,9 @@ async function main() {
       decoded.push({
         session_id: record.session_id,
         timestamp: record.timestamp,
-        domain: record.domain,
         question_index: entry.index,
         question_id: q?.id || `unknown_${entry.index}`,
+        domain: q?.domain_ids?.[0] || 'unknown',
         question_text: q?.question_text || '',
         correct_answer: q ? q.options?.[q.correct_answer] || '' : '',
         is_correct: entry.is_correct,

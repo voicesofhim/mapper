@@ -5,6 +5,8 @@
  * (reusing the shareable map link codec) and POSTs it to a Google Apps Script
  * endpoint that appends to a Google Sheet.
  *
+ * Also sends a final beacon on page unload to capture partial sessions.
+ *
  * - Fire-and-forget: errors are silently logged, never shown to the user.
  * - Skipped in shared view mode (?t= URL param).
  * - Respects user opt-out preference in localStorage.
@@ -51,23 +53,31 @@ export function setCollectionEnabled(value) {
 const IS_SHARED_VIEW = typeof window !== 'undefined'
   && new URLSearchParams(window.location.search).has('t');
 
+// ── State tracking ─────────────────────────────────────────────────────────
+let _lastSentCount = 0;       // Response count at last successful send
+let _cachedQuestions = null;   // Cached allQuestions reference for beforeunload
+
 // ── Send logic ─────────────────────────────────────────────────────────────
 
 /**
  * POST a token to the GAS endpoint. Fire-and-forget (no-cors).
  * @param {string} token - base64url-encoded response token
  * @param {number} responseCount - total responses in the token
- * @param {string} domain - active domain ID at time of send
+ * @param {boolean} [useBeacon=false] - use sendBeacon for page unload
  */
-function sendToken(token, responseCount, domain) {
+function sendToken(token, responseCount, useBeacon = false) {
   if (!CONFIG.ENDPOINT_URL) return;
 
   const body = JSON.stringify({
     session_id: SESSION_ID,
     token,
     response_count: responseCount,
-    domain: domain || 'all',
   });
+
+  if (useBeacon && navigator.sendBeacon) {
+    navigator.sendBeacon(CONFIG.ENDPOINT_URL, new Blob([body], { type: 'application/json' }));
+    return;
+  }
 
   try {
     fetch(CONFIG.ENDPOINT_URL, {
@@ -84,26 +94,61 @@ function sendToken(token, responseCount, domain) {
 }
 
 /**
+ * Encode and send the current responses.
+ * @param {Array} responses
+ * @param {Array} allQuestions
+ * @param {boolean} [useBeacon=false]
+ * @returns {boolean} true if sent
+ */
+function encodeAndSend(responses, allQuestions, useBeacon = false) {
+  if (!allQuestions || allQuestions.length === 0) return false;
+
+  const tokenIndex = buildIndex(allQuestions);
+  const token = encodeToken(responses, tokenIndex);
+  if (!token) return false;
+
+  sendToken(token, responses.length, useBeacon);
+  _lastSentCount = responses.length;
+  return true;
+}
+
+/**
  * Check whether collection should fire, and if so, encode + send.
  * Called after each response is added to the store.
  *
  * @param {Array} responses - current $responses.get() array
  * @param {Array} allQuestions - full question array (for building token index)
- * @param {string} activeDomain - current $activeDomain value
  */
-export function maybeCollect(responses, allQuestions, activeDomain) {
+export function maybeCollect(responses, allQuestions) {
   if (!CONFIG.ENABLED) return;
   if (!CONFIG.ENDPOINT_URL) return;
   if (IS_SHARED_VIEW) return;
   if (!isCollectionEnabled()) return;
   if (!responses || responses.length === 0) return;
   if (responses.length % CONFIG.INTERVAL !== 0) return;
-  if (!allQuestions || allQuestions.length === 0) return;
+  if (responses.length === _lastSentCount) return; // avoid duplicate sends
 
-  const tokenIndex = buildIndex(allQuestions);
-  const token = encodeToken(responses, tokenIndex);
-  if (!token) return;
+  _cachedQuestions = allQuestions; // cache for beforeunload
 
-  sendToken(token, responses.length, activeDomain);
-  console.debug('[collector] Sent token (%d responses)', responses.length);
+  if (encodeAndSend(responses, allQuestions)) {
+    console.debug('[collector] Sent token (%d responses)', responses.length);
+  }
+}
+
+// ── Page unload: send partial session via beacon ───────────────────────────
+if (typeof window !== 'undefined' && !IS_SHARED_VIEW) {
+  window.addEventListener('beforeunload', () => {
+    if (!CONFIG.ENABLED || !CONFIG.ENDPOINT_URL) return;
+    if (!isCollectionEnabled()) return;
+    if (!_cachedQuestions) return;
+
+    try {
+      const responses = JSON.parse(localStorage.getItem('mapper:responses') || '[]');
+      // Only send if we have new responses since last send
+      if (responses.length > _lastSentCount && responses.length > 0) {
+        encodeAndSend(responses, _cachedQuestions, true);
+        console.debug('[collector] Beacon sent (%d responses)', responses.length);
+      }
+    } catch { /* noop */ }
+  });
 }

@@ -825,7 +825,7 @@ function handleAnswer(selectedKey, question) {
   }
 
   // Anonymized response collection (every N responses, fire-and-forget)
-  maybeCollect($responses.get(), aggregatedQuestions.length > 0 ? aggregatedQuestions : allDomainBundle?.questions, activeDomainId);
+  maybeCollect($responses.get(), aggregatedQuestions.length > 0 ? aggregatedQuestions : allDomainBundle?.questions);
 
   // Show answer dot and feedback immediately (before expensive GP computation)
   renderer.setAnsweredQuestions(responsesToAnsweredDots($responses.get(), questionIndex));
@@ -915,7 +915,7 @@ function handleSkip() {
   }
 
   // Anonymized response collection (every N responses, fire-and-forget)
-  maybeCollect($responses.get(), aggregatedQuestions.length > 0 ? aggregatedQuestions : allDomainBundle?.questions, activeDomainId);
+  maybeCollect($responses.get(), aggregatedQuestions.length > 0 ? aggregatedQuestions : allDomainBundle?.questions);
 
   // Show answer dot and feedback immediately (before expensive GP computation)
   renderer.setAnsweredQuestions(responsesToAnsweredDots($responses.get(), questionIndex));
