@@ -31,14 +31,14 @@ const SESSION_ID = typeof crypto !== 'undefined' && crypto.randomUUID
 // ── Preference helpers ─────────────────────────────────────────────────────
 const PREF_KEY = 'mapper:collectResponses';
 
-/** Check if the user has opted in to response collection (default: true). */
+/** Check if the user has opted in to response collection (default: false). */
 export function isCollectionEnabled() {
   try {
     const val = localStorage.getItem(PREF_KEY);
-    if (val === null) return true; // default: on
+    if (val === null) return false; // default: off (opt-in via tutorial or About modal)
     return val === 'true';
   } catch {
-    return true;
+    return false;
   }
 }
 
