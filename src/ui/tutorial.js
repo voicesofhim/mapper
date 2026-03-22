@@ -112,7 +112,7 @@ const STEPS = [
   {
     id: 6, title: 'Deep Dive!',
     highlight: '.quiz-feedback-area',
-    positionHint: 'left',
+    positionHint: 'right',
     onEnter: 'openQuiz,enableAutoAdvance',
     message: () => {
       const touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -146,7 +146,7 @@ const STEPS = [
   },
   {
     id: 10, title: 'Exploring Domain-Specific Knowledge',
-    positionHint: 'left',
+    positionHint: 'right',
     advanceOn: 'answer',
     questionTarget: 2,
     dynamicMessage: true, // message set in renderCurrentStep based on selected domain

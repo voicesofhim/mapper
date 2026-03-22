@@ -114,7 +114,9 @@ body.tutorial-active .drawer-pull {
    On mobile, keep overflow scrollable and scroll the highlight into view instead. */
 @media (min-width: 481px) {
   .quiz-content:has(.tutorial-highlight),
-  .video-panel-list:has(.tutorial-highlight) {
+  .video-panel-list:has(.tutorial-highlight),
+  .header-right:has(.tutorial-highlight),
+  .header-actions:has(.tutorial-highlight) {
     overflow: visible !important;
   }
 }
