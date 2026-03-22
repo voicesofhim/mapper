@@ -47,6 +47,10 @@ export function setCollectionEnabled(value) {
   try {
     localStorage.setItem(PREF_KEY, String(!!value));
   } catch { /* noop — localStorage unavailable */ }
+  // Notify any open UI (e.g., About modal toggle) of the change
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('collect-pref-change'));
+  }
 }
 
 // ── Shared view detection ──────────────────────────────────────────────────

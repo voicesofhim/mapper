@@ -1370,6 +1370,9 @@ function setupAboutModal() {
     if (e.key === 'Escape' && !modal.hidden) modal.hidden = true;
   });
 
+  // Sync toggle when preference changes externally (e.g., tutorial consent step)
+  window.addEventListener('collect-pref-change', syncCollectToggle);
+
   // Collection toggle click handler
   const collectTrack = document.getElementById('collect-toggle-track');
   if (collectTrack) {
