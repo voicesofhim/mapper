@@ -994,7 +994,7 @@
                     </p>
                     <p>
                         <i class="fa-solid fa-graduation-cap" style="margin-right: 8px;"></i>
-                        Click <a href="#" id="landing-info-link" style="white-space:nowrap;"><i class="fa-solid fa-circle-info" style="margin: 0 2px;"></i> info</a> in the upper right to learn more, or read our <a href="https://osf.io/preprints/psyarxiv/dh3q2" target="_blank" rel="noopener">research paper</a>.
+                        Click <a href="#" id="landing-info-link" style="white-space:nowrap;"><i class="fa-solid fa-circle-info" style="margin: 0 2px;"></i> info</a> in the upper right to learn more, or read our <a href="https://www.doi.org/10.1038/s41467-026-69746-w" target="_blank" rel="noopener">research paper</a>.
                     </p>
 
                     <button id="landing-start-btn" class="landing-start-btn">Map my knowledge!</button>
@@ -1079,9 +1079,7 @@
             </p>
             <p style="line-height: 1.7; margin-bottom: 1rem; font-size: 0.9rem;">
                 <strong>Research paper:</strong>
-                <a href="https://osf.io/preprints/psyarxiv/dh3q2" target="_blank" rel="noopener">
-                    Text embedding models yield detailed conceptual knowledge maps derived from short multiple-choice quizzes
-                </a>
+                Fitzpatrick PC, Heusser AC, Manning JR (2026). Text embedding models yield detailed conceptual knowledge maps derived from short multiple-choice quizzes. <em>Nature Communications</em>, 17(2055): <a href="https://www.doi.org/10.1038/s41467-026-69746-w" target="_blank" rel="noopener">10.1038/s41467-026-69746-w</a>.
             </p>
             <p style="line-height: 1.7; margin-bottom: 1rem; font-size: 0.9rem;">
                 <strong>Source code:</strong>
@@ -1116,9 +1114,21 @@
                 Click on the correct response to answer each question. Use the number keys 1&ndash;4 for quick answers.
             </p>
             <p style="font-size: 0.8rem; color: var(--color-text-muted);">
-                All computation runs in your browser. No data is sent to any server.
+                All computation runs in your browser.
                 Your progress is saved locally and can be exported or reset at any time.
             </p>
+            <h3 style="margin-top: 1rem; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--color-primary);">Data Collection</h3>
+            <p style="line-height: 1.7; margin-bottom: 0.5rem; font-size: 0.85rem;">
+                We collect anonymized quiz responses (answers only) to help improve our system.
+                No personal information is stored. You can opt out at any time using the toggle below.
+            </p>
+            <div id="collect-toggle-wrap" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                <div id="collect-toggle-track" role="switch" aria-checked="false" aria-label="Share anonymized responses" tabindex="0"
+                     style="position:relative;width:36px;height:20px;background:var(--color-text-muted,#94a3b8);border-radius:10px;cursor:pointer;transition:background 0.2s;flex-shrink:0;">
+                    <div id="collect-toggle-thumb" style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>
+                </div>
+                <span style="font-size:0.8rem;color:var(--color-text-muted);">Share anonymized responses</span>
+            </div>
             <p style="font-size: 0.75rem; color: var(--color-text-muted); opacity: 0.8; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--color-border);">
                 <strong>Note:</strong> The knowledge estimates assume that your responses reflect genuine effort.
                 Randomly clicking through questions without thinking will generate estimates
@@ -1220,5 +1230,9 @@
 
     <!-- Vite Entry Point -->
     <script type="module" src="/src/app.js"></script>
+
+    <!-- GoatCounter analytics (cookie-free, privacy-respecting) -->
+    <script data-goatcounter="https://context-lab.goatcounter.com/count"
+            async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>

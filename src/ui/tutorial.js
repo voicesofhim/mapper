@@ -1,5 +1,7 @@
 // Tutorial mode — state machine, modal rendering, step logic
 
+import { setCollectionEnabled } from '../collection/collector.js';
+
 const STORAGE_KEY = 'mapper-tutorial';
 const MODAL_MAX_WIDTH = 380;
 const MOBILE_BP = 480;
@@ -110,7 +112,7 @@ const STEPS = [
   {
     id: 6, title: 'Deep Dive!',
     highlight: '.quiz-feedback-area',
-    positionHint: 'left',
+    positionHint: 'quiz-final',
     onEnter: 'openQuiz,enableAutoAdvance',
     message: () => {
       const touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -144,7 +146,7 @@ const STEPS = [
   },
   {
     id: 10, title: 'Exploring Domain-Specific Knowledge',
-    positionHint: 'left',
+    positionHint: 'quiz-final',
     advanceOn: 'answer',
     questionTarget: 2,
     dynamicMessage: true, // message set in renderCurrentStep based on selected domain
@@ -200,7 +202,13 @@ const STEPS = [
     advanceOn: 'click',
   },
   {
-    id: 15, title: 'Tutorial Complete!',
+    id: 15, title: 'Contribute to science!',
+    advanceOn: 'consent-choice',
+    onEnter: 'closeModals',
+    isConsent: true,
+  },
+  {
+    id: 16, title: 'Tutorial Complete!',
     advanceOn: 'click',
     onEnter: 'closeModals,showTutorialBtn',
     arrowTarget: '#tutorial-btn',
@@ -738,6 +746,11 @@ function renderCurrentStep() {
     message = buildDynamicMessage(stepDef);
   }
 
+  // Consent step — data collection opt-in/out
+  if (stepDef.isConsent) {
+    message = 'This demo is just the beginning! We are working towards new tools for democratizing education and helping <em>all</em> people achieve their learning goals and dreams.\n\nWould you consider sharing your (anonymized) quiz responses with us to help us improve our system? You can change your mind at any time by clicking the about button (<i class="fa-solid fa-circle-info" style="vertical-align:middle;margin:0 2px;font-size:0.9em;color:var(--color-text-muted,#64748b)"></i>) and toggling the switch.';
+  }
+
   // Completion step
   if (stepDef.isCompletion) {
     message = "You've finished the formal tutorial. You can continue answering questions to refine your map and expand your knowledge!\n\nReplay the tutorial any time using the <span style=\"display:inline-flex;align-items:center;justify-content:center;width:1.3em;height:1.3em;border-radius:50%;background:var(--color-text-muted,#64748b);color:#fff;font-size:0.85em;font-weight:600;vertical-align:text-bottom\">?</span> button near the top of the screen.";
@@ -754,9 +767,10 @@ function renderCurrentStep() {
     ? (resolveSubStep(stepDef, state.subStep)?.advanceOn || 'click')
     : (stepDef.advanceOn || 'click');
   const isFinish = !!stepDef.isCompletion;
-  const showNextBtn = advanceOn === 'click' || isFinish;
+  const isConsent = !!stepDef.isConsent;
+  const showNextBtn = (advanceOn === 'click' || isFinish) && !isConsent;
 
-  renderOverlay(highlight, title, message, showNextBtn, isFinish, arrowTarget, arrowSide, positionHint);
+  renderOverlay(highlight, title, message, showNextBtn, isFinish, arrowTarget, arrowSide, positionHint, isConsent);
   _currentHighlightSelector = highlight; // Set AFTER renderOverlay (which calls removeOverlay → clears it)
   startHighlightRefresh();
 }
@@ -1078,7 +1092,7 @@ function repositionArrow(arrow, targetEl, side) {
   arrow.style.left = `${left}px`;
 }
 
-function renderOverlay(highlightSelector, title, message, showNextBtn, isFinish, arrowTargetSelector, arrowSide = 'left', positionHint = null) {
+function renderOverlay(highlightSelector, title, message, showNextBtn, isFinish, arrowTargetSelector, arrowSide = 'left', positionHint = null, isConsent = false) {
   removeOverlay();
 
   // Overlay
@@ -1218,7 +1232,7 @@ function renderOverlay(highlightSelector, title, message, showNextBtn, isFinish,
     }
   }
 
-  buildModalDOM(modal, title, message, showNextBtn, isFinish);
+  buildModalDOM(modal, title, message, showNextBtn, isFinish, isConsent);
   makeDraggable(modal);
 
   document.body.appendChild(modal);
@@ -1265,7 +1279,7 @@ function renderOverlay(highlightSelector, title, message, showNextBtn, isFinish,
   });
 }
 
-function buildModalDOM(modal, title, message, showNextBtn, isFinish) {
+function buildModalDOM(modal, title, message, showNextBtn, isFinish, isConsent = false) {
   // Drag handle + dismiss
   const header = document.createElement('div');
   Object.assign(header.style, {
@@ -1310,6 +1324,35 @@ function buildModalDOM(modal, title, message, showNextBtn, isFinish) {
 
   // Skip link removed — dismiss button (×) in header serves the same purpose
 
+  if (isConsent) {
+    const helpBtn = document.createElement('button');
+    Object.assign(helpBtn.style, {
+      background: 'var(--color-primary, #00693e)', color: '#fff', border: 'none',
+      padding: '10px 24px', borderRadius: '8px', fontSize: '0.95em', cursor: 'pointer',
+      fontWeight: '600', width: '100%',
+    });
+    helpBtn.textContent = "I'd like to help!";
+    helpBtn.addEventListener('click', () => {
+      setCollectionEnabled(true);
+      advanceTutorial('consent-choice');
+    });
+    footer.appendChild(helpBtn);
+
+    const noBtn = document.createElement('button');
+    Object.assign(noBtn.style, {
+      background: 'transparent', color: 'var(--color-text-muted, #64748b)',
+      border: '1px solid var(--color-border, #e2e8f0)',
+      padding: '8px 20px', borderRadius: '8px', fontSize: '0.9em', cursor: 'pointer',
+      fontWeight: '500', width: '100%',
+    });
+    noBtn.textContent = 'No thanks';
+    noBtn.addEventListener('click', () => {
+      setCollectionEnabled(false);
+      advanceTutorial('consent-choice');
+    });
+    footer.appendChild(noBtn);
+  }
+
   if (showNextBtn) {
     const nextBtn = document.createElement('button');
     nextBtn.className = 'tutorial-next-btn';
@@ -1338,14 +1381,14 @@ function renderMarkdownLite(container, text) {
     }
     const p = document.createElement('p');
     Object.assign(p.style, { margin: '0.4em 0' });
-    // Simple *italic* and <span> rendering
-    const parts = line.split(/(\*[^*]+\*|<span[^>]*>.*?<\/span>)/g);
+    // Simple *italic* and inline HTML (<span>, <i>, <em>) rendering
+    const parts = line.split(/(\*[^*]+\*|<(?:span|i|em)[^>]*>.*?<\/(?:span|i|em)>)/g);
     for (const part of parts) {
       if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
         const em = document.createElement('em');
         em.textContent = part.slice(1, -1);
         p.appendChild(em);
-      } else if (part.startsWith('<span')) {
+      } else if (/^<(?:span|i|em)\b/.test(part)) {
         const temp = document.createElement('template');
         temp.innerHTML = part;
         p.appendChild(temp.content);

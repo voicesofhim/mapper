@@ -39,6 +39,7 @@ import { updateConfidence, initConfidence } from './ui/progress.js';
 import { announce, setupKeyboardNav } from './utils/accessibility.js';
 import { lockLandscape, unlockOrientation } from './ui/orientation.js';
 import { decodeSharedToken, applySharedViewChrome } from './sharing/shared-view.js';
+import { maybeCollect, isCollectionEnabled, setCollectionEnabled } from './collection/collector.js';
 
 const GLOBAL_REGION = { x_min: 0, x_max: 1, y_min: 0, y_max: 1 };
 const GLOBAL_GRID_SIZE = 50;
@@ -823,6 +824,9 @@ function handleAnswer(selectedKey, question) {
     updateInsightButtons($responses.get().length);
   }
 
+  // Anonymized response collection (every N responses, fire-and-forget)
+  maybeCollect($responses.get(), aggregatedQuestions.length > 0 ? aggregatedQuestions : allDomainBundle?.questions);
+
   // Show answer dot and feedback immediately (before expensive GP computation)
   renderer.setAnsweredQuestions(responsesToAnsweredDots($responses.get(), questionIndex));
 
@@ -909,6 +913,9 @@ function handleSkip() {
     modes.updateAvailability(domainQuestionCount);
     updateInsightButtons($responses.get().length);
   }
+
+  // Anonymized response collection (every N responses, fire-and-forget)
+  maybeCollect($responses.get(), aggregatedQuestions.length > 0 ? aggregatedQuestions : allDomainBundle?.questions);
 
   // Show answer dot and feedback immediately (before expensive GP computation)
   renderer.setAnsweredQuestions(responsesToAnsweredDots($responses.get(), questionIndex));
@@ -1342,12 +1349,43 @@ function setupAboutModal() {
   const btn = document.getElementById('about-btn');
   const modal = document.getElementById('about-modal');
   if (!btn || !modal) return;
-  btn.addEventListener('click', () => { modal.hidden = !modal.hidden; });
+  // Sync collection toggle state when modal opens
+  function syncCollectToggle() {
+    const track = document.getElementById('collect-toggle-track');
+    const thumb = document.getElementById('collect-toggle-thumb');
+    if (!track || !thumb) return;
+    const enabled = isCollectionEnabled();
+    track.setAttribute('aria-checked', String(enabled));
+    track.style.background = enabled ? 'var(--color-primary, #00693e)' : 'var(--color-text-muted, #94a3b8)';
+    thumb.style.left = enabled ? '18px' : '2px';
+  }
+
+  btn.addEventListener('click', () => {
+    modal.hidden = !modal.hidden;
+    if (!modal.hidden) syncCollectToggle();
+  });
   const closeBtn = modal.querySelector('.close-modal');
   if (closeBtn) closeBtn.addEventListener('click', () => { modal.hidden = true; });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !modal.hidden) modal.hidden = true;
   });
+
+  // Sync toggle when preference changes externally (e.g., tutorial consent step)
+  window.addEventListener('collect-pref-change', syncCollectToggle);
+
+  // Collection toggle click handler
+  const collectTrack = document.getElementById('collect-toggle-track');
+  if (collectTrack) {
+    function toggleCollect() {
+      const newVal = !isCollectionEnabled();
+      setCollectionEnabled(newVal);
+      syncCollectToggle();
+    }
+    collectTrack.addEventListener('click', toggleCollect);
+    collectTrack.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCollect(); }
+    });
+  }
 
   // Wire up inline info link on landing page to open the about modal
   const landingInfoLink = document.getElementById('landing-info-link');
