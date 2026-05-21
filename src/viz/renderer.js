@@ -296,6 +296,39 @@ export class Renderer {
     this._scheduleRender();
   }
 
+  focusMapItems(ids = [], options = {}) {
+    const idSet = new Set((ids || []).map(String));
+    if (idSet.size < 2 || this._points.length === 0) return;
+
+    const points = this._points.filter((p) => idSet.has(String(p.id)));
+    if (points.length < 2) return;
+
+    let xMin = Infinity;
+    let xMax = -Infinity;
+    let yMin = Infinity;
+    let yMax = -Infinity;
+    for (const point of points) {
+      xMin = Math.min(xMin, point.x);
+      xMax = Math.max(xMax, point.x);
+      yMin = Math.min(yMin, point.y);
+      yMax = Math.max(yMax, point.y);
+    }
+
+    const minSpan = options.minSpan ?? 0.26;
+    const cx = (xMin + xMax) / 2;
+    const cy = (yMin + yMax) / 2;
+    const spanX = Math.max(xMax - xMin, minSpan);
+    const spanY = Math.max(yMax - yMin, minSpan);
+    const region = {
+      x_min: Math.max(0, cx - spanX / 2),
+      x_max: Math.min(1, cx + spanX / 2),
+      y_min: Math.max(0, cy - spanY / 2),
+      y_max: Math.min(1, cy + spanY / 2),
+    };
+
+    this.transitionTo(region, options.duration ?? 520, { maxZoom: options.maxZoom ?? 1.85 });
+  }
+
   setSelectedPoint(id) {
     this._selectedPointId = id ? String(id) : null;
     this._scheduleRender();
@@ -367,12 +400,12 @@ export class Renderer {
     this._notifyViewport();
   }
 
-  transitionTo(region, duration = TRANSITION_DURATION) {
+  transitionTo(region, duration = TRANSITION_DURATION, options = {}) {
     this.abortTransition();
     return new Promise((resolve) => {
       if (duration <= 0) { this.jumpTo(region); resolve(); return; }
 
-      const target = this._computePanZoomForRegion(region);
+      const target = this._computePanZoomForRegion(region, options);
       const startPanX = this._panX;
       const startPanY = this._panY;
       const startZoom = this._zoom;
@@ -713,7 +746,8 @@ export class Renderer {
 
     const defaultColor = [170, 220, 255, 210];
     const hoveredId = this._hoveredPoint?.id;
-    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 460);
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 620);
+    const hasHighlightLens = this._highlightedIds.size > 0;
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -725,12 +759,15 @@ export class Renderer {
       const isHovered = hoveredId && p.id === hoveredId;
       const isHighlighted = this._highlightedIds.has(String(p.id));
       const isSelected = this._selectedPointId && String(p.id) === this._selectedPointId;
-      const alpha = isSelected ? 1 : isHighlighted ? 0.92 : isHovered ? 0.86 : (color[3] ?? 190) / 255;
-      const radius = baseR * (isSelected ? 1.8 : isHighlighted ? 1.35 + pulse * 0.35 : isHovered ? 1.45 : 1);
+      const baseAlpha = (color[3] ?? 190) / 255;
+      const mutedAlpha = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? baseAlpha * 0.34 : baseAlpha;
+      const alpha = isSelected ? 0.96 : isHighlighted ? 0.84 : isHovered ? 0.82 : mutedAlpha;
+      const radius = baseR * (isSelected ? 1.68 : isHighlighted ? 1.22 + pulse * 0.14 : isHovered ? 1.36 : hasHighlightLens ? 0.92 : 1);
 
       const halo = ctx.createRadialGradient(px, py, 0, px, py, radius * 7.5);
-      halo.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.22 * alpha})`);
-      halo.addColorStop(0.45, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.08 * alpha})`);
+      const haloScale = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? 0.52 : 1;
+      halo.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.18 * alpha * haloScale})`);
+      halo.addColorStop(0.45, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.06 * alpha * haloScale})`);
       halo.addColorStop(1, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0)`);
       ctx.beginPath();
       ctx.arc(px, py, radius * 7.5, 0, Math.PI * 2);
@@ -746,9 +783,9 @@ export class Renderer {
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
         ctx.beginPath();
-        ctx.arc(px, py, radius * (isSelected ? 3.2 : 2.55), 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${isSelected ? 0.9 : 0.48 + pulse * 0.28})`;
-        ctx.lineWidth = (isSelected ? 1.4 : 1) / this._zoom;
+        ctx.arc(px, py, radius * (isSelected ? 3.1 : 2.35), 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${isSelected ? 0.78 : 0.34 + pulse * 0.12})`;
+        ctx.lineWidth = (isSelected ? 1.25 : 0.9) / this._zoom;
         ctx.stroke();
         ctx.restore();
       }
@@ -1040,7 +1077,7 @@ export class Renderer {
 
   // ======== Pan/Zoom ========
 
-  _computePanZoomForRegion(region) {
+  _computePanZoomForRegion(region, options = {}) {
     const w = this._width;
     const h = this._height;
     const rw = region.x_max - region.x_min;
@@ -1050,7 +1087,8 @@ export class Renderer {
     const padding = 1.3;
     const zoomX = 1 / (rw * padding);
     const zoomY = 1 / (rh * padding);
-    const zoom = Math.max(1, Math.min(10, Math.min(zoomX, zoomY)));
+    const maxZoom = options.maxZoom ?? 10;
+    const zoom = Math.max(1, Math.min(maxZoom, Math.min(zoomX, zoomY)));
 
     const cx = (region.x_min + region.x_max) / 2;
     const cy = (region.y_min + region.y_max) / 2;

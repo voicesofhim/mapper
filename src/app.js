@@ -1148,7 +1148,7 @@ function handleAskMap(queryText, question) {
   };
 
   quiz.showAskResponse(response);
-  highlightMapItems(itemIds, matched.query || queryText);
+  highlightMapItems(itemIds, matched.query || queryText, { focus: true });
   showEvidencePanel(evidence);
 }
 
@@ -1162,11 +1162,14 @@ function matchAskQuestion(queryText, questions) {
     });
 }
 
-function highlightMapItems(itemIds, reason = '') {
+function highlightMapItems(itemIds, reason = '', options = {}) {
   activeLens = { ...activeLens, highlightedIds: itemIds || [] };
   renderer.highlightMapItems(itemIds || []);
+  if (options.focus) {
+    renderer.focusMapItems(itemIds || [], { maxZoom: 1.38, minSpan: 0.5, duration: 520 });
+  }
   window.dispatchEvent(new CustomEvent('mapper:highlight-items', {
-    detail: { itemIds, reason },
+    detail: { itemIds, reason, focus: !!options.focus },
   }));
 }
 
@@ -1847,7 +1850,7 @@ window.mapperActions = {
 
 window.addEventListener('mapper:action', (event) => {
   const { type, payload = {} } = event.detail || {};
-  if (type === 'highlightMapItems') highlightMapItems(payload.itemIds || [], payload.reason || 'external action');
+  if (type === 'highlightMapItems') highlightMapItems(payload.itemIds || [], payload.reason || 'external action', { focus: !!payload.focus });
   if (type === 'showEvidencePanel') showEvidencePanel(payload.items || []);
   if (type === 'setMapLens') setMapLens(payload);
   if (type === 'clearMapLens') clearMapLens();
