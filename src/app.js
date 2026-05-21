@@ -611,11 +611,13 @@ function traitColor(value) {
 }
 
 function participantByDisplayCode(displayCode) {
-  return (allDomainBundle?.participants || []).find(p => p.display_code === displayCode || p.id === displayCode);
+  const bundle = currentDomainBundle || allDomainBundle;
+  return (bundle?.participants || []).find(p => p.display_code === displayCode || p.id === displayCode);
 }
 
 function getAllMapItems() {
-  return allDomainBundle?.map_items || allDomainBundle?.articles || [];
+  const bundle = currentDomainBundle || allDomainBundle;
+  return bundle?.map_items || bundle?.articles || [];
 }
 
 function getFilteredMapItems() {
@@ -735,6 +737,34 @@ function initMapLensControls(bundle) {
   `;
   container.appendChild(lensControls);
 
+  updateMapLensControls(bundle);
+
+  lensControls.addEventListener('change', (event) => {
+    const select = event.target.closest('[data-lens]');
+    if (!select) return;
+    activeLens = { ...activeLens, [select.dataset.lens]: select.value };
+    applyLensToMap();
+  });
+
+  lensControls.querySelector('.map-lens-clear')?.addEventListener('click', () => {
+    activeLens = {
+      participantId: 'all',
+      sourceType: 'all',
+      theme: 'all',
+      colorBy: 'source_type',
+      highlightedIds: [],
+    };
+    for (const select of lensControls.querySelectorAll('[data-lens]')) {
+      select.value = activeLens[select.dataset.lens];
+    }
+    clearMapLens();
+    applyLensToMap();
+  });
+}
+
+function updateMapLensControls(bundle) {
+  if (!lensControls || !bundle) return;
+
   const participants = bundle.participants || [];
   const items = bundle.map_items || bundle.articles || [];
   const sourceTypes = [...new Set(items.map(i => i.source_type).filter(Boolean))].sort();
@@ -762,27 +792,14 @@ function initMapLensControls(bundle) {
     ['publicPrivateTension', 'Color: public/private tension'],
   ]);
 
-  lensControls.addEventListener('change', (event) => {
-    const select = event.target.closest('[data-lens]');
-    if (!select) return;
-    activeLens = { ...activeLens, [select.dataset.lens]: select.value };
-    applyLensToMap();
-  });
-
-  lensControls.querySelector('.map-lens-clear')?.addEventListener('click', () => {
-    activeLens = {
-      participantId: 'all',
-      sourceType: 'all',
-      theme: 'all',
-      colorBy: 'source_type',
-      highlightedIds: [],
-    };
-    for (const select of lensControls.querySelectorAll('[data-lens]')) {
+  for (const select of lensControls.querySelectorAll('[data-lens]')) {
+    if ([...select.options].some(opt => opt.value === activeLens[select.dataset.lens])) {
       select.value = activeLens[select.dataset.lens];
+    } else {
+      select.value = select.dataset.lens === 'colorBy' ? 'source_type' : 'all';
+      activeLens = { ...activeLens, [select.dataset.lens]: select.value };
     }
-    clearMapLens();
-    applyLensToMap();
-  });
+  }
 }
 
 function populateSelect(select, options) {
@@ -815,8 +832,8 @@ function participantPathsFromItems(items) {
 }
 
 function findMapItem(id) {
-  if (!id || !allDomainBundle) return null;
-  return (allDomainBundle.map_items || allDomainBundle.articles || []).find(item => String(item.id) === String(id));
+  if (!id) return null;
+  return getAllMapItems().find(item => String(item.id) === String(id));
 }
 
 function videosToLastPoints(videos) {
@@ -929,8 +946,14 @@ async function switchDomain(domainId) {
 
   // Ensure the domain bundle is loaded/cached (for questions & labels).
   // Bundles are pre-loaded in the background after boot, so this is usually instant.
+  let targetBundle = allDomainBundle;
   try {
-    await loadDomain(domainId, {});
+    const loadedBundle = await loadDomain(domainId, {});
+    if (loadedBundle?.domain?.content_model === 'accelerator_research') {
+      loadedBundle.questions = loadedBundle.questions?.length ? loadedBundle.questions : (loadedBundle.ask_map?.questions || []);
+      loadedBundle.articles = loadedBundle.articles?.length ? loadedBundle.articles : (loadedBundle.map_items || []);
+      targetBundle = loadedBundle;
+    }
     if (generation !== switchGeneration) return;
   } catch (err) {
     if (generation === switchGeneration) {
@@ -940,9 +963,9 @@ async function switchDomain(domainId) {
 
   // First-time map initialization: set all articles, questions, labels, and restore GP
   if (!mapInitialized) {
-    currentDomainBundle = allDomainBundle;
-    renderer.addQuestions(allDomainBundle.questions);
-    renderer.setLabels(allDomainBundle.labels, GLOBAL_REGION, GLOBAL_GRID_SIZE);
+    currentDomainBundle = targetBundle;
+    renderer.addQuestions(currentDomainBundle.questions);
+    renderer.setLabels(currentDomainBundle.labels || [], GLOBAL_REGION, GLOBAL_GRID_SIZE);
 
     // Enrich any responses missing x/y from the question index.
     let allResponses = $responses.get();
@@ -979,8 +1002,9 @@ async function switchDomain(domainId) {
 
     renderer.setPoints(articlesToPoints(allDomainBundle.articles));
     if (isAcceleratorBundle()) {
-      renderer.setParticipantPaths(participantPathsFromItems(allDomainBundle.map_items || allDomainBundle.articles));
-      videoPanel.setEvidence(evidenceToMarkers(allDomainBundle.map_items || allDomainBundle.articles));
+      updateMapLensControls(currentDomainBundle);
+      renderer.setParticipantPaths(participantPathsFromItems(currentDomainBundle.map_items || currentDomainBundle.articles));
+      videoPanel.setEvidence(evidenceToMarkers(currentDomainBundle.map_items || currentDomainBundle.articles));
       if (lensControls) lensControls.hidden = false;
     }
     renderer.setAnsweredQuestions(responsesToAnsweredDots($responses.get(), questionIndex));
@@ -1008,6 +1032,22 @@ async function switchDomain(domainId) {
         if (minimap) minimap.setVideos(videosToLastPoints(earlyVideos));
       }
     }
+  } else if (isAcceleratorBundle(targetBundle)) {
+    currentDomainBundle = targetBundle;
+    activeLens = {
+      participantId: 'all',
+      sourceType: 'all',
+      theme: 'all',
+      colorBy: activeLens.colorBy || 'source_type',
+      highlightedIds: [],
+    };
+    updateMapLensControls(currentDomainBundle);
+    renderer.setLabels(currentDomainBundle.labels || [], GLOBAL_REGION, GLOBAL_GRID_SIZE);
+    renderer.setPoints(articlesToPoints(currentDomainBundle.articles || currentDomainBundle.map_items || []));
+    renderer.setParticipantPaths(participantPathsFromItems(currentDomainBundle.map_items || currentDomainBundle.articles));
+    videoPanel.setEvidence(evidenceToMarkers(currentDomainBundle.map_items || currentDomainBundle.articles));
+    renderer.highlightMapItems([]);
+    renderer.setSelectedPoint(null);
   }
 
   // Aggregate questions for this domain + all descendants (CL-049)
@@ -1018,7 +1058,7 @@ async function switchDomain(domainId) {
       if (!questionIndex.has(q.id)) questionIndex.set(q.id, q);
     }
     indexQuestions(aggregatedQuestions);
-    insights.setConcepts(aggregatedQuestions, allDomainBundle.articles);
+    insights.setConcepts(aggregatedQuestions, currentDomainBundle.articles || allDomainBundle.articles);
     renderer.addQuestions(aggregatedQuestions);
   } catch (err) {
     console.error('[app] Question aggregation failed:', err);

@@ -50,6 +50,6 @@ describe('accelerator domain contract', () => {
 
   it('registers all accelerator domains in the static index', () => {
     expect(index.schema_version).toBe('accelerator-demo-v1');
-    expect(index.domains.map(d => d.id)).toEqual(['all', 'accelerator-demo']);
+    expect(index.domains.map(d => d.id)).toEqual(['all', 'accelerator-demo', 'accelerator-seed']);
   });
 });

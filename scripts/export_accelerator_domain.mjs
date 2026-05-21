@@ -6,8 +6,9 @@
  * - --input path/to/export.json
  * - --turso-url libsql://... --auth-token ...
  *
- * The Turso path expects canonical tables named participants, sources, chunks,
- * chunk_themes, and themes. UMAP coordinates are treated as precomputed data.
+ * The Turso path expects the canonical schema in scripts/accelerator-schema.sql.
+ * UMAP coordinates are treated as precomputed data and are never recomputed in
+ * the frontend.
  */
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
@@ -74,6 +75,9 @@ function normalizeParticipant(row) {
     company_stage: row.company_stage || row.companyStage || '',
     cohort: row.cohort || '',
     profile_json: parseJson(row.profile_json || row.profileJson || {}, {}),
+    consent_level: row.consent_level || row.consentLevel || 'anonymized_research',
+    visibility: row.visibility || 'researcher',
+    anonymization_level: row.anonymization_level || row.anonymizationLevel || 'standard',
   };
 }
 
@@ -107,7 +111,10 @@ function normalizeMapItem(row, index, participantIds) {
     y,
     metadata_json: parseJson(row.metadata_json || row.metadataJson || {}, {}),
     source: parseJson(row.source || row.source_json || row.sourceJson || {}, {}),
-    consent_level: row.consent_level || row.consentLevel || 'research-anonymized',
+    embedding_metadata: parseJson(row.embedding_metadata || row.embeddingMetadata || {}, {}),
+    projection: parseJson(row.projection || row.projection_json || row.projectionJson || {}, {}),
+    consent_level: row.consent_level || row.consentLevel || 'anonymized_research',
+    visibility: row.visibility || 'researcher',
   };
 }
 
@@ -160,10 +167,15 @@ async function loadFromTurso(url, authToken) {
   }
 
   const db = createClient({ url, authToken });
-  const participants = (await db.execute('select * from participants')).rows;
-  const sources = (await db.execute('select * from sources')).rows;
+  const participants = (await db.execute(`
+    select
+      id, display_code, role, company_stage, cohort, profile_json,
+      consent_level, visibility, anonymization_level
+    from participants
+    where consent_level != 'withdrawn'
+  `)).rows;
+  const sources = (await db.execute('select * from sources where consent_level != "withdrawn"')).rows;
   const sourceById = new Map(sources.map(source => [source.id, source]));
-  const chunks = (await db.execute('select * from chunks')).rows;
   const themes = (await db.execute('select * from themes')).rows;
   const themeById = new Map(themes.map(theme => [theme.id, theme.name]));
   const chunkThemes = (await db.execute('select * from chunk_themes')).rows;
@@ -174,13 +186,95 @@ async function loadFromTurso(url, authToken) {
     themesByChunk.set(row.chunk_id, list);
   }
 
+  const chunks = (await db.execute(`
+    select
+      c.id,
+      c.participant_id as canonical_participant_id,
+      p.display_code as participant_id,
+      c.source_id,
+      c.source_type,
+      c.title,
+      c.summary,
+      c.anonymized_text,
+      coalesce(c.excerpt, c.anonymized_text) as excerpt,
+      c.sentiment,
+      c.confidence,
+      c.metadata_json,
+      c.consent_level,
+      c.visibility,
+      u.umap_x,
+      u.umap_y,
+      e.id as embedding_id,
+      e.embedding_provider,
+      e.embedding_model,
+      e.embedding_dimensions,
+      e.vector_sha256,
+      e.input_sha256,
+      u.id as projection_id,
+      u.projection_method,
+      u.projection_version,
+      u.params_json as projection_params_json
+    from chunks c
+    join participants p on p.id = c.participant_id
+    join umap_coordinates u on u.chunk_id = c.id
+    left join embeddings e on e.id = u.embedding_id
+    where c.consent_level != 'withdrawn'
+      and c.visibility in ('researcher', 'participant', 'public')
+  `)).rows;
+
+  let askQuestions = [];
+  try {
+    const researchQuestions = (await db.execute('select * from research_questions')).rows;
+    const questionEvidence = (await db.execute('select * from question_evidence order by rank')).rows;
+    askQuestions = researchQuestions.map(question => {
+      const highlighted = questionEvidence
+        .filter(row => row.question_id === question.id)
+        .map(row => row.chunk_id);
+      return {
+        id: question.id,
+        query: question.query,
+        themes: parseJson(question.themes_json, []),
+        answer: {
+          synthesis: question.synthesis,
+          supporting_evidence: [],
+          participant_codes: parseJson(question.participant_codes_json, []),
+          highlighted_map_item_ids: highlighted,
+          themes: parseJson(question.themes_json, []),
+          suggested_follow_up: question.suggested_follow_up || '',
+        },
+      };
+    });
+  } catch {
+    askQuestions = [];
+  }
+
   return {
     participants,
     map_items: chunks.map(chunk => ({
       ...chunk,
       themes: themesByChunk.get(chunk.id) || [],
       source: sourceById.get(chunk.source_id) || { id: chunk.source_id },
+      metadata_json: {
+        ...parseJson(chunk.metadata_json, {}),
+        canonical_participant_id: chunk.canonical_participant_id,
+        source_id: chunk.source_id,
+      },
+      embedding_metadata: chunk.embedding_id ? {
+        id: chunk.embedding_id,
+        provider: chunk.embedding_provider,
+        model: chunk.embedding_model,
+        dimensions: chunk.embedding_dimensions,
+        vector_sha256: chunk.vector_sha256,
+        input_sha256: chunk.input_sha256,
+      } : {},
+      projection: {
+        id: chunk.projection_id,
+        method: chunk.projection_method,
+        version: chunk.projection_version,
+        params_json: parseJson(chunk.projection_params_json, {}),
+      },
     })),
+    ask_map: { questions: askQuestions },
   };
 }
 

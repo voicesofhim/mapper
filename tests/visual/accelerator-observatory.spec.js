@@ -33,4 +33,21 @@ test.describe('Accelerator Observatory', () => {
     await expect(page.locator('.video-panel-count')).toHaveText('1');
     await expect(page.getByText('Needs structure before execution')).toBeVisible();
   });
+
+  test('generated seed interview domain swaps map data and Ask evidence', async ({ page }) => {
+    await page.goto('/mapper/');
+    await page.getByRole('button', { name: 'Open observatory' }).click();
+
+    await page.locator('.custom-select-trigger').click();
+    await page.locator('.custom-select-option[data-value="accelerator-seed"]').click();
+
+    await expect(page.locator('.video-panel-count')).toHaveText('7');
+    await expect(page.getByLabel('Filter by participant')).toContainText('P-101');
+    await expect(page.getByLabel('Filter by participant')).toContainText('P-102');
+    await expect(page.getByLabel('Filter by participant')).toContainText('P-103');
+
+    await page.getByRole('button', { name: 'Where does mentorship help without reducing autonomy?' }).click();
+    await expect(page.locator('.video-panel-count')).toHaveText('4');
+    await expect(page.getByText('Inference: P-101 and P-102 and P-103')).toBeVisible();
+  });
 });

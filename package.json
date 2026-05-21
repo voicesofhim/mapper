@@ -11,23 +11,26 @@
     "test:legacy": "vitest run tests/algorithm",
     "test:all": "vitest run",
     "test:accelerator:visual": "playwright test tests/visual/accelerator-observatory.spec.js",
+    "import:accelerator": "node scripts/import_accelerator_dataset.mjs",
     "bench": "vitest bench",
     "test:visual": "playwright test"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ContextLab/mapper.git"
+    "url": "git+https://github.com/voicesofhim/mapper.git"
   },
   "license": "CC-BY-NC-SA-4.0",
   "bugs": {
-    "url": "https://github.com/ContextLab/mapper/issues"
+    "url": "https://github.com/voicesofhim/mapper/issues"
   },
-  "homepage": "https://contextlab.github.io/mapper/",
+  "homepage": "https://github.com/voicesofhim/mapper",
   "dependencies": {
+    "@libsql/client": "^0.17.3",
     "@nanostores/persistent": "^1.3.3",
     "deck.gl": "^9.2.7",
     "nanostores": "^1.1.0",
-    "pako": "^2.1.0"
+    "pako": "^2.1.0",
+    "umap-js": "^1.4.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
