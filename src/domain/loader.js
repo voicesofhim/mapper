@@ -70,11 +70,24 @@ async function _fetchAndCache(domainId, base, onProgress) {
     onProgress?.({ loaded: 1, total: 1, percent: 100 });
   }
 
+  normalizeBundle(bundle);
+
   // Cache the result
   const next = new Map($domainCache.get());
   next.set(domainId, bundle);
   $domainCache.set(next);
 
+  return bundle;
+}
+
+function normalizeBundle(bundle) {
+  if (!bundle || typeof bundle !== 'object') return bundle;
+  if ((!bundle.questions || bundle.questions.length === 0) && bundle.ask_map?.questions) {
+    bundle.questions = bundle.ask_map.questions;
+  }
+  if ((!bundle.articles || bundle.articles.length === 0) && bundle.map_items) {
+    bundle.articles = bundle.map_items;
+  }
   return bundle;
 }
 

@@ -43,6 +43,22 @@ import { maybeCollect, isCollectionEnabled, setCollectionEnabled } from './colle
 
 const GLOBAL_REGION = { x_min: 0, x_max: 1, y_min: 0, y_max: 1 };
 const GLOBAL_GRID_SIZE = 50;
+const SOURCE_COLORS = {
+  interview: [205, 235, 255, 230],
+  prior_interview: [154, 163, 255, 220],
+  social: [255, 184, 92, 220],
+  mentor_note: [112, 226, 164, 220],
+  program_material: [245, 222, 148, 220],
+  reflection: [194, 132, 252, 220],
+};
+const SOURCE_COLOR_CSS = {
+  interview: '#cdeaff',
+  prior_interview: '#9aa3ff',
+  social: '#ffb85c',
+  mentor_note: '#70e2a4',
+  program_material: '#f5de94',
+  reflection: '#c284fc',
+};
 
 // Uniform length scale for all observations — no per-domain variation.
 const UNIFORM_LENGTH_SCALE = 0.18;
@@ -63,6 +79,18 @@ let switchGeneration = 0;
 let questionIndex = new Map();
 let mergedVideoWindows = []; // Accumulated window coords from recent unwatched-between videos
 let mapInitialized = false; // True once articles/questions/labels are set on the renderer
+let activeLens = {
+  participantId: 'all',
+  sourceType: 'all',
+  theme: 'all',
+  colorBy: 'source_type',
+  highlightedIds: [],
+};
+let lensControls = null;
+
+function isAcceleratorBundle(bundle = allDomainBundle) {
+  return bundle?.schema_version === 'accelerator-demo-v1' || bundle?.domain?.content_model === 'accelerator_research';
+}
 
 async function boot() {
   // Detect shared view mode via ?t= URL parameter (T012/T016)
@@ -140,6 +168,9 @@ async function boot() {
   // only pans/zooms the viewport rather than replacing data.
   try {
     allDomainBundle = await loadDomain('all', {});
+    allDomainBundle.questions = allDomainBundle.questions?.length ? allDomainBundle.questions : (allDomainBundle.ask_map?.questions || []);
+    allDomainBundle.articles = allDomainBundle.articles?.length ? allDomainBundle.articles : (allDomainBundle.map_items || []);
+    if (isAcceleratorBundle()) initMapLensControls(allDomainBundle);
     indexQuestions(allDomainBundle.questions);
     questionIndex = new Map(allDomainBundle.questions.map(q => [q.id, q]));
     insights.setConcepts(allDomainBundle.questions, allDomainBundle.articles);
@@ -176,19 +207,19 @@ async function boot() {
     applySharedViewChrome(sharedData.tokenString);
   }
 
-  // Start background video catalog loading (T-V051, FR-V041)
-  // Videos are set on the renderer only after map initialization (in switchDomain)
-  // so they don't appear as static gray squares on the welcome screen.
-  videoLoader.startBackgroundLoad();
-  videoLoader.getVideos().promise.then((videos) => {
-    if (renderer && videos.length > 0 && mapInitialized) {
-      renderer.setVideos(videosToMarkers(videos));
-    }
-    if (videos && videos.length > 0) {
-      videoPanel.setVideos(videosToMarkers(videos));
-      if (minimap) minimap.setVideos(videosToLastPoints(videos));
-    }
-  });
+  if (!isAcceleratorBundle()) {
+    // Start background video catalog loading for the original Mapper learning flow.
+    videoLoader.startBackgroundLoad();
+    videoLoader.getVideos().promise.then((videos) => {
+      if (renderer && videos.length > 0 && mapInitialized) {
+        renderer.setVideos(videosToMarkers(videos));
+      }
+      if (videos && videos.length > 0) {
+        videoPanel.setVideos(videosToMarkers(videos));
+        if (minimap) minimap.setVideos(videosToLastPoints(videos));
+      }
+    });
+  }
 
   // Pre-load all domain bundles in the background so domain switches are instant.
   const allDomainIds = registry.getDomains().map(d => d.id).filter(id => id !== 'all');
@@ -224,7 +255,7 @@ async function boot() {
   if (logo) {
     logo.style.cursor = 'pointer';
     if (isSharedView) {
-      logo.setAttribute('data-tooltip', 'Click here to map out your knowledge!');
+      logo.setAttribute('data-tooltip', 'Open observatory');
     }
     logo.addEventListener('click', () => {
       const appEl = document.getElementById('app');
@@ -260,7 +291,7 @@ async function boot() {
         const landing = document.getElementById('landing');
         if (landing) landing.classList.remove('hidden');
         if (appEl) appEl.dataset.screen = 'welcome';
-        logo.setAttribute('data-tooltip', 'Map my knowledge!');
+        logo.setAttribute('data-tooltip', 'Open observatory');
         // Reset active domain so re-entering map triggers switchDomain again
         $activeDomain.set(null);
         // Re-create particle system for the welcome screen
@@ -284,7 +315,17 @@ async function boot() {
     if (q) quiz.showQuestion(q);
   });
 
+  renderer.onPointClick((point) => {
+    const item = findMapItem(point.id);
+    if (item) selectMapItem(item);
+  });
+
   renderer.onVideoClick((hit) => {
+    if (isAcceleratorBundle()) {
+      const item = findMapItem(hit.itemId || hit.id || hit.videoId);
+      if (item) selectMapItem(item);
+      return;
+    }
     videoModal.playVideo({
       id: hit.videoId,
       title: hit.title,
@@ -297,7 +338,14 @@ async function boot() {
   const videoPanelEl = document.getElementById('video-panel');
   if (videoPanelEl) {
     videoPanel.init(videoPanelEl, {
-      onVideoSelect: (video) => videoModal.playVideo(video),
+      onVideoSelect: (video) => {
+        if (isAcceleratorBundle()) {
+          const item = findMapItem(video.itemId || video.id);
+          if (item) selectMapItem(item);
+        } else {
+          videoModal.playVideo(video);
+        }
+      },
       onVideoHover: (videoId) => {
         if (renderer) renderer.setHoveredVideoId(videoId);
       },
@@ -309,11 +357,13 @@ async function boot() {
     videoToggle.addEventListener('click', () => toggleVideoPanel());
   }
 
-  modes.init(quizPanel);
-  modes.onModeSelect(handleModeSelect);
-  modes.onSkip(handleSkip);
+  if (!isAcceleratorBundle()) {
+    modes.init(quizPanel);
+    modes.onModeSelect(handleModeSelect);
+    modes.onSkip(handleSkip);
+  }
   insights.init();
-  initConfidence(quizPanel);
+  if (!isAcceleratorBundle()) initConfidence(quizPanel);
 
   const trophyBtn = document.getElementById('trophy-btn');
   if (trophyBtn) {
@@ -393,6 +443,9 @@ async function boot() {
 
   const minimapContainer = document.getElementById('minimap-container');
   if (minimapContainer) {
+    if (isAcceleratorBundle()) {
+      minimapContainer.hidden = true;
+    }
     minimap = new Minimap();
     minimap.init(minimapContainer, registry.getDomains());
     minimap.onClick((domainId) => $activeDomain.set(domainId));
@@ -415,6 +468,14 @@ async function boot() {
   if (import.meta.env.DEV) {
     window.__mapper = { registry, estimator, sampler, renderer, minimap, $activeDomain, $estimates, $responses, getCurrentQuestion: quiz.getCurrentQuestion, tutorialGoToStep };
   }
+
+  window.mapperActions = {
+    highlightMapItems,
+    showEvidencePanel,
+    setMapLens,
+    clearMapLens,
+    selectParticipant,
+  };
 
   const quizToggle = document.getElementById('quiz-toggle');
   if (quizToggle) {
@@ -453,7 +514,7 @@ async function boot() {
   // Tutorial is initialized after first domain switch (when map becomes visible)
   // See switchDomain() — initTutorial() called there on first run.
 
-  announce('Knowledge Mapper loaded. Select a domain to begin.');
+  announce('Knowledge Mapper loaded. Open the observatory to begin.');
 }
 
 /** Update heatmap display on renderer and minimap using global estimates.
@@ -491,17 +552,271 @@ function wireSubscriptions() {
 
 function articlesToPoints(articles) {
   return articles.map((a) => ({
-    id: a.title,
-    x: a.x,
-    y: a.y,
+    id: a.id || a.title,
+    x: a.x ?? a.umap_x,
+    y: a.y ?? a.umap_y,
     z: a.z || 0,
-    type: 'article',
-    color: [0, 0, 0, 30],
-    radius: 1.5,
+    type: a.participant_id ? 'map_item' : 'article',
+    color: a.participant_id ? colorForMapItem(a) : [0, 0, 0, 30],
+    radius: a.participant_id ? 2.7 : 1.5,
     title: a.title,
     url: a.url,
-    excerpt: a.excerpt || '',
+    excerpt: a.excerpt || a.anonymized_text || '',
+    summary: a.summary || '',
+    participant_id: a.participant_id,
+    source_type: a.source_type,
+    themes: a.themes || [],
+    consent_level: a.consent_level,
   }));
+}
+
+function colorForMapItem(item) {
+  const colorBy = activeLens?.colorBy || 'source_type';
+  if (colorBy === 'source_type') return SOURCE_COLORS[item.source_type] || SOURCE_COLORS.interview;
+  if (colorBy === 'theme') return themeColor(item.themes?.[0] || 'other');
+  const participant = participantByDisplayCode(item.participant_id);
+  const value = participant?.profile_json?.[colorBy];
+  if (typeof value === 'number') return traitColor(value);
+  return SOURCE_COLORS[item.source_type] || SOURCE_COLORS.interview;
+}
+
+function themeColor(theme) {
+  const palette = [
+    [138, 205, 255, 230],
+    [112, 226, 164, 220],
+    [255, 184, 92, 220],
+    [194, 132, 252, 220],
+    [245, 222, 148, 220],
+    [154, 163, 255, 220],
+  ];
+  let hash = 0;
+  for (const ch of String(theme)) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return palette[hash % palette.length];
+}
+
+function traitColor(value) {
+  const t = Math.max(0, Math.min(1, value));
+  const low = [112, 226, 164];
+  const mid = [245, 222, 148];
+  const high = [194, 132, 252];
+  const from = t < 0.5 ? low : mid;
+  const to = t < 0.5 ? mid : high;
+  const f = t < 0.5 ? t / 0.5 : (t - 0.5) / 0.5;
+  return [
+    Math.round(from[0] + (to[0] - from[0]) * f),
+    Math.round(from[1] + (to[1] - from[1]) * f),
+    Math.round(from[2] + (to[2] - from[2]) * f),
+    225,
+  ];
+}
+
+function participantByDisplayCode(displayCode) {
+  return (allDomainBundle?.participants || []).find(p => p.display_code === displayCode || p.id === displayCode);
+}
+
+function getAllMapItems() {
+  return allDomainBundle?.map_items || allDomainBundle?.articles || [];
+}
+
+function getFilteredMapItems() {
+  return getAllMapItems().filter(item => {
+    if (activeLens.participantId !== 'all' && item.participant_id !== activeLens.participantId) return false;
+    if (activeLens.sourceType !== 'all' && item.source_type !== activeLens.sourceType) return false;
+    if (activeLens.theme !== 'all' && !(item.themes || []).includes(activeLens.theme)) return false;
+    return true;
+  });
+}
+
+function applyLensToMap() {
+  if (!isAcceleratorBundle() || !renderer) return;
+  const filtered = getFilteredMapItems();
+  renderer.setPoints(articlesToPoints(filtered));
+  renderer.setParticipantPaths(participantPathsFromItems(filtered));
+  videoPanel.setEvidence(evidenceToMarkers(filtered));
+  renderer.highlightMapItems(activeLens.highlightedIds || []);
+  window.dispatchEvent(new CustomEvent('mapper:lens-change', { detail: { ...activeLens, count: filtered.length } }));
+}
+
+function evidenceToMarkers(items) {
+  return (items || []).map(item => ({
+    id: item.id,
+    itemId: item.id,
+    videoId: item.id,
+    x: item.x ?? item.umap_x,
+    y: item.y ?? item.umap_y,
+    title: item.title,
+    summary: item.summary,
+    excerpt: item.excerpt || item.anonymized_text,
+    participant_id: item.participant_id,
+    source_type: item.source_type,
+    themes: item.themes || [],
+    color: SOURCE_COLOR_CSS[item.source_type] || SOURCE_COLOR_CSS.interview,
+  }));
+}
+
+function initMapLensControls(bundle) {
+  const container = document.getElementById('map-container');
+  if (!container || lensControls) return;
+
+  const styleId = 'map-lens-style';
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      .map-lens-bar {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        z-index: 18;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        max-width: min(760px, calc(100% - 28px));
+        padding: 0.45rem;
+        border: 1px solid rgba(138,205,255,0.16);
+        border-radius: 8px;
+        background: rgba(7, 13, 24, 0.78);
+        backdrop-filter: blur(12px);
+        box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+      }
+      .map-lens-bar[hidden] { display: none !important; }
+      .map-lens-select,
+      .map-lens-clear {
+        min-height: 34px;
+        border: 1px solid var(--color-border);
+        border-radius: 7px;
+        background: rgba(18, 28, 46, 0.96);
+        color: var(--color-text);
+        font: 0.75rem var(--font-body);
+      }
+      .map-lens-select {
+        max-width: 168px;
+        padding: 0 0.45rem;
+      }
+      .map-lens-clear {
+        padding: 0 0.7rem;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .map-lens-clear:hover,
+      .map-lens-select:hover {
+        border-color: var(--color-primary);
+      }
+      @media (max-width: 520px) {
+        .map-lens-bar {
+          top: 54px;
+          left: 8px;
+          right: 8px;
+          max-width: none;
+          padding: 0.35rem;
+        }
+        .map-lens-select {
+          flex: 1 1 44%;
+          min-width: 0;
+          max-width: none;
+        }
+        .map-lens-clear {
+          flex: 1 1 100%;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  lensControls = document.createElement('div');
+  lensControls.className = 'map-lens-bar';
+  lensControls.hidden = true;
+  lensControls.innerHTML = `
+    <select class="map-lens-select" data-lens="participantId" aria-label="Filter by participant"></select>
+    <select class="map-lens-select" data-lens="sourceType" aria-label="Filter by source type"></select>
+    <select class="map-lens-select" data-lens="theme" aria-label="Filter by theme"></select>
+    <select class="map-lens-select" data-lens="colorBy" aria-label="Color by"></select>
+    <button class="map-lens-clear" type="button">Clear lens</button>
+  `;
+  container.appendChild(lensControls);
+
+  const participants = bundle.participants || [];
+  const items = bundle.map_items || bundle.articles || [];
+  const sourceTypes = [...new Set(items.map(i => i.source_type).filter(Boolean))].sort();
+  const themes = [...new Set(items.flatMap(i => i.themes || []))].sort();
+
+  populateSelect(lensControls.querySelector('[data-lens="participantId"]'), [
+    ['all', 'All participants'],
+    ...participants.map(p => [p.display_code, `${p.display_code} · ${p.role}`]),
+  ]);
+  populateSelect(lensControls.querySelector('[data-lens="sourceType"]'), [
+    ['all', 'All sources'],
+    ...sourceTypes.map(type => [type, type.replace(/_/g, ' ')]),
+  ]);
+  populateSelect(lensControls.querySelector('[data-lens="theme"]'), [
+    ['all', 'All themes'],
+    ...themes.map(theme => [theme, theme]),
+  ]);
+  populateSelect(lensControls.querySelector('[data-lens="colorBy"]'), [
+    ['source_type', 'Color: source'],
+    ['theme', 'Color: theme'],
+    ['openness', 'Color: openness'],
+    ['conscientiousness', 'Color: conscientiousness'],
+    ['ambiguityComfort', 'Color: ambiguity comfort'],
+    ['trustInMentorship', 'Color: mentorship trust'],
+    ['publicPrivateTension', 'Color: public/private tension'],
+  ]);
+
+  lensControls.addEventListener('change', (event) => {
+    const select = event.target.closest('[data-lens]');
+    if (!select) return;
+    activeLens = { ...activeLens, [select.dataset.lens]: select.value };
+    applyLensToMap();
+  });
+
+  lensControls.querySelector('.map-lens-clear')?.addEventListener('click', () => {
+    activeLens = {
+      participantId: 'all',
+      sourceType: 'all',
+      theme: 'all',
+      colorBy: 'source_type',
+      highlightedIds: [],
+    };
+    for (const select of lensControls.querySelectorAll('[data-lens]')) {
+      select.value = activeLens[select.dataset.lens];
+    }
+    clearMapLens();
+    applyLensToMap();
+  });
+}
+
+function populateSelect(select, options) {
+  if (!select) return;
+  select.textContent = '';
+  for (const [value, label] of options) {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = label;
+    select.appendChild(opt);
+  }
+}
+
+function participantPathsFromItems(items) {
+  const grouped = new Map();
+  for (const item of items || []) {
+    if (!item.participant_id) continue;
+    if (!grouped.has(item.participant_id)) grouped.set(item.participant_id, []);
+    grouped.get(item.participant_id).push({
+      x: item.x ?? item.umap_x,
+      y: item.y ?? item.umap_y,
+      order: item.metadata_json?.sequence ?? grouped.get(item.participant_id).length,
+    });
+  }
+  return [...grouped.entries()].map(([participantId, points], idx) => ({
+    participantId,
+    color: Object.values(SOURCE_COLORS)[idx % Object.values(SOURCE_COLORS).length],
+    points: points.sort((a, b) => a.order - b.order),
+  }));
+}
+
+function findMapItem(id) {
+  if (!id || !allDomainBundle) return null;
+  return (allDomainBundle.map_items || allDomainBundle.articles || []).find(item => String(item.id) === String(id));
 }
 
 function videosToLastPoints(videos) {
@@ -653,31 +968,45 @@ async function switchDomain(domainId) {
       globalEstimator.restore(relevantResponses, UNIFORM_LENGTH_SCALE, questionIndex);
     }
 
-    const estimates = estimator.predict();
-    $estimates.set(estimates);
-    updateHeatmapDisplay();
+    if (isAcceleratorBundle()) {
+      $estimates.set([]);
+      renderer.setHeatmap([], GLOBAL_REGION);
+    } else {
+      const estimates = estimator.predict();
+      $estimates.set(estimates);
+      updateHeatmapDisplay();
+    }
 
     renderer.setPoints(articlesToPoints(allDomainBundle.articles));
+    if (isAcceleratorBundle()) {
+      renderer.setParticipantPaths(participantPathsFromItems(allDomainBundle.map_items || allDomainBundle.articles));
+      videoPanel.setEvidence(evidenceToMarkers(allDomainBundle.map_items || allDomainBundle.articles));
+      if (lensControls) lensControls.hidden = false;
+    }
     renderer.setAnsweredQuestions(responsesToAnsweredDots($responses.get(), questionIndex));
 
     mapInitialized = true;
 
-    // Start tutorial now that the map is visible (after user clicks "Map my knowledge!")
-    initTutorial({ responsesCount: $responses.get().length });
+    if (!isAcceleratorBundle()) {
+      // Start tutorial now that the map is visible (after user clicks "Map my knowledge!")
+      initTutorial({ responsesCount: $responses.get().length });
+    }
 
     // Show and wire the tutorial button in the header
     const tutorialBtn = document.getElementById('tutorial-btn');
-    if (tutorialBtn) {
+    if (tutorialBtn && !isAcceleratorBundle()) {
       tutorialBtn.hidden = false;
       tutorialBtn.addEventListener('click', () => resetTutorial());
     }
 
     // Set video markers now that the map is initialized
-    const { data: earlyVideos } = videoLoader.getVideos();
-    if (earlyVideos && earlyVideos.length > 0) {
-      renderer.setVideos(videosToMarkers(earlyVideos));
-      videoPanel.setVideos(videosToMarkers(earlyVideos));
-      if (minimap) minimap.setVideos(videosToLastPoints(earlyVideos));
+    if (!isAcceleratorBundle()) {
+      const { data: earlyVideos } = videoLoader.getVideos();
+      if (earlyVideos && earlyVideos.length > 0) {
+        renderer.setVideos(videosToMarkers(earlyVideos));
+        videoPanel.setVideos(videosToMarkers(earlyVideos));
+        if (minimap) minimap.setVideos(videosToLastPoints(earlyVideos));
+      }
     }
   }
 
@@ -702,7 +1031,7 @@ async function switchDomain(domainId) {
 
   // Update domain-scoped tracking
   domainQuestionCount = $responses.get().length;
-  modes.updateAvailability(domainQuestionCount);
+  if (!isAcceleratorBundle()) modes.updateAvailability(domainQuestionCount);
   updateInsightButtons($responses.get().length);
 
   // Pan/zoom to the target domain's region
@@ -729,9 +1058,11 @@ async function switchDomain(domainId) {
   if (headerRightBar) headerRightBar.scrollLeft = headerRightBar.scrollWidth; // right buttons visible
 
   const domainName = registry.getDomains().find(d => d.id === domainId)?.name || domainId;
-  announce(`Navigated to ${domainName}. ${aggregatedQuestions.length} questions available.`);
+  announce(isAcceleratorBundle()
+    ? `Navigated to ${domainName}. ${aggregatedQuestions.length} research prompts available.`
+    : `Navigated to ${domainName}. ${aggregatedQuestions.length} questions available.`);
 
-  modes.setSkipVisible(true);
+  if (!isAcceleratorBundle()) modes.setSkipVisible(true);
   selectAndShowNextQuestion();
 
   // Advance tutorial on domain switch
@@ -740,6 +1071,14 @@ async function switchDomain(domainId) {
 
 function selectAndShowNextQuestion() {
   if (!currentDomainBundle || !estimator || !sampler) return;
+
+  if (isAcceleratorBundle()) {
+    const samples = aggregatedQuestions.length > 0
+      ? aggregatedQuestions
+      : (currentDomainBundle.ask_map?.questions || currentDomainBundle.questions || []);
+    quiz.showQuestion({ samples });
+    return;
+  }
 
   const answeredIds = $answeredIds.get();
   // Use aggregated questions (own + descendants) per CL-049
@@ -788,6 +1127,97 @@ function selectAndShowNextQuestion() {
   quiz.showQuestion(question);
 }
 
+function handleAskMap(queryText, question) {
+  const questions = currentDomainBundle.ask_map?.questions || currentDomainBundle.questions || [];
+  const matched = questions.find(q => q.id === question.id) || matchAskQuestion(queryText, questions);
+  if (!matched?.answer) {
+    quiz.showAskResponse(null);
+    clearMapLens();
+    return;
+  }
+
+  const itemIds = matched.answer.highlighted_map_item_ids || matched.answer.item_ids || [];
+  const evidence = itemIds.map(findMapItem).filter(Boolean);
+  const response = {
+    ...matched.answer,
+    evidence: evidence.map(item => ({
+      ...item,
+      excerpt: item.excerpt || item.anonymized_text,
+      color: SOURCE_COLOR_CSS[item.source_type] || SOURCE_COLOR_CSS.interview,
+    })),
+  };
+
+  quiz.showAskResponse(response);
+  highlightMapItems(itemIds, matched.query || queryText);
+  showEvidencePanel(evidence);
+}
+
+function matchAskQuestion(queryText, questions) {
+  const query = (queryText || '').toLowerCase();
+  return questions.find(q => (q.query || q.question_text || '').toLowerCase() === query)
+    || questions.find(q => (q.aliases || []).some(alias => query.includes(alias.toLowerCase())))
+    || questions.find(q => {
+      const haystack = `${q.query || ''} ${(q.themes || []).join(' ')}`.toLowerCase();
+      return query.split(/\W+/).filter(t => t.length > 4).some(token => haystack.includes(token));
+    });
+}
+
+function highlightMapItems(itemIds, reason = '') {
+  activeLens = { ...activeLens, highlightedIds: itemIds || [] };
+  renderer.highlightMapItems(itemIds || []);
+  window.dispatchEvent(new CustomEvent('mapper:highlight-items', {
+    detail: { itemIds, reason },
+  }));
+}
+
+function showEvidencePanel(items) {
+  const evidence = (items && items.length ? items : getFilteredMapItems());
+  videoPanel.setEvidence(evidenceToMarkers(evidence));
+  if (items && items.length) videoPanel.updateViewport(GLOBAL_REGION);
+  toggleVideoPanel(true);
+}
+
+function setMapLens({ theme, colorBy, highlightedIds } = {}) {
+  activeLens = {
+    ...activeLens,
+    theme: theme || activeLens.theme,
+    colorBy: colorBy || activeLens.colorBy,
+    highlightedIds: highlightedIds || activeLens.highlightedIds,
+  };
+  if (lensControls) {
+    for (const select of lensControls.querySelectorAll('[data-lens]')) {
+      select.value = activeLens[select.dataset.lens];
+    }
+  }
+  applyLensToMap();
+  if (highlightedIds) highlightMapItems(highlightedIds, theme || colorBy || 'map lens');
+}
+
+function clearMapLens() {
+  activeLens = { ...activeLens, highlightedIds: [] };
+  renderer.highlightMapItems([]);
+  renderer.setSelectedPoint(null);
+}
+
+function selectParticipant(participantId) {
+  activeLens = { ...activeLens, participantId: participantId || 'all' };
+  if (lensControls) {
+    const select = lensControls.querySelector('[data-lens="participantId"]');
+    if (select) select.value = activeLens.participantId;
+  }
+  applyLensToMap();
+  const items = getFilteredMapItems();
+  if (!items.length) return;
+  highlightMapItems(items.map(item => item.id), `participant ${participantId}`);
+  showEvidencePanel(items);
+}
+
+function selectMapItem(item) {
+  renderer.setSelectedPoint(item.id);
+  highlightMapItems([item.id], item.title);
+  showEvidencePanel([item]);
+}
+
 function handleModeSelect(modeId) {
   $questionMode.set(modeId);
   selectAndShowNextQuestion();
@@ -795,6 +1225,11 @@ function handleModeSelect(modeId) {
 
 function handleAnswer(selectedKey, question) {
   if (!question || !currentDomainBundle) return;
+
+  if (isAcceleratorBundle()) {
+    handleAskMap(selectedKey, question);
+    return;
+  }
 
   const isCorrect = selectedKey === question.correct_answer;
 
@@ -1211,13 +1646,13 @@ function toggleQuizPanel(show) {
     if (window.innerWidth <= 480) $quizDrawerCollapsed.set(false);
     if (toggleBtn) {
       toggleBtn.querySelector('i').className = 'fa-solid fa-chevron-right';
-      toggleBtn.setAttribute('aria-label', 'Close quiz panel');
+      toggleBtn.setAttribute('aria-label', isAcceleratorBundle() ? 'Close Ask the Map panel' : 'Close quiz panel');
     }
   } else {
     quizPanel.classList.remove('open');
     if (toggleBtn) {
       toggleBtn.querySelector('i').className = 'fa-solid fa-chevron-left';
-      toggleBtn.setAttribute('aria-label', 'Open quiz panel');
+      toggleBtn.setAttribute('aria-label', isAcceleratorBundle() ? 'Open Ask the Map panel' : 'Open quiz panel');
     }
   }
 }
@@ -1237,13 +1672,13 @@ function toggleVideoPanel(show) {
     panel.classList.add('open');
     if (toggleBtn) {
       toggleBtn.querySelector('i').className = 'fa-solid fa-chevron-left';
-      toggleBtn.setAttribute('aria-label', 'Close video panel');
+      toggleBtn.setAttribute('aria-label', isAcceleratorBundle() ? 'Close evidence panel' : 'Close video panel');
     }
   } else {
     panel.classList.remove('open');
     if (toggleBtn) {
       toggleBtn.querySelector('i').className = 'fa-solid fa-chevron-right';
-      toggleBtn.setAttribute('aria-label', 'Open video panel');
+      toggleBtn.setAttribute('aria-label', isAcceleratorBundle() ? 'Open evidence panel' : 'Open video panel');
     }
   }
 }
@@ -1340,6 +1775,11 @@ const INSIGHT_MIN_ANSWERS = 5;
 function updateInsightButtons(answerCount) {
   const trophyBtn = document.getElementById('trophy-btn');
   const suggestBtn = document.getElementById('suggest-btn');
+  if (isAcceleratorBundle()) {
+    if (trophyBtn) trophyBtn.hidden = true;
+    if (suggestBtn) suggestBtn.hidden = true;
+    return;
+  }
   const ready = answerCount >= INSIGHT_MIN_ANSWERS;
   if (trophyBtn) trophyBtn.disabled = !ready;
   if (suggestBtn) suggestBtn.disabled = !ready;
@@ -1396,6 +1836,23 @@ function setupAboutModal() {
     });
   }
 }
+
+window.mapperActions = {
+  highlightMapItems,
+  showEvidencePanel,
+  setMapLens,
+  clearMapLens,
+  selectParticipant,
+};
+
+window.addEventListener('mapper:action', (event) => {
+  const { type, payload = {} } = event.detail || {};
+  if (type === 'highlightMapItems') highlightMapItems(payload.itemIds || [], payload.reason || 'external action');
+  if (type === 'showEvidencePanel') showEvidencePanel(payload.items || []);
+  if (type === 'setMapLens') setMapLens(payload);
+  if (type === 'clearMapLens') clearMapLens();
+  if (type === 'selectParticipant') selectParticipant(payload.participantId);
+});
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => { setupAboutModal(); boot(); });

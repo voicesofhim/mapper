@@ -39,6 +39,9 @@ export class Renderer {
     this._videoTrajectories = new Map(); // videoId → [{x, y}] in temporal order
     this._hoveredVideoId = null;
     this._showVideoMarkers = true;
+    this._highlightedIds = new Set();
+    this._selectedPointId = null;
+    this._participantPaths = [];
     this._questions = [];
     this._questionMap = new Map();
     this._estimateGrid = null; // Float64Array or null, 50*50 flat grid for O(1) lookup
@@ -59,6 +62,7 @@ export class Renderer {
 
     this._onReanswer = null;
     this._onVideoClick = null;
+    this._onPointClick = null;
     this._onViewportChange = null;
     this._onCellClick = null;
 
@@ -199,7 +203,8 @@ export class Renderer {
   setPoints(points) {
     this._points = points || [];
     if (this._colorbarEl) {
-      this._colorbarEl.style.display = this._points.length > 0 ? 'block' : 'none';
+      const hasKnowledgeLayer = this._points.some(p => p.type !== 'map_item');
+      this._colorbarEl.style.display = this._points.length > 0 && hasKnowledgeLayer ? 'block' : 'none';
     }
     this._scheduleRender();
   }
@@ -280,6 +285,25 @@ export class Renderer {
 
   onVideoClick(handler) {
     this._onVideoClick = handler;
+  }
+
+  onPointClick(handler) {
+    this._onPointClick = handler;
+  }
+
+  highlightMapItems(ids = []) {
+    this._highlightedIds = new Set((ids || []).map(String));
+    this._scheduleRender();
+  }
+
+  setSelectedPoint(id) {
+    this._selectedPointId = id ? String(id) : null;
+    this._scheduleRender();
+  }
+
+  setParticipantPaths(paths) {
+    this._participantPaths = paths || [];
+    this._scheduleRender();
   }
 
   setShowVideoMarkers(visible) {
@@ -537,8 +561,9 @@ export class Renderer {
     const h = this._height;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#050912';
     ctx.fillRect(0, 0, w, h);
+    this._drawObservatoryBackdrop(ctx, w, h);
 
     this._drawHeatmap(ctx, w, h);
 
@@ -546,6 +571,7 @@ export class Renderer {
     ctx.translate(this._panX, this._panY);
     ctx.scale(this._zoom, this._zoom);
 
+    this._drawParticipantPaths(ctx, w, h);
     this._drawPoints(ctx, w, h);
     this._drawVideos(ctx, w, h);
     this._drawVideoTrajectory(ctx, w, h);
@@ -569,6 +595,38 @@ export class Renderer {
       ctx.setLineDash([]);
       ctx.restore();
     }
+
+    if (this._highlightedIds.size > 0) {
+      this._scheduleRender();
+    }
+  }
+
+  _drawObservatoryBackdrop(ctx, w, h) {
+    const grd = ctx.createRadialGradient(w * 0.52, h * 0.42, 0, w * 0.52, h * 0.42, Math.max(w, h) * 0.72);
+    grd.addColorStop(0, '#111b2a');
+    grd.addColorStop(0.48, '#07101d');
+    grd.addColorStop(1, '#02050b');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.strokeStyle = 'rgba(180, 210, 255, 0.08)';
+    ctx.lineWidth = 1;
+    const step = 80;
+    for (let x = (this._panX % step); x < w; x += step) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = (this._panY % step); y < h; y += step) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   /**
@@ -653,22 +711,72 @@ export class Renderer {
   _drawPoints(ctx, w, h) {
     if (this._points.length === 0) return;
 
-    const defaultColor = [0, 0, 0, 30];
+    const defaultColor = [170, 220, 255, 210];
     const hoveredId = this._hoveredPoint?.id;
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 460);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
     for (const p of this._points) {
       const px = p.x * w;
       const py = p.y * h;
-      const r = (p.radius || 2) / this._zoom;
+      const baseR = (p.radius || 2.2) / this._zoom;
       const color = p.color || defaultColor;
       const isHovered = hoveredId && p.id === hoveredId;
-      const alpha = isHovered ? 0.8 : (color[3] ?? 30) / 255;
-      const radius = isHovered ? r * 1.5 : r;
+      const isHighlighted = this._highlightedIds.has(String(p.id));
+      const isSelected = this._selectedPointId && String(p.id) === this._selectedPointId;
+      const alpha = isSelected ? 1 : isHighlighted ? 0.92 : isHovered ? 0.86 : (color[3] ?? 190) / 255;
+      const radius = baseR * (isSelected ? 1.8 : isHighlighted ? 1.35 + pulse * 0.35 : isHovered ? 1.45 : 1);
+
+      const halo = ctx.createRadialGradient(px, py, 0, px, py, radius * 7.5);
+      halo.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.22 * alpha})`);
+      halo.addColorStop(0.45, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.08 * alpha})`);
+      halo.addColorStop(1, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0)`);
+      ctx.beginPath();
+      ctx.arc(px, py, radius * 7.5, 0, Math.PI * 2);
+      ctx.fillStyle = halo;
+      ctx.fill();
 
       ctx.beginPath();
       ctx.arc(px, py, radius, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`;
       ctx.fill();
+
+      if (isSelected || isHighlighted) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.beginPath();
+        ctx.arc(px, py, radius * (isSelected ? 3.2 : 2.55), 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${isSelected ? 0.9 : 0.48 + pulse * 0.28})`;
+        ctx.lineWidth = (isSelected ? 1.4 : 1) / this._zoom;
+        ctx.stroke();
+        ctx.restore();
+      }
     }
+    ctx.restore();
+  }
+
+  _drawParticipantPaths(ctx, w, h) {
+    if (!this._participantPaths || this._participantPaths.length === 0) return;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const path of this._participantPaths) {
+      const pts = path.points || [];
+      if (pts.length < 2) continue;
+      const c = path.color || [160, 210, 255];
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x * w, pts[0].y * h);
+      for (let i = 1; i < pts.length; i++) {
+        ctx.lineTo(pts[i].x * w, pts[i].y * h);
+      }
+      ctx.strokeStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.18)`;
+      ctx.lineWidth = 1.25 / this._zoom;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
 
@@ -702,7 +810,7 @@ export class Renderer {
 
     if (this._showVideoMarkers) {
       // Draw only the complete-transcript embedding (last point) per video
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      ctx.fillStyle = 'rgba(180, 220, 255, 0.18)';
       for (const [, pts] of this._videoTrajectories) {
         const last = pts[pts.length - 1];
         const px = last.x * w;
@@ -716,7 +824,7 @@ export class Renderer {
       const pts = this._videoTrajectories.get(this._hoveredVideoId);
       if (pts) {
         // Draw all trajectory points
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.fillStyle = 'rgba(180, 220, 255, 0.45)';
         for (const pt of pts) {
           const px = pt.x * w;
           const py = pt.y * h;
@@ -724,7 +832,7 @@ export class Renderer {
         }
         // Darken the complete-transcript point (last)
         const last = pts[pts.length - 1];
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillStyle = 'rgba(230, 245, 255, 0.9)';
         const px = last.x * w;
         const py = last.y * h;
         ctx.fillRect(px - half, py - half, size * 1.5, size * 1.5);
@@ -743,7 +851,7 @@ export class Renderer {
     // Draw the spline path
     ctx.save();
     ctx.lineWidth = 1.5 / this._zoom;
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.strokeStyle = 'rgba(180, 220, 255, 0.55)';
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
@@ -776,14 +884,14 @@ export class Renderer {
       const alpha = 0.5 + 0.4 * (i / (px.length - 1)); // fade in along trajectory
       ctx.beginPath();
       ctx.arc(px[i].x, px[i].y, dotR, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(0, 0, 0, ${alpha})`;
+      ctx.fillStyle = `rgba(190, 225, 255, ${alpha})`;
       ctx.fill();
     }
 
     // Highlight start with a small ring
     ctx.beginPath();
     ctx.arc(px[0].x, px[0].y, 3.5 / this._zoom, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+    ctx.strokeStyle = 'rgba(235, 250, 255, 0.85)';
     ctx.lineWidth = 1.0 / this._zoom;
     ctx.stroke();
 
@@ -1143,6 +1251,12 @@ export class Renderer {
       return;
     }
 
+    if (hit.type === 'map_item') {
+      this.setSelectedPoint(hit.id);
+      if (this._onPointClick) this._onPointClick(hit);
+      return;
+    }
+
     if (hit.url) {
       this._openInBackground(hit.url);
       return;
@@ -1429,6 +1543,22 @@ export class Renderer {
   // ======== PRIVATE: Tooltip ========
 
   _buildTooltipHTML(hit) {
+    if (hit.type === 'map_item') {
+      const c = hit.color || [170, 220, 255];
+      const borderColor = `rgb(${c[0]},${c[1]},${c[2]})`;
+      const title = hit.title || hit.id || 'Evidence';
+      const participant = hit.participant_id || hit.participantId || 'participant';
+      const source = (hit.source_type || 'source').replace(/_/g, ' ');
+      const summary = hit.summary || hit.excerpt || '';
+      const truncated = summary.length > 170 ? summary.slice(0, 170) + '...' : summary;
+      const themes = Array.isArray(hit.themes) ? hit.themes.slice(0, 3).join(', ') : '';
+      let html = `<div style="font-weight:700;margin-bottom:3px;color:#eaf6ff;">${this._escapeHtml(title)}</div>`;
+      html += `<div style="font-size:0.72rem;color:#9fb4cc;margin-bottom:4px;">${this._escapeHtml(participant)} &middot; ${this._escapeHtml(source)}</div>`;
+      if (truncated) html += `<div style="font-size:0.74rem;color:#d9e8f6;line-height:1.45;">${this._escapeHtml(truncated)}</div>`;
+      if (themes) html += `<div style="font-size:0.68rem;color:#8da6c2;margin-top:5px;">Themes: ${this._escapeHtml(themes)}</div>`;
+      return { html, borderColor, interactive: true };
+    }
+
     if (hit.questionId) {
       const q = this._questionMap.get(hit.questionId);
       const isSkipped = hit.isSkipped;

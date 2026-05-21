@@ -26,7 +26,7 @@ export async function init(basePath) {
   const json = await res.json();
   domains = json.domains;
 
-  if (import.meta.env.DEV && domains.length !== 50) {
+  if (import.meta.env.DEV && domains.length !== 50 && json.schema_version !== 'accelerator-demo-v1') {
     console.warn(
       `[registry] Expected 50 domains, got ${domains.length}`
     );

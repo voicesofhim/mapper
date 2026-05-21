@@ -2,12 +2,15 @@
   "name": "@contextlab/mapper",
   "version": "1.0.0",
   "type": "module",
-  "description": "Interactive Wikipedia Knowledge Map — adaptive quiz visualization using text embeddings",
+  "description": "Fork of ContextLab Mapper adapted for accelerator interview intelligence",
   "scripts": {
     "dev": "vite",
     "build": "vite build && cp -r data dist/data",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run tests/accelerator tests/unit",
+    "test:legacy": "vitest run tests/algorithm",
+    "test:all": "vitest run",
+    "test:accelerator:visual": "playwright test tests/visual/accelerator-observatory.spec.js",
     "bench": "vitest bench",
     "test:visual": "playwright test"
   },

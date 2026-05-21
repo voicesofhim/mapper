@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="An interactive tool that maps out everything you know. Answer questions and watch your personalized knowledge map take shape.">
-    <title>Knowledge Mapper</title>
+    <meta name="description" content="An accelerator research observatory for exploring grounded interview evidence, participant patterns, and semantic themes.">
+    <title>Knowledge Mapper - Accelerator Observatory</title>
 
     <!-- Open Graph meta tags -->
     <meta property="og:title" content="Knowledge Mapper">
@@ -33,21 +33,21 @@
 
     <style>
         :root {
-            --color-bg: #ffffff;
-            --color-surface: #f8fafc;
-            --color-surface-raised: #e2e8f0;
-            --color-primary: #00693e;
-            --color-primary-light: #1a8a5a;
-            --color-secondary: #267aba;
+            --color-bg: #050912;
+            --color-surface: #0b1220;
+            --color-surface-raised: #121c2e;
+            --color-primary: #8acdff;
+            --color-primary-light: #cdeaff;
+            --color-secondary: #70e2a4;
             --color-tertiary: #10b981;
             --color-accent: #d97706;
-            --color-text: #0f172a;
-            --color-text-muted: #64748b;
+            --color-text: #e7f1fb;
+            --color-text-muted: #91a5bc;
             --color-correct: #059669;
             --color-incorrect: #dc2626;
-            --color-border: rgba(203,213,225,1);
-            --color-glow-primary: rgba(0,105,62,0.15);
-            --color-glow-secondary: rgba(38,122,186,0.12);
+            --color-border: rgba(138,205,255,0.22);
+            --color-glow-primary: rgba(138,205,255,0.24);
+            --color-glow-secondary: rgba(112,226,164,0.18);
             --font-heading: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             --header-height: 56px;
@@ -155,8 +155,8 @@
             font-family: var(--font-heading);
             font-weight: 700;
             font-size: 1rem;
-            color: #00693e;
-            letter-spacing: -0.02em;
+            color: var(--color-primary-light);
+            letter-spacing: 0;
             transition: opacity 0.4s ease;
         }
         .domain-selector { font-size: 0.85rem; }
@@ -271,7 +271,7 @@
             margin-bottom: 0.75rem;
             font-weight: 700;
             letter-spacing: -0.03em;
-            color: #00693e;
+            color: var(--color-primary-light);
         }
         .landing-content h2 {
             font-family: var(--font-body);
@@ -952,19 +952,19 @@
     <div id="app" data-screen="welcome">
         <header id="app-header">
             <div class="header-left">
-                <div class="logo" data-tooltip="Map my knowledge!"><i class="fa-solid fa-map"></i> <span>Knowledge Mapper</span></div>
+                <div class="logo" data-tooltip="Open observatory"><i class="fa-solid fa-map"></i> <span>Knowledge Mapper</span></div>
                 <!-- Domain selector placeholder -->
                 <div class="domain-selector" hidden aria-label="Select knowledge domain"></div>
             </div>
             <div class="header-actions"></div>
             <div class="header-right">
-                <button id="trophy-btn" class="btn-icon" aria-label="My areas of expertise" data-tooltip="My areas of expertise" disabled>
+                <button id="trophy-btn" class="btn-icon" aria-label="Participant patterns" data-tooltip="Participant patterns" disabled>
                     <i class="fa-solid fa-trophy"></i>
                 </button>
-                <button id="suggest-btn" class="btn-icon" aria-label="Suggest articles to learn" data-tooltip="Suggested learning" disabled>
+                <button id="suggest-btn" class="btn-icon" aria-label="Supporting signals" data-tooltip="Supporting signals" disabled>
                     <i class="fa-solid fa-graduation-cap"></i>
                 </button>
-                <button id="share-btn" class="btn-icon" aria-label="Share your knowledge map" data-tooltip="Share">
+                <button id="share-btn" class="btn-icon" aria-label="Share map view" data-tooltip="Share">
                     <i class="fa-solid fa-share-nodes"></i>
                 </button>
                 <button id="tutorial-btn" class="btn-icon" aria-label="Start tutorial" data-tooltip="Tutorial" hidden>
@@ -982,28 +982,28 @@
                 <canvas id="particle-canvas"></canvas>
                 <div class="landing-content">
                     <h1>Knowledge Mapper</h1>
-                    <h2>Map out (an approximation of) everything you know!</h2>
+                    <h2>A semantic observatory for accelerator interview intelligence.</h2>
                     
                     <p>
                         <i class="fa-solid fa-map" style="margin-right: 8px;"></i>
-                        Build and interact with a visualization of your own knowledge
+                        Explore synthetic participant excerpts, themes, mentor notes, and public signals
                     </p>
                     <p>
                         <i class="fa-solid fa-brain" style="margin-right: 8px;"></i>
-                        Answer questions to watch our system's model of <em>you</em> update in real time
+                        Ask grounded research questions and highlight the evidence behind each inference
                     </p>
                     <p>
                         <i class="fa-solid fa-graduation-cap" style="margin-right: 8px;"></i>
-                        Click <a href="#" id="landing-info-link" style="white-space:nowrap;"><i class="fa-solid fa-circle-info" style="margin: 0 2px;"></i> info</a> in the upper right to learn more, or read our <a href="https://www.doi.org/10.1038/s41467-026-69746-w" target="_blank" rel="noopener">research paper</a>.
+                        UMAP coordinates are loaded as precomputed frontend data; no sensitive raw transcripts are exposed by default.
                     </p>
 
-                    <button id="landing-start-btn" class="landing-start-btn">Map my knowledge!</button>
+                    <button id="landing-start-btn" class="landing-start-btn">Open observatory</button>
                 </div>
             </section>
 
             <!-- Video Discovery Panel (toggle inside for synchronized animation) -->
-            <aside id="video-panel" aria-label="Video Lectures">
-                <button id="video-toggle" class="video-toggle-btn" hidden aria-label="Open video panel" data-tooltip="Show/hide lectures">
+            <aside id="video-panel" aria-label="Evidence">
+                <button id="video-toggle" class="video-toggle-btn" hidden aria-label="Open evidence panel" data-tooltip="Show/hide evidence">
                     <i class="fa-solid fa-chevron-right"></i>
                 </button>
                 <!-- Content injected by video-panel.js -->
@@ -1013,8 +1013,8 @@
             <section id="map-container" aria-label="Interactive Heatmap" tabindex="0"></section>
 
             <!-- Quiz / Interaction Panel (toggle inside for synchronized animation) -->
-            <aside id="quiz-panel" aria-label="Quiz Question">
-                <button id="quiz-toggle" class="quiz-toggle-btn" hidden aria-label="Open quiz panel" data-tooltip="Show/hide questions">
+            <aside id="quiz-panel" aria-label="Ask the Map">
+                <button id="quiz-toggle" class="quiz-toggle-btn" hidden aria-label="Open Ask the Map panel" data-tooltip="Show/hide Ask the Map">
                     <i class="fa-solid fa-chevron-left"></i>
                 </button>
                 <!-- Content injected by app.js -->
@@ -1043,43 +1043,31 @@
     <div id="about-modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal-content">
             <button type="button" class="modal-close-x close-modal" aria-label="Close">&times;</button>
-            <h2 id="modal-title" style="margin-bottom: 1rem; font-family: var(--font-heading); color: var(--color-primary);">About Knowledge Mapper</h2>
+            <h2 id="modal-title" style="margin-bottom: 1rem; font-family: var(--font-heading); color: var(--color-primary);">About the Accelerator Observatory</h2>
             <p style="line-height: 1.7; margin-bottom: 0.75rem; font-size: 0.9rem;">
-                Knowledge Mapper uses <strong style="color:var(--color-primary-light)">text embedding models</strong> to
-                create a semantic coordinate system from 250,000 Wikipedia articles. Each
-                article is embedded into a high-dimensional vector space and projected onto a
-                2D map where related concepts cluster together &mdash; the articles serve as
-                guideposts that define the terrain of human knowledge.
+                This fork adapts ContextLab Mapper into a semantic map for accelerator participant
+                research. Each node is an anonymized evidence chunk with precomputed embedding and
+                UMAP coordinates loaded from static JSON.
             </p>
             <p style="line-height: 1.7; margin-bottom: 0.75rem; font-size: 0.9rem;">
-                As you answer questions, an <strong style="color:var(--color-primary-light)">adaptive estimator</strong>
-                interpolates your knowledge across nearby concepts using radial basis functions.
-                Each answer creates a ripple of evidence: getting a question right suggests
-                you likely know related topics nearby, while a wrong answer reveals gaps. The
-                system uses <strong style="color:var(--color-primary-light)">uncertainty-weighted selection</strong> to
-                pick the most informative next question, efficiently mapping your understanding
-                with as few questions as possible.
+                Ask-the-Map responses are grounded in the bundled synthetic evidence. Syntheses are
+                labeled as inferences and kept separate from source excerpts, participant codes, and
+                supporting themes.
             </p>
             <p style="line-height: 1.7; margin-bottom: 0.75rem; font-size: 0.9rem;">
-                Because the map lives in embedding space, knowledge demonstrated in one
-                area (e.g., Mathematics) provides evidence about related areas
-                (e.g., Probability &amp; Statistics). The result is a high-resolution heatmap
-                of your conceptual knowledge &mdash; not a single score, but a spatial portrait
-                revealing both your strengths and gaps.
+                The frontend exposes <code>window.mapperActions</code> so a future LiveKit voice
+                agent can highlight map items, set map lenses, select participants, and open
+                evidence without replacing the Mapper rendering architecture.
             </p>
-            <h3 style="margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--color-primary);">About the Questions</h3>
+            <h3 style="margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--color-primary);">Privacy and Interpretation</h3>
             <p style="line-height: 1.7; margin-bottom: 0.75rem; font-size: 0.9rem;">
-                The questions are intended to be difficult. Each question tests multiple aspects of
-                knowledge: <strong style="color:var(--color-primary-light)">conceptual understanding</strong>,
-                <strong style="color:var(--color-primary-light)">familiarity with relevant terminology</strong>,
-                <strong style="color:var(--color-primary-light)">reasoning</strong>, and
-                <strong style="color:var(--color-primary-light)">reading comprehension</strong>.
-                Don&rsquo;t worry if many feel challenging &mdash; the system learns from both correct and
-                incorrect answers to build a complete picture of your knowledge.
+                This demo uses synthetic data only. Production data should preserve consent levels,
+                prefer anonymized excerpts, and avoid diagnostic language about participants.
             </p>
             <p style="line-height: 1.7; margin-bottom: 1rem; font-size: 0.9rem;">
-                <strong>Research paper:</strong>
-                Fitzpatrick PC, Heusser AC, Manning JR (2026). Text embedding models yield detailed conceptual knowledge maps derived from short multiple-choice quizzes. <em>Nature Communications</em>, 17(2055): <a href="https://www.doi.org/10.1038/s41467-026-69746-w" target="_blank" rel="noopener">10.1038/s41467-026-69746-w</a>.
+                <strong>Source project:</strong>
+                This work is forked from ContextLab Mapper and preserves its static domain-bundle
+                loading pattern while changing the content model.
             </p>
             <p style="line-height: 1.7; margin-bottom: 1rem; font-size: 0.9rem;">
                 <strong>Source code:</strong>
@@ -1091,11 +1079,11 @@
             <table style="width: 100%; font-size: 0.8rem; margin-bottom: 1rem; border-collapse: collapse;">
                 <tr style="border-bottom: 1px solid var(--color-border);">
                     <td style="padding: 4px 8px; color: var(--color-text-muted);"><kbd style="background:var(--color-surface-raised);padding:2px 6px;border-radius:3px;font-size:0.75rem;">Esc</kbd></td>
-                    <td style="padding: 4px 8px;">Dismiss quiz panel or modal</td>
+                    <td style="padding: 4px 8px;">Dismiss panels or modal</td>
                 </tr>
                 <tr style="border-bottom: 1px solid var(--color-border);">
                     <td style="padding: 4px 8px; color: var(--color-text-muted);"><kbd style="background:var(--color-surface-raised);padding:2px 6px;border-radius:3px;font-size:0.75rem;">1</kbd>–<kbd style="background:var(--color-surface-raised);padding:2px 6px;border-radius:3px;font-size:0.75rem;">4</kbd></td>
-                    <td style="padding: 4px 8px;">Quick answer (options 1/2/3/4)</td>
+                    <td style="padding: 4px 8px;">Reserved from original Mapper quiz flow</td>
                 </tr>
                 <tr style="border-bottom: 1px solid var(--color-border);">
                     <td style="padding: 4px 8px; color: var(--color-text-muted);"><kbd style="background:var(--color-surface-raised);padding:2px 6px;border-radius:3px;font-size:0.75rem;">Tab</kbd></td>
@@ -1111,36 +1099,27 @@
                 </tr>
             </table>
             <p style="font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 0.5rem;">
-                Click on the correct response to answer each question. Use the number keys 1&ndash;4 for quick answers.
+                Click a node to inspect grounded evidence. Use Ask the Map for bundled sample questions.
             </p>
             <p style="font-size: 0.8rem; color: var(--color-text-muted);">
-                All computation runs in your browser.
-                Your progress is saved locally and can be exported or reset at any time.
+                Map rendering runs in your browser. UMAP is not recomputed client-side.
             </p>
             <h3 style="margin-top: 1rem; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--color-primary);">Data Collection</h3>
             <p style="line-height: 1.7; margin-bottom: 0.5rem; font-size: 0.85rem;">
-                We collect anonymized quiz responses (answers only) to help improve our system.
-                No personal information is stored. You can opt out at any time using the toggle below.
+                Production deployments should connect this control to the research governance policy.
+                The demo does not send synthetic evidence anywhere.
             </p>
             <div id="collect-toggle-wrap" style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
                 <div id="collect-toggle-track" role="switch" aria-checked="false" aria-label="Share anonymized responses" tabindex="0"
                      style="position:relative;width:36px;height:20px;background:var(--color-text-muted,#94a3b8);border-radius:10px;cursor:pointer;transition:background 0.2s;flex-shrink:0;">
                     <div id="collect-toggle-thumb" style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>
                 </div>
-                <span style="font-size:0.8rem;color:var(--color-text-muted);">Share anonymized responses</span>
+                <span style="font-size:0.8rem;color:var(--color-text-muted);">Enable research telemetry</span>
             </div>
             <p style="font-size: 0.75rem; color: var(--color-text-muted); opacity: 0.8; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--color-border);">
-                <strong>Note:</strong> The knowledge estimates assume that your responses reflect genuine effort.
-                Randomly clicking through questions without thinking will generate estimates
-                that aren&rsquo;t useful or meaningful.
+                <strong>Note:</strong> Participant-facing mode should use careful reflective language;
+                researcher mode can show more metadata when consent allows.
             </p>
-            <div style="display: flex; align-items: center; gap: 0.75rem; margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--color-border);">
-                <img src="src/img/nsf.png" alt="NSF logo" style="width: 40px; height: 40px; flex-shrink: 0;">
-                <p style="font-size: 0.75rem; color: var(--color-text-muted); margin: 0; line-height: 1.5;">
-                    This work was supported by NSF award number
-                    <a href="https://www.nsf.gov/awardsearch/show-award/?AWD_ID=2145172" target="_blank" rel="noopener">2145172</a>.
-                </p>
-            </div>
         </div>
     </div>
 

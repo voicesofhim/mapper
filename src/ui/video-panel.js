@@ -1,10 +1,10 @@
-/** Left sidebar video discovery panel — viewport-filtered, searchable video list. */
+/** Left sidebar evidence panel — viewport-filtered, searchable supporting signals. */
 
 let containerEl = null;
 let listEl = null;
 let searchEl = null;
 let countEl = null;
-let allMarkers = [];      // Full set of video markers [{x, y, videoId, title, thumbnailUrl, durationS}]
+let allMarkers = [];      // Full set of evidence markers [{x, y, id, itemId, title, sourceType}]
 let filteredVideos = [];   // Grouped, viewport-filtered, deduplicated
 let currentViewport = { x_min: 0, x_max: 1, y_min: 0, y_max: 1 };
 let watchedSet = new Set();
@@ -34,7 +34,7 @@ export function init(container, options = {}) {
 
   const title = document.createElement('span');
   title.className = 'video-panel-title';
-  title.textContent = 'Lectures';
+  title.textContent = 'Evidence';
 
   countEl = document.createElement('span');
   countEl.className = 'video-panel-count';
@@ -47,8 +47,8 @@ export function init(container, options = {}) {
   searchEl = document.createElement('input');
   searchEl.className = 'video-panel-search';
   searchEl.type = 'text';
-  searchEl.placeholder = 'Search videos...';
-  searchEl.setAttribute('aria-label', 'Search videos');
+  searchEl.placeholder = 'Search evidence...';
+  searchEl.setAttribute('aria-label', 'Search evidence');
   searchEl.addEventListener('input', () => {
     searchQuery = searchEl.value.trim().toLowerCase();
     renderList();
@@ -94,6 +94,8 @@ export function setVideos(markers) {
   filterAndRender();
 }
 
+export const setEvidence = setVideos;
+
 export function updateViewport(viewport) {
   currentViewport = viewport;
   if (debounceTimer) clearTimeout(debounceTimer);
@@ -136,22 +138,25 @@ export function destroy() {
 function filterAndRender() {
   const vp = currentViewport;
 
-  // Group markers by videoId, counting how many windows are in viewport
+  // Group markers by evidence ID, counting how many related points are in viewport
   const videoMap = new Map();
   for (const m of allMarkers) {
     const inVp = m.x >= vp.x_min && m.x <= vp.x_max &&
                  m.y >= vp.y_min && m.y <= vp.y_max;
-    if (!videoMap.has(m.videoId)) {
-      videoMap.set(m.videoId, {
-        videoId: m.videoId,
+    const markerId = m.videoId || m.id || m.itemId;
+    if (!videoMap.has(markerId)) {
+      videoMap.set(markerId, {
+        ...m,
+        videoId: markerId,
+        id: markerId,
         title: m.title,
-        thumbnailUrl: m.thumbnailUrl,
-        durationS: m.durationS,
+        thumbnailUrl: m.thumbnailUrl || m.thumbnail_url,
+        durationS: m.durationS || m.duration_s,
         inViewport: 0,
         total: 0,
       });
     }
-    const entry = videoMap.get(m.videoId);
+    const entry = videoMap.get(markerId);
     entry.total++;
     if (inVp) entry.inViewport++;
   }
@@ -171,7 +176,7 @@ function renderList() {
 
   // Apply search filter
   if (searchQuery) {
-    videos = videos.filter(v => v.title.toLowerCase().includes(searchQuery));
+    videos = videos.filter(v => `${v.title || ''} ${v.summary || ''} ${v.excerpt || ''} ${v.participant_id || v.participantId || ''} ${(v.themes || []).join(' ')}`.toLowerCase().includes(searchQuery));
   }
 
   if (countEl) countEl.textContent = String(videos.length);
@@ -182,8 +187,8 @@ function renderList() {
     const empty = document.createElement('div');
     empty.className = 'video-panel-empty';
     empty.textContent = allMarkers.length === 0
-      ? 'No videos loaded yet'
-      : 'No videos in this area';
+      ? 'No evidence loaded yet'
+      : 'No evidence in this area';
     listEl.appendChild(empty);
     return;
   }
@@ -192,6 +197,7 @@ function renderList() {
     const item = document.createElement('div');
     item.className = 'video-panel-item';
     item.setAttribute('role', 'listitem');
+    item.style.setProperty('--source-color', v.colorCss || v.color || '#8acdff');
     if (watchedSet.has(v.videoId)) item.classList.add('watched');
 
     item.addEventListener('mouseenter', () => {
@@ -203,7 +209,14 @@ function renderList() {
     item.addEventListener('click', () => {
       if (onSelectCb) onSelectCb({
         id: v.videoId,
+        itemId: v.itemId || v.id || v.videoId,
         title: v.title,
+        summary: v.summary,
+        excerpt: v.excerpt,
+        participant_id: v.participant_id || v.participantId,
+        source_type: v.source_type || v.sourceType,
+        themes: v.themes || [],
+        color: v.color,
         duration_s: v.durationS,
         thumbnail_url: v.thumbnailUrl,
       });
@@ -215,12 +228,18 @@ function renderList() {
 
     const meta = document.createElement('span');
     meta.className = 'video-panel-item-meta';
-    const dur = v.durationS ? formatDuration(v.durationS) : '';
+    const source = (v.source_type || v.sourceType || 'source').replace(/_/g, ' ');
+    const who = v.participant_id || v.participantId || '';
     const watched = watchedSet.has(v.videoId) ? ' \u2713' : '';
-    meta.textContent = dur + watched;
+    meta.textContent = [who, source].filter(Boolean).join(' · ') + watched;
+
+    const summary = document.createElement('span');
+    summary.className = 'video-panel-item-summary';
+    summary.textContent = v.summary || v.excerpt || '';
 
     item.appendChild(titleSpan);
     item.appendChild(meta);
+    if (summary.textContent) item.appendChild(summary);
     listEl.appendChild(item);
   }
 }
@@ -342,14 +361,16 @@ const PANEL_CSS = `
 
   .video-panel-item {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
     gap: 0.5rem;
     padding: 0.6rem 0.75rem;
     border-radius: 6px;
     cursor: pointer;
     transition: background-color 0.15s ease, box-shadow 0.15s ease;
     border-bottom: 1px solid rgba(148,163,184,0.1);
+    border-left: 2px solid var(--source-color, var(--color-secondary));
   }
   .video-panel-item:hover {
     background-color: var(--color-surface-raised);
@@ -366,13 +387,19 @@ const PANEL_CSS = `
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
   }
   .video-panel-item-meta {
     font-size: 0.7rem;
     color: var(--color-text-muted);
     white-space: nowrap;
     flex-shrink: 0;
+  }
+  .video-panel-item-summary {
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: var(--color-text-muted);
+    opacity: 0.88;
   }
 
   .video-toggle-btn {

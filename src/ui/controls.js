@@ -19,7 +19,7 @@ function buildOptions() {
   hierarchy.forEach(node => {
     items.push({
       value: node.id,
-      label: node.id === 'all' ? 'All (General)' : node.name,
+      label: node.id === 'all' ? node.name || 'All' : node.name,
       isChild: false,
     });
     if (node.children && node.children.length > 0) {

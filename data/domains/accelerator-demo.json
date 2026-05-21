@@ -1,8 +1,8 @@
 {
   "schema_version": "accelerator-demo-v1",
   "domain": {
-    "id": "all",
-    "name": "Accelerator Research",
+    "id": "accelerator-demo",
+    "name": "Accelerator Demo",
     "parent_id": null,
     "level": "all",
     "content_model": "accelerator_research",
