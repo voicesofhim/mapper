@@ -3,9 +3,12 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
   buildAcceleratorDataset,
+  buildEmbeddingRecords,
   chunkText,
   computeUmapCoordinates,
   parseAnonymizedInterview,
+  stripEmbeddingVectors,
+  toTursoSeedSql,
 } from '../../scripts/import_accelerator_dataset.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
@@ -62,7 +65,65 @@ I need structure before execution.
     expect(bundle.map_items.length).toBeGreaterThanOrEqual(6);
     expect(bundle.ask_map.questions.length).toBeGreaterThan(0);
     expect(bundle.map_items[0]).toHaveProperty('embedding_metadata');
+    expect(bundle.map_items[0].embedding_metadata.vector_blob_hex).toBeTruthy();
     expect(bundle.map_items[0]).toHaveProperty('projection');
+  });
+
+  it('can use OpenAI embeddings with a mocked provider response', async () => {
+    const calls = [];
+    const fetchImpl = async (url, request) => {
+      calls.push({ url, request: JSON.parse(request.body), auth: request.headers.Authorization });
+      return {
+        ok: true,
+        async json() {
+          return {
+            data: [
+              { index: 0, embedding: [0.1, 0.2, 0.3, 0.4] },
+              { index: 1, embedding: [0.4, 0.3, 0.2, 0.1] },
+            ],
+          };
+        },
+      };
+    };
+
+    const embeddings = await buildEmbeddingRecords([
+      { id: 'c1', title: 'One', summary: 'Summary', anonymized_text: 'Anonymized text one.', themes: ['learning'], source_type: 'interview' },
+      { id: 'c2', title: 'Two', summary: 'Summary', anonymized_text: 'Anonymized text two.', themes: ['execution'], source_type: 'mentor_note' },
+    ], {
+      embeddingProvider: 'openai',
+      embeddingModel: 'text-embedding-3-small',
+      embeddingDimensions: 4,
+      apiKey: 'test-key',
+      fetchImpl,
+    });
+
+    expect(calls[0].url).toBe('https://api.openai.com/v1/embeddings');
+    expect(calls[0].auth).toBe('Bearer test-key');
+    expect(calls[0].request).toMatchObject({
+      model: 'text-embedding-3-small',
+      encoding_format: 'float',
+      dimensions: 4,
+    });
+    expect(embeddings[0]).toMatchObject({
+      embedding_provider: 'openai',
+      embedding_model: 'text-embedding-3-small',
+      embedding_dimensions: 4,
+    });
+    expect(embeddings[0].vector_blob_hex).toBeTruthy();
+    expect(computeUmapCoordinates(embeddings)[0].projection_version).toBe('umap-openai-text-embedding-3-small-v1');
+  });
+
+  it('stores vector blobs in Turso SQL but strips them from frontend JSON', async () => {
+    const bundle = await buildAcceleratorDataset({
+      inputDir: resolve(root, 'data/accelerator/raw/anonymized-interviews'),
+      maxParticipants: 1,
+      domainId: 'accelerator-seed',
+    });
+    const sql = toTursoSeedSql(bundle);
+    const frontend = stripEmbeddingVectors(bundle);
+
+    expect(sql).toMatch(/embedding_vector.+X'[a-f0-9]+'/);
+    expect(frontend.map_items[0].embedding_metadata.vector_blob_hex).toBeUndefined();
   });
 
   it('writes a static seed domain artifact for Mapper compatibility', () => {
@@ -70,5 +131,6 @@ I need structure before execution.
     expect(seed.domain.id).toBe('accelerator-seed');
     expect(seed.map_items.length).toBeGreaterThanOrEqual(6);
     expect(seed.map_items.every(item => Number.isFinite(item.umap_x) && Number.isFinite(item.umap_y))).toBe(true);
+    expect(seed.map_items.some(item => item.embedding_metadata?.vector_blob_hex)).toBe(false);
   });
 });

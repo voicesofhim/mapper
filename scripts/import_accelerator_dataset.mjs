@@ -6,12 +6,12 @@
  * - parses anonymized interview markdown files
  * - chunks source text
  * - assigns evidence themes
- * - creates local deterministic embedding vectors
+ * - creates embedding vectors with either a local deterministic provider or OpenAI
  * - computes UMAP x/y coordinates with umap-js
  * - exports Mapper-compatible JSON and optional Turso/libSQL seed SQL
  *
- * Real production use can swap the local embedding function for a hosted
- * embedding model while preserving the same canonical output shape.
+ * Production runs should use --embedding-provider openai with OPENAI_API_KEY.
+ * Local mode remains available for offline tests and fixture generation.
  */
 
 import { createHash } from 'node:crypto';
@@ -30,9 +30,10 @@ const DEFAULT_DOMAIN_PATH = join(PROJECT_ROOT, 'data/domains/accelerator-seed.js
 const DEFAULT_SQL_PATH = join(PROJECT_ROOT, 'data/accelerator/exports/accelerator-seed.sql');
 
 const SOURCE_TYPES = new Set(['interview', 'prior_interview', 'social', 'mentor_note', 'program_material', 'reflection']);
-const EMBEDDING_DIMENSIONS = 96;
-const EMBEDDING_MODEL = 'local-hash-evidence-v1';
-const PROJECTION_VERSION = 'umap-local-hash-v1';
+const LOCAL_EMBEDDING_DIMENSIONS = 96;
+const LOCAL_EMBEDDING_MODEL = 'local-hash-evidence-v1';
+const DEFAULT_OPENAI_EMBEDDING_MODEL = 'text-embedding-3-small';
+const LOCAL_PROJECTION_VERSION = 'umap-local-hash-v1';
 
 const THEME_RULES = [
   ['self-direction', ['independent', 'own first', 'self-directed', 'alone', 'autonomy', 'protect the question']],
@@ -113,8 +114,16 @@ export async function buildAcceleratorDataset(options = {}) {
     });
   }
 
-  const embeddings = chunks.map(chunk => buildEmbeddingRecord(chunk));
-  const coordinates = computeUmapCoordinates(embeddings);
+  const embeddings = await buildEmbeddingRecords(chunks, {
+    embeddingProvider: options.embeddingProvider,
+    embeddingModel: options.embeddingModel,
+    embeddingDimensions: options.embeddingDimensions,
+    apiKey: options.apiKey,
+    fetchImpl: options.fetchImpl,
+  });
+  const coordinates = computeUmapCoordinates(embeddings, {
+    projectionVersion: projectionVersionForEmbeddings(embeddings),
+  });
   const items = chunks.map((chunk, index) => {
     const embedding = embeddings[index];
     const coord = coordinates[index];
@@ -131,6 +140,7 @@ export async function buildAcceleratorDataset(options = {}) {
         model: embedding.embedding_model,
         dimensions: embedding.embedding_dimensions,
         vector_sha256: embedding.vector_sha256,
+        vector_blob_hex: embedding.vector_blob_hex,
         input_sha256: embedding.input_sha256,
       },
       projection: {
@@ -240,15 +250,22 @@ export function chunkText(text, maxChars = 420) {
   return chunks;
 }
 
+export async function buildEmbeddingRecords(chunks, options = {}) {
+  const provider = options.embeddingProvider || 'local';
+  if (provider === 'openai') return buildOpenAIEmbeddingRecords(chunks, options);
+  if (provider !== 'local') throw new Error(`Unsupported embedding provider "${provider}"`);
+  return chunks.map(chunk => buildEmbeddingRecord(chunk));
+}
+
 export function buildEmbeddingRecord(chunk) {
-  const vector = embedText(`${chunk.title}\n${chunk.summary}\n${chunk.anonymized_text}`);
+  const vector = embedText(embeddingTextForChunk(chunk));
   const bytes = Buffer.from(Float32Array.from(vector).buffer);
   return {
     id: `${chunk.id}-embedding`,
     chunk_id: chunk.id,
     embedding_provider: 'local',
-    embedding_model: EMBEDDING_MODEL,
-    embedding_dimensions: EMBEDDING_DIMENSIONS,
+    embedding_model: LOCAL_EMBEDDING_MODEL,
+    embedding_dimensions: LOCAL_EMBEDDING_DIMENSIONS,
     embedding_vector: vector,
     vector_blob_hex: bytes.toString('hex'),
     vector_sha256: sha256(bytes),
@@ -259,18 +276,110 @@ export function buildEmbeddingRecord(chunk) {
   };
 }
 
-export function computeUmapCoordinates(embeddings) {
+export async function buildOpenAIEmbeddingRecords(chunks, options = {}) {
+  const apiKey = options.apiKey || process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is required when --embedding-provider openai is used.');
+  }
+
+  const model = options.embeddingModel || process.env.OPENAI_EMBEDDING_MODEL || DEFAULT_OPENAI_EMBEDDING_MODEL;
+  const dimensions = numberOr(options.embeddingDimensions, process.env.OPENAI_EMBEDDING_DIMENSIONS);
+  const fetchImpl = options.fetchImpl || globalThis.fetch;
+  if (!fetchImpl) throw new Error('fetch is required for OpenAI embedding requests.');
+
+  const batchSize = Number(options.batchSize || 64);
+  const records = [];
+  for (let start = 0; start < chunks.length; start += batchSize) {
+    const batch = chunks.slice(start, start + batchSize);
+    const inputs = batch.map(chunk => embeddingTextForChunk(chunk));
+    const vectors = await createOpenAIEmbeddings(inputs, {
+      apiKey,
+      model,
+      dimensions,
+      fetchImpl,
+    });
+
+    vectors.forEach((vector, index) => {
+      const chunk = batch[index];
+      const bytes = Buffer.from(Float32Array.from(vector).buffer);
+      records.push({
+        id: `${chunk.id}-embedding`,
+        chunk_id: chunk.id,
+        embedding_provider: 'openai',
+        embedding_model: model,
+        embedding_dimensions: vector.length,
+        embedding_vector: vector,
+        vector_blob_hex: bytes.toString('hex'),
+        vector_sha256: sha256(bytes),
+        input_sha256: sha256(chunk.anonymized_text),
+        metadata_json: {
+          encoding_format: 'float',
+          dimensions_requested: dimensions || null,
+          input_redaction: 'anonymized_text_only',
+        },
+      });
+    });
+  }
+  return records;
+}
+
+export async function createOpenAIEmbeddings(inputs, options = {}) {
+  const body = {
+    model: options.model || DEFAULT_OPENAI_EMBEDDING_MODEL,
+    input: inputs,
+    encoding_format: 'float',
+  };
+  if (Number.isFinite(options.dimensions)) body.dimensions = options.dimensions;
+
+  const response = await options.fetchImpl('https://api.openai.com/v1/embeddings', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${options.apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => response.statusText);
+    throw new Error(`OpenAI embeddings request failed: ${response.status} ${detail}`);
+  }
+
+  const json = await response.json();
+  const vectors = (json.data || [])
+    .sort((a, b) => a.index - b.index)
+    .map(item => item.embedding);
+  if (vectors.length !== inputs.length) {
+    throw new Error(`OpenAI embeddings response returned ${vectors.length} vectors for ${inputs.length} inputs.`);
+  }
+  return vectors;
+}
+
+export function computeUmapCoordinates(embeddings, options = {}) {
+  const projectionVersion = options.projectionVersion || projectionVersionForEmbeddings(embeddings);
   if (embeddings.length === 1) {
     return [{
       id: `${embeddings[0].chunk_id}-umap`,
       chunk_id: embeddings[0].chunk_id,
       embedding_id: embeddings[0].id,
       projection_method: 'umap',
-      projection_version: PROJECTION_VERSION,
+      projection_version: projectionVersion,
       umap_x: 0.5,
       umap_y: 0.5,
       params_json: { n_neighbors: 1, min_dist: 0.12, spread: 1.1, seed: 42 },
     }];
+  }
+  if (embeddings.length === 2) {
+    return embeddings.map((embedding, index) => ({
+      id: `${embedding.chunk_id}-umap`,
+      chunk_id: embedding.chunk_id,
+      embedding_id: embedding.id,
+      projection_method: 'umap',
+      projection_version: projectionVersion,
+      umap_x: index === 0 ? 0.35 : 0.65,
+      umap_y: index === 0 ? 0.5 : 0.5,
+      params_json: { n_neighbors: 1, min_dist: 0.12, spread: 1.1, seed: 42, fallback: 'two-point-linear' },
+    }));
   }
 
   const nNeighbors = Math.max(2, Math.min(6, embeddings.length - 1));
@@ -295,11 +404,18 @@ export function computeUmapCoordinates(embeddings) {
     chunk_id: embedding.chunk_id,
     embedding_id: embedding.id,
     projection_method: 'umap',
-    projection_version: PROJECTION_VERSION,
+    projection_version: projectionVersion,
     umap_x: normalize(points[index][0], xMin, xMax),
     umap_y: normalize(points[index][1], yMin, yMax),
     params_json: { n_neighbors: nNeighbors, min_dist: 0.12, spread: 1.1, seed: 42 },
   }));
+}
+
+function projectionVersionForEmbeddings(embeddings) {
+  const first = embeddings[0];
+  if (!first || first.embedding_provider === 'local') return LOCAL_PROJECTION_VERSION;
+  const model = slugify(first.embedding_model || 'embedding-model');
+  return `umap-${first.embedding_provider}-${model}-v1`;
 }
 
 export function toTursoSeedSql(bundle) {
@@ -395,10 +511,10 @@ export function toTursoSeedSql(bundle) {
         embedding_provider: embedding.provider,
         embedding_model: embedding.model,
         embedding_dimensions: embedding.dimensions,
-        embedding_vector: null,
+        embedding_vector: embedding.vector_blob_hex ? rawSql(`X'${embedding.vector_blob_hex}'`) : null,
         vector_sha256: embedding.vector_sha256,
         input_sha256: embedding.input_sha256,
-        metadata_json: JSON.stringify({ exported_vector: false }),
+        metadata_json: JSON.stringify({ exported_vector: !!embedding.vector_blob_hex }),
       }));
     }
 
@@ -521,13 +637,23 @@ function estimateTokens(text) {
   return Math.ceil((text || '').split(/\s+/).filter(Boolean).length * 1.25);
 }
 
+function embeddingTextForChunk(chunk) {
+  return [
+    chunk.title,
+    chunk.summary,
+    chunk.anonymized_text,
+    `Themes: ${(chunk.themes || []).join(', ')}`,
+    `Source type: ${chunk.source_type}`,
+  ].filter(Boolean).join('\n');
+}
+
 function embedText(text) {
-  const vector = new Array(EMBEDDING_DIMENSIONS).fill(0);
+  const vector = new Array(LOCAL_EMBEDDING_DIMENSIONS).fill(0);
   const tokens = (text.toLowerCase().match(/[a-z][a-z0-9-]{2,}/g) || [])
     .filter(token => !STOPWORDS.has(token));
   for (const token of tokens) {
     const digest = createHash('sha256').update(token).digest();
-    const idx = digest.readUInt32BE(0) % EMBEDDING_DIMENSIONS;
+    const idx = digest.readUInt32BE(0) % LOCAL_EMBEDDING_DIMENSIONS;
     const sign = digest[4] % 2 === 0 ? 1 : -1;
     vector[idx] += sign * (1 + Math.log1p(token.length));
   }
@@ -638,10 +764,41 @@ function insertSql(table, values) {
   return `insert or replace into ${table} (${keys.join(', ')}) values (${rendered.join(', ')});`;
 }
 
+function rawSql(value) {
+  return { __rawSql: value };
+}
+
 function sqlValue(value) {
+  if (value && typeof value === 'object' && value.__rawSql) return value.__rawSql;
   if (value == null || value === '') return 'null';
   if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'null';
   return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+export function stripEmbeddingVectors(bundle) {
+  return {
+    ...bundle,
+    map_items: (bundle.map_items || []).map(item => stripItemEmbeddingVector(item)),
+    articles: (bundle.articles || []).map(item => stripItemEmbeddingVector(item)),
+  };
+}
+
+function stripItemEmbeddingVector(item) {
+  if (!item.embedding_metadata?.vector_blob_hex) return item;
+  const { vector_blob_hex, ...embeddingMetadata } = item.embedding_metadata;
+  return {
+    ...item,
+    embedding_metadata: embeddingMetadata,
+  };
+}
+
+function numberOr(...values) {
+  for (const value of values) {
+    if (value == null || value === '') continue;
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return undefined;
 }
 
 function normalize(value, min, max) {
@@ -690,16 +847,20 @@ async function main() {
     maxParticipants: args.maxParticipants || 3,
     domainId: args.domainId || 'accelerator-seed',
     domainName: args.domainName || 'Accelerator Seed Interviews',
+    embeddingProvider: args.embeddingProvider || process.env.ACCELERATOR_EMBEDDING_PROVIDER || 'local',
+    embeddingModel: args.embeddingModel || process.env.OPENAI_EMBEDDING_MODEL,
+    embeddingDimensions: args.embeddingDimensions || process.env.OPENAI_EMBEDDING_DIMENSIONS,
   });
+  const frontendBundle = stripEmbeddingVectors(bundle);
 
   const exportPath = resolve(args.out || DEFAULT_EXPORT_PATH);
   await mkdir(dirname(exportPath), { recursive: true });
-  await writeFile(exportPath, `${JSON.stringify(bundle, null, 2)}\n`);
+  await writeFile(exportPath, `${JSON.stringify(frontendBundle, null, 2)}\n`);
 
   if (args.writeDomain !== false && args.writeDomain !== 'false') {
     const domainPath = resolve(args.domainOut || DEFAULT_DOMAIN_PATH);
     await mkdir(dirname(domainPath), { recursive: true });
-    await writeFile(domainPath, `${JSON.stringify(bundle, null, 2)}\n`);
+    await writeFile(domainPath, `${JSON.stringify(frontendBundle, null, 2)}\n`);
   }
 
   if (args.writeSql !== false && args.writeSql !== 'false') {

@@ -83,10 +83,27 @@ publicPrivateTension: 0.66
 Anonymized interview excerpt text...
 ```
 
-Run:
+Run locally without network calls:
 
 ```bash
 npm run import:accelerator
+```
+
+Run with production OpenAI embeddings:
+
+```bash
+OPENAI_API_KEY=... npm run import:accelerator -- \
+  --embedding-provider openai \
+  --embedding-model text-embedding-3-small
+```
+
+Optional:
+
+```bash
+OPENAI_API_KEY=... npm run import:accelerator -- \
+  --embedding-provider openai \
+  --embedding-model text-embedding-3-large \
+  --embedding-dimensions 1536
 ```
 
 The importer writes:
@@ -95,7 +112,7 @@ The importer writes:
 - `data/accelerator/exports/accelerator-seed.sql`: Turso/libSQL seed inserts.
 - `data/domains/accelerator-seed.json`: static domain loaded by the frontend.
 
-The current importer uses deterministic local hash embeddings for safe pipeline validation and `umap-js` to compute UMAP coordinates outside the browser. For production, replace the embedding function with the chosen embedding provider, keep the same `embeddings` and `umap_coordinates` records, and export static JSON from Turso.
+The importer keeps UMAP computation outside the browser in both modes. Local mode uses deterministic hash embeddings for safe fixture generation. OpenAI mode sends only anonymized chunk text, summaries, titles, themes, and source type to the Embeddings API, stores the returned float vector as a Turso/libSQL BLOB in `embeddings.embedding_vector`, records vector hashes/metadata, computes UMAP from those vectors in Node, and strips vector blobs out of the static frontend JSON.
 
 Use Turso/libSQL as the canonical store, then export static JSON for Mapper:
 
