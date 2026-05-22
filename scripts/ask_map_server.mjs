@@ -4,7 +4,7 @@
  *
  * This server is intentionally small and boring:
  * - binds to 127.0.0.1 by default;
- * - embeds questions with the local EmbeddingGemma sidecar;
+ * - embeds questions with a local EmbeddingGemma sidecar or local Ollama;
  * - searches local libSQL/Turso seed data by cosine similarity;
  * - returns evidence and map item IDs, not raw transcripts or diagnoses.
  */
@@ -32,6 +32,9 @@ const DEFAULT_MODEL_PATH = join(PROJECT_ROOT, 'models/embeddinggemma-300m');
 const DEFAULT_PYTHON = join(PROJECT_ROOT, '.venv-embeddinggemma/bin/python');
 const DEFAULT_EMBED_SCRIPT = join(PROJECT_ROOT, 'scripts/embed_embeddinggemma.py');
 const DEFAULT_EMBED_WORKER_SCRIPT = join(PROJECT_ROOT, 'scripts/embed_embeddinggemma_worker.py');
+const DEFAULT_EMBEDDING_PROVIDER = 'embeddinggemma';
+const DEFAULT_OLLAMA_EMBEDDING_MODEL = 'qwen3-embedding:4b';
+const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
 const MAX_QUERY_CHARS = 600;
 const MAX_TOP_K = 8;
 const DEFAULT_TOP_K = 5;
@@ -254,6 +257,9 @@ export async function embedQuestion(query, options = {}) {
   if (options.embedder) {
     return options.embedder.embed(query, { promptName: 'Retrieval-query' });
   }
+  if (options.embeddingProvider === 'ollama') {
+    return embedOllamaQuestion(query, options);
+  }
   const python = options.python || DEFAULT_PYTHON;
   const script = options.embedScript || DEFAULT_EMBED_SCRIPT;
   const modelPath = options.modelPath || DEFAULT_MODEL_PATH;
@@ -271,6 +277,33 @@ export async function embedQuestion(query, options = {}) {
   const vector = result.items?.[0]?.embedding;
   if (!Array.isArray(vector)) throw new Error('EmbeddingGemma did not return a query vector.');
   return vector.map(Number);
+}
+
+export async function embedOllamaQuestion(query, options = {}) {
+  const fetchImpl = options.fetchImpl || globalThis.fetch;
+  if (!fetchImpl) throw new Error('fetch is required for Ollama embedding requests.');
+  const model = options.model || DEFAULT_OLLAMA_EMBEDDING_MODEL;
+  const baseUrl = normalizeOllamaBaseUrl(options.ollamaUrl || process.env.OLLAMA_HOST || DEFAULT_OLLAMA_BASE_URL);
+  const dimensions = Number(options.dimensions || process.env.OLLAMA_EMBEDDING_DIMENSIONS || 0) || undefined;
+  const queryPrefix = options.ollamaQueryPrefix ?? process.env.OLLAMA_QUERY_PREFIX ?? defaultOllamaQueryPrefix(model);
+  const response = await fetchImpl(`${baseUrl}/api/embed`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      input: withPrefix(query, queryPrefix),
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => response.statusText);
+    throw new Error(`Ollama embeddings request failed: ${response.status} ${detail}`);
+  }
+
+  const json = await response.json();
+  const vector = json.embeddings?.[0];
+  if (!Array.isArray(vector)) throw new Error('Ollama did not return a query vector.');
+  return coerceEmbeddingVector(vector, dimensions);
 }
 
 export async function createEmbeddingWorker(options = {}) {
@@ -378,7 +411,9 @@ export async function answerQuery(query, context) {
       followUp: 'Which of these local evidence points should we inspect more closely?',
     });
   }
-  if (!context.embedder) context.embedder = await createEmbeddingWorker(context);
+  if (!context.embedder && context.embeddingProvider !== 'ollama') {
+    context.embedder = await createEmbeddingWorker(context);
+  }
   const queryVector = await embedQuestion(cleanQuery, context);
   const rows = await loadEvidenceRows(context.db);
   const matches = rankEvidence(queryVector, rows, {
@@ -390,15 +425,19 @@ export async function answerQuery(query, context) {
 
 export async function createAskMapServer(options = {}) {
   const { db, dbPath } = await ensureLocalDatabase(options);
+  const embeddingProvider = options.embeddingProvider || DEFAULT_EMBEDDING_PROVIDER;
   const context = {
     db,
     dbPath,
     embedder: options.embedder || null,
+    embeddingProvider,
     python: options.python || DEFAULT_PYTHON,
     embedScript: options.embedScript || DEFAULT_EMBED_SCRIPT,
-    model: options.model || DEFAULT_EMBEDDING_MODEL,
+    model: options.model || (embeddingProvider === 'ollama' ? DEFAULT_OLLAMA_EMBEDDING_MODEL : DEFAULT_EMBEDDING_MODEL),
     modelPath: options.modelPath || DEFAULT_MODEL_PATH,
-    dimensions: Number(options.dimensions || 768),
+    dimensions: Number(options.dimensions || (embeddingProvider === 'ollama' ? 0 : 768)),
+    ollamaUrl: options.ollamaUrl,
+    ollamaQueryPrefix: options.ollamaQueryPrefix,
     device: options.device,
     topK: Number(options.topK || DEFAULT_TOP_K),
   };
@@ -606,6 +645,35 @@ function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
+function coerceEmbeddingVector(rawVector, dimensions) {
+  let vector = Array.from(rawVector || [], Number);
+  if (dimensions && vector.length > dimensions) {
+    vector = vector.slice(0, dimensions);
+  }
+  if (!vector.length || vector.some(value => !Number.isFinite(value))) {
+    throw new Error('Embedding provider returned an empty or non-finite vector.');
+  }
+  const norm = Math.hypot(...vector) || 1;
+  return vector.map(value => value / norm);
+}
+
+function normalizeOllamaBaseUrl(value) {
+  const url = String(value || DEFAULT_OLLAMA_BASE_URL).trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//i.test(url)) return `http://${url}`;
+  return url;
+}
+
+function defaultOllamaQueryPrefix(model) {
+  const lower = String(model || '').toLowerCase();
+  if (lower.includes('nomic')) return 'search_query: ';
+  if (lower.includes('mxbai')) return 'Represent this sentence for searching relevant passages: ';
+  return '';
+}
+
+function withPrefix(text, prefix) {
+  return prefix ? `${prefix}${text}` : text;
+}
+
 async function fileExists(path) {
   try {
     await stat(path);
@@ -638,11 +706,14 @@ async function main() {
     port: args.port || process.env.ASK_MAP_PORT || DEFAULT_PORT,
     dbPath: args.dbPath || process.env.ASK_MAP_DB_PATH || DEFAULT_DB_PATH,
     rebuildDb: args.rebuildDb || process.env.ASK_MAP_REBUILD_DB === '1',
+    embeddingProvider: args.embeddingProvider || process.env.EMBEDDING_PROVIDER || DEFAULT_EMBEDDING_PROVIDER,
     python: args.embeddingCommand || process.env.EMBEDDING_COMMAND || DEFAULT_PYTHON,
     embedScript: args.embeddingScript || process.env.EMBEDDING_SCRIPT || DEFAULT_EMBED_SCRIPT,
-    model: args.embeddingModel || process.env.EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL,
+    model: args.embeddingModel || process.env.EMBEDDING_MODEL,
     modelPath: args.embeddingModelPath || process.env.EMBEDDING_MODEL_PATH || DEFAULT_MODEL_PATH,
-    dimensions: args.embeddingDimensions || process.env.EMBEDDING_DIMENSIONS || 768,
+    dimensions: args.embeddingDimensions || process.env.EMBEDDING_DIMENSIONS,
+    ollamaUrl: args.ollamaUrl || process.env.OLLAMA_HOST || DEFAULT_OLLAMA_BASE_URL,
+    ollamaQueryPrefix: args.ollamaQueryPrefix,
     device: args.embeddingDevice || process.env.EMBEDDING_DEVICE,
     topK: args.topK || process.env.ASK_MAP_TOP_K || DEFAULT_TOP_K,
   });

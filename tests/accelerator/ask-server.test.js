@@ -7,6 +7,7 @@ import {
   answerQuery,
   buildAskMapResponse,
   cosineSimilarity,
+  embedOllamaQuestion,
   float32ArrayFromBlob,
   loadStaticBundleRows,
   rankEvidence,
@@ -94,6 +95,31 @@ describe('local Ask-the-Map retrieval server helpers', () => {
       filters: { datasetId: 'slab:test' },
     });
     expect(ranked.map(row => row.id)).toEqual(['c1']);
+  });
+
+  it('embeds Ask-the-Map queries through Ollama when selected', async () => {
+    const calls = [];
+    const vector = await embedOllamaQuestion('Who needs structure?', {
+      model: 'mxbai-embed-large:latest',
+      ollamaUrl: 'localhost:11434/',
+      dimensions: 2,
+      fetchImpl: async (url, request) => {
+        calls.push({ url, request: JSON.parse(request.body) });
+        return {
+          ok: true,
+          async json() {
+            return { embeddings: [[3, 4, 99]] };
+          },
+        };
+      },
+    });
+
+    expect(calls[0].url).toBe('http://localhost:11434/api/embed');
+    expect(calls[0].request).toMatchObject({
+      model: 'mxbai-embed-large:latest',
+    });
+    expect(calls[0].request.input).toMatch(/^Represent this sentence for searching relevant passages: /);
+    expect(vector.map(n => Number(n.toFixed(2)))).toEqual([0.6, 0.8]);
   });
 
   it('can answer from a selected local domain bundle without stale DB ids', async () => {

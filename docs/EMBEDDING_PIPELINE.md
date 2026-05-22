@@ -124,12 +124,27 @@ ACCELERATOR_EMBEDDING_PROVIDER=local npm run import:accelerator
 
 # Expected local production path. Runs sentence-transformers locally.
 ACCELERATOR_EMBEDDING_PROVIDER=embeddinggemma npm run import:accelerator
+
+# Alternate local path. Uses installed Ollama embedding models.
+ACCELERATOR_EMBEDDING_PROVIDER=ollama EMBEDDING_MODEL=qwen3-embedding:4b npm run import:accelerator
 ```
 
 There is also an OpenAI provider in the script for mocked tests and historical
 compatibility, but this project should use local processing for private data.
 Do not use hosted embedding APIs for private corpora unless the team explicitly
 changes the privacy posture.
+
+For Ollama imports, Ask-the-Map must be started with the same model and
+dimension settings used to create the stored vectors:
+
+```bash
+npm run ask:server -- --embedding-provider ollama --embedding-model qwen3-embedding:4b
+```
+
+Changing between `qwen3-embedding:4b`, `nomic-embed-text:latest`,
+`mxbai-embed-large:latest`, EmbeddingGemma, or any dimension-truncated variant
+requires rebuilding embeddings and UMAP coordinates. Do not mix vectors from
+different models in one retrieval index.
 
 Frontend JSON should never include vector blobs. The seed SQL can include vector
 blobs for local Turso/libSQL. `stripEmbeddingVectors()` removes
