@@ -10,6 +10,7 @@ const FRICTION = 0.94;
 const REPEL_RADIUS = 10;
 const REPEL_FORCE = 4;
 const PARTICLE_SIZE = 2;
+const PARTICLE_COLOR = { r: 31, g: 247, b: 255 };
 
 /**
  * Pre-compute subsampled particle coordinates from articles and video windows.
@@ -399,9 +400,9 @@ export class ParticleSystem {
     ctx.clearRect(0, 0, w, h);
 
     const levels = [
-      { alpha: 0.2, particles: [] },
-      { alpha: 0.35, particles: [] },
-      { alpha: 0.55, particles: [] },
+      { alpha: 0.12, particles: [] },
+      { alpha: 0.22, particles: [] },
+      { alpha: 0.36, particles: [] },
     ];
     for (const p of this.particles) {
       if (p.alpha < 0.25) levels[0].particles.push(p);
@@ -409,9 +410,7 @@ export class ParticleSystem {
       else levels[2].particles.push(p);
     }
 
-    const r = 0;
-    const g = 105;
-    const b = 62;
+    const { r, g, b } = PARTICLE_COLOR;
     const radius = PARTICLE_SIZE;
 
     for (const level of levels) {
