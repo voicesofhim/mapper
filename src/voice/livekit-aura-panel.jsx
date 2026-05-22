@@ -313,7 +313,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
                 <i aria-hidden="true" />
                 Push to Talk
               </span>
-              <small>{pushToTalkActive ? 'Listening...' : session ? 'Hold T to speak' : 'Click to connect'}</small>
+              <small>{pushToTalkActive ? 'Listening...' : session ? 'Hold Option+T to speak' : 'Click to connect'}</small>
             </button>
           </div>
         </div>
@@ -342,7 +342,7 @@ function VoiceRoom({ onTranscript, setStatus, setHeardText, showLiveTranscript, 
   const [voiceState, setVoiceState] = useState('listening');
 
   useEffect(() => {
-    setStatus('Local voice connected. Hold T to talk.');
+    setStatus('Local voice connected. Hold Option+T to talk.');
   }, [setStatus]);
 
   useEffect(() => {
@@ -350,7 +350,7 @@ function VoiceRoom({ onTranscript, setStatus, setHeardText, showLiveTranscript, 
     room.localParticipant.setMicrophoneEnabled(Boolean(pushToTalkActive))
       .then(() => {
         if (cancelled) return;
-        setStatus(pushToTalkActive ? 'Mic open. Listening while T is held.' : 'Mic closed. Hold T to talk.');
+        setStatus(pushToTalkActive ? 'Mic open. Listening while Option+T is held.' : 'Mic closed. Hold Option+T to talk.');
       })
       .catch((err) => {
         if (cancelled) return;
@@ -507,8 +507,8 @@ function mapVoiceStatusToAuraState(state) {
 }
 
 function isPushToTalkKey(event) {
-  if (event.metaKey || event.ctrlKey || event.altKey) return false;
-  return event.code === 'KeyT' || event.key?.toLowerCase() === 't';
+  if (event.metaKey || event.ctrlKey || !event.altKey) return false;
+  return event.code === 'KeyT';
 }
 
 function formatTokenEndpointError(status) {
