@@ -25,6 +25,9 @@ export function init(container) {
         flex-direction: column;
         gap: 0.85rem;
       }
+      #quiz-panel .quiz-content.ask-map-content {
+        gap: 0.85rem;
+      }
       .ask-map-title {
         font-family: var(--font-heading);
         font-size: 1rem;
@@ -32,15 +35,20 @@ export function init(container) {
         color: var(--color-text);
       }
       .ask-map-subtitle {
+        grid-column: 1 / -1;
         color: var(--color-text-muted);
         font-size: 0.78rem;
         line-height: 1.45;
+        min-width: 0;
+        overflow-wrap: anywhere;
       }
       .ask-map-topline {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-rows: auto auto;
         align-items: start;
-        gap: 0.8rem;
+        column-gap: 0.8rem;
+        row-gap: 0.35rem;
         min-height: 0;
         padding-right: 0;
       }
@@ -61,7 +69,7 @@ export function init(container) {
       .quiz-content[data-ask-mode="voice"] .ask-map-topline {
         display: grid;
         grid-template-columns: 1fr;
-        grid-template-rows: auto auto;
+        grid-template-rows: auto auto auto;
         flex: 0 0 auto;
         gap: 0.8rem;
         min-height: 0;
@@ -77,7 +85,7 @@ export function init(container) {
         top: auto;
         right: auto;
         grid-column: 1 / -1;
-        grid-row: 2;
+        grid-row: 3;
         justify-self: stretch;
         width: 100%;
         min-height: max-content;
@@ -217,9 +225,9 @@ export function init(container) {
       <div class="ask-map-topline">
         <div class="ask-map-heading">
           <div class="ask-map-title">Map Observations</div>
-        <div class="ask-map-subtitle">Answers are grounded only in the synthetic evidence bundle. Interpretations are labeled as inferences.</div>
         </div>
         <div class="ask-map-mode-root" aria-label="Ask mode"></div>
+        <div class="ask-map-subtitle">Answers are grounded only in the synthetic evidence bundle. Interpretations are labeled as inferences.</div>
       </div>
       <div class="ask-chat-surface">
         <form class="ask-map-form">
