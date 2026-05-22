@@ -10,6 +10,8 @@ let ui = {};
 let sampleQuestions = [];
 let activeAskMode = 'chat';
 let unmountVoiceMode = null;
+let voiceTranscriptListenerAttached = false;
+let lastVoiceSubmit = { text: '', at: 0 };
 
 export function init(container) {
   if (!container) return;
@@ -248,23 +250,19 @@ export function init(container) {
 
   unmountVoiceMode = mountAskVoiceMode(container.querySelector('.ask-map-mode-root'), {
     onModeChange: setAskMode,
-    onTranscript: (transcript) => {
-      const query = String(transcript || '').trim();
-      if (!query) return;
-      if (ui.input) ui.input.value = query;
-      submitAsk(query);
-    },
+    onTranscript: submitVoiceTranscript,
   });
 
   window.mapperVoiceActions = {
-    submitTranscript(transcript) {
-      const query = String(transcript || '').trim();
-      if (!query) return;
-      if (ui.input) ui.input.value = query;
-      submitAsk(query);
-    },
+    submitTranscript: submitVoiceTranscript,
     setMode: setAskMode,
   };
+  if (!voiceTranscriptListenerAttached) {
+    voiceTranscriptListenerAttached = true;
+    window.addEventListener('mapper:voice-transcript', (event) => {
+      submitVoiceTranscript(event.detail?.transcript || event.detail?.text || '');
+    });
+  }
 
   attachDrawerBehavior(container);
 }
@@ -316,6 +314,16 @@ function submitAsk(query) {
   currentQuestion = matched || { id: `freeform-${Date.now()}`, query };
   if (askCallback) askCallback(query, currentQuestion);
   announce(`Asked: ${query}`);
+}
+
+function submitVoiceTranscript(transcript) {
+  const query = String(transcript || '').replace(/\s+/g, ' ').trim();
+  if (!query) return;
+  const now = performance.now();
+  if (query === lastVoiceSubmit.text && now - lastVoiceSubmit.at < 2500) return;
+  lastVoiceSubmit = { text: query, at: now };
+  if (ui.input) ui.input.value = query;
+  submitAsk(query);
 }
 
 function findQuestion(query) {

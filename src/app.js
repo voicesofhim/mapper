@@ -46,6 +46,9 @@ const GLOBAL_GRID_SIZE = 50;
 const SOURCE_COLORS = {
   interview: [169, 255, 255, 220],
   prior_interview: [154, 163, 255, 220],
+  application: [245, 222, 148, 220],
+  public_trace: [255, 184, 92, 220],
+  derived_analysis: [194, 132, 252, 220],
   social: [255, 184, 92, 220],
   mentor_note: [112, 226, 164, 220],
   program_material: [245, 222, 148, 220],
@@ -54,6 +57,9 @@ const SOURCE_COLORS = {
 const SOURCE_COLOR_CSS = {
   interview: '#a9ffff',
   prior_interview: '#9aa3ff',
+  application: '#f5de94',
+  public_trace: '#ffb85c',
+  derived_analysis: '#c284fc',
   social: '#ffb85c',
   mentor_note: '#70e2a4',
   program_material: '#f5de94',
@@ -1313,24 +1319,39 @@ async function handleAskMap(queryText, question) {
     const evidence = itemIds
       .map(id => findMapItem(id))
       .filter(Boolean);
-    const response = {
-      ...localResponse,
-      evidence: (localResponse.evidence || []).map(item => ({
-        ...item,
-        color: SOURCE_COLOR_CSS[item.source_type] || SOURCE_COLOR_CSS.interview,
-      })),
-    };
-    quiz.showAskResponse(response);
-    highlightMapItems(itemIds, queryText, { focus: true, focusIds: itemIds.slice(0, 3) });
-    showEvidencePanel(evidence.length ? evidence : localResponse.evidence, { close: true });
-    return;
+    if (evidence.length) {
+      const matchedIds = evidence.map(item => item.id);
+      const response = {
+        ...localResponse,
+        highlighted_map_item_ids: matchedIds,
+        evidence: evidence.map(item => ({
+          ...item,
+          excerpt: item.excerpt || item.anonymized_text,
+          color: SOURCE_COLOR_CSS[item.source_type] || SOURCE_COLOR_CSS.interview,
+        })),
+      };
+      quiz.showAskResponse(response);
+      highlightMapItems(matchedIds, queryText, { focus: true, focusIds: matchedIds.slice(0, 3) });
+      showEvidencePanel(evidence, { close: true });
+      return;
+    }
+    console.info('[ask-map] Local retrieval returned IDs outside the active map; using loaded map fallback.', itemIds);
   }
 
   const questions = currentDomainBundle.ask_map?.questions || currentDomainBundle.questions || [];
   const matched = questions.find(q => q.id === question.id) || matchAskQuestion(queryText, questions);
   if (!matched?.answer) {
-    quiz.showAskResponse(null);
-    clearMapLens();
+    const staticResponse = staticAskResponse(queryText);
+    if (!staticResponse) {
+      quiz.showAskResponse(null);
+      clearMapLens();
+      return;
+    }
+    const itemIds = staticResponse.highlighted_map_item_ids || [];
+    const evidence = itemIds.map(findMapItem).filter(Boolean);
+    quiz.showAskResponse(staticResponse);
+    highlightMapItems(itemIds, queryText, { focus: true, focusIds: itemIds.slice(0, 3) });
+    showEvidencePanel(evidence, { close: true });
     return;
   }
 
@@ -1408,6 +1429,49 @@ function matchAskQuestion(queryText, questions) {
       const haystack = `${q.query || ''} ${(q.themes || []).join(' ')}`.toLowerCase();
       return query.split(/\W+/).filter(t => t.length > 4).some(token => haystack.includes(token));
     });
+}
+
+function rankStaticEvidence(queryText, limit = 5) {
+  const terms = String(queryText || '')
+    .toLowerCase()
+    .split(/\W+/)
+    .filter(term => term.length > 3);
+  const items = getFilteredMapItems();
+  return items
+    .map(item => {
+      const haystack = [
+        item.participant_id,
+        item.title,
+        item.summary,
+        item.excerpt,
+        ...(item.themes || []),
+      ].join(' ').toLowerCase();
+      const score = terms.reduce((total, term) => total + (haystack.includes(term) ? 1 : 0), 0);
+      return { item, score };
+    })
+    .filter(entry => entry.score > 0)
+    .sort((a, b) => b.score - a.score || (b.item.confidence || 0) - (a.item.confidence || 0))
+    .slice(0, limit)
+    .map(entry => entry.item);
+}
+
+function staticAskResponse(queryText) {
+  const evidence = rankStaticEvidence(queryText, 5);
+  if (!evidence.length) return null;
+  const participants = [...new Set(evidence.map(item => item.participant_id).filter(Boolean))];
+  const themes = [...new Set(evidence.flatMap(item => item.themes || []))].slice(0, 6);
+  return {
+    synthesis: `Inference: the nearest loaded evidence for ${participants.join(', ')} is shown below. This is local static search over imported chunks.`,
+    participant_codes: participants,
+    themes,
+    highlighted_map_item_ids: evidence.map(item => item.id),
+    evidence: evidence.map(item => ({
+      ...item,
+      excerpt: item.excerpt || item.anonymized_text,
+      color: SOURCE_COLOR_CSS[item.source_type] || SOURCE_COLOR_CSS.interview,
+    })),
+    follow_up: 'Which of these evidence points should we inspect next?',
+  };
 }
 
 function highlightMapItems(itemIds, reason = '', options = {}) {

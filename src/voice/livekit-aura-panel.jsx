@@ -24,6 +24,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
   const [session, setSession] = useState(null);
   const [status, setStatus] = useState('Local voice idle');
   const [error, setError] = useState('');
+  const [heardText, setHeardText] = useState('');
 
   const setAskMode = useCallback((nextMode) => {
     setMode(nextMode);
@@ -60,6 +61,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
     setSession(null);
     setStatus('Local voice idle');
     setError('');
+    setHeardText('');
   }, []);
 
   return (
@@ -106,7 +108,11 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
                   setStatus('Local voice unavailable');
                 }}
               >
-                <VoiceRoom onTranscript={onTranscript} setStatus={setStatus} />
+                <VoiceRoom
+                  onTranscript={onTranscript}
+                  setStatus={setStatus}
+                  setHeardText={setHeardText}
+                />
               </LiveKitRoom>
             ) : (
               <IdleAura />
@@ -116,6 +122,10 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
           <div className="ask-voice-status" aria-live="polite">
             <span>STATUS</span>
             <b>{error || status}</b>
+          </div>
+          <div className="ask-voice-heard" aria-live="polite">
+            <span>HEARD</span>
+            <b>{heardText || 'Waiting for speech'}</b>
           </div>
           <div className="ask-voice-actions">
             {session ? (
@@ -143,7 +153,7 @@ function IdleAura() {
   );
 }
 
-function VoiceRoom({ onTranscript, setStatus }) {
+function VoiceRoom({ onTranscript, setStatus, setHeardText }) {
   const lastTranscriptRef = useRef('');
   const [voiceState, setVoiceState] = useState('listening');
 
@@ -155,6 +165,9 @@ function VoiceRoom({ onTranscript, setStatus }) {
     const voiceStatus = readVoiceStatus(message);
     if (voiceStatus) {
       setStatus(formatVoiceStatus(voiceStatus));
+      if (voiceStatus.state === 'searching' && voiceStatus.detail) {
+        setHeardText?.(voiceStatus.detail);
+      }
       setVoiceState(mapVoiceStatusToAuraState(voiceStatus.state));
       window.dispatchEvent(new CustomEvent('mapper:voice-status', { detail: voiceStatus }));
       return;
@@ -163,6 +176,12 @@ function VoiceRoom({ onTranscript, setStatus }) {
     const transcript = readFinalTranscript(message);
     if (!transcript || transcript === lastTranscriptRef.current) return;
     lastTranscriptRef.current = transcript;
+    setHeardText?.(transcript);
+    setStatus('Submitting voice question to map');
+    setVoiceState('thinking');
+    window.dispatchEvent(new CustomEvent('mapper:voice-transcript', {
+      detail: { transcript, source: 'local-livekit-stt' },
+    }));
     onTranscript?.(transcript);
   });
 
@@ -411,7 +430,8 @@ function ensureVoiceStyles() {
         radial-gradient(circle at center, rgba(31, 247, 255, 0.05), transparent 58%),
         transparent;
     }
-    .ask-voice-status {
+    .ask-voice-status,
+    .ask-voice-heard {
       color: var(--color-text-muted);
       font: 0.66rem/1.35 var(--font-body);
       margin-top: 0.5rem;
@@ -422,10 +442,17 @@ function ensureVoiceStyles() {
       align-items: start;
       overflow-wrap: anywhere;
     }
-    .ask-voice-status span {
+    .ask-voice-heard {
+      margin-top: 0.25rem;
+      padding-top: 0.35rem;
+      border-top: 1px solid rgba(31, 247, 255, 0.12);
+    }
+    .ask-voice-status span,
+    .ask-voice-heard span {
       color: var(--color-primary);
     }
-    .ask-voice-status b {
+    .ask-voice-status b,
+    .ask-voice-heard b {
       color: var(--color-text-muted);
       font-weight: 400;
     }
