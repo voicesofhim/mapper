@@ -30,6 +30,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
   const [micLevel, setMicLevel] = useState(0);
   const [pushToTalkActive, setPushToTalkActive] = useState(false);
   const micMonitorRef = useRef(null);
+  const sessionRef = useRef(null);
   const [micInfo, setMicInfo] = useState({
     label: 'Mic not checked',
     detail: 'Connect local voice to test the active browser input.',
@@ -86,31 +87,8 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
   useEffect(() => () => stopMicMonitor(), [stopMicMonitor]);
 
   useEffect(() => {
-    if (mode !== 'voice' || !session) return undefined;
-
-    const isEditableTarget = (target) => {
-      const element = target instanceof Element ? target : null;
-      return Boolean(element?.closest('input, textarea, select, [contenteditable="true"]'));
-    };
-    const handleKeyDown = (event) => {
-      if (event.repeat || isEditableTarget(event.target)) return;
-      if (event.key?.toLowerCase() !== 't') return;
-      event.preventDefault();
-      setPushToTalkActive(true);
-    };
-    const handleKeyUp = (event) => {
-      if (event.key?.toLowerCase() !== 't') return;
-      event.preventDefault();
-      setPushToTalkActive(false);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      setPushToTalkActive(false);
-    };
-  }, [mode, session]);
+    sessionRef.current = session;
+  }, [session]);
 
   const connectVoice = useCallback(async () => {
     setError('');
@@ -145,6 +123,29 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
     }
   }, [refreshMicInfo, startMicMonitor, stopMicMonitor]);
 
+  useEffect(() => {
+    if (mode !== 'voice') return undefined;
+
+    const handleKeyDown = (event) => {
+      if (!isPushToTalkKey(event) || event.repeat) return;
+      event.preventDefault();
+      setPushToTalkActive(true);
+      if (!sessionRef.current) connectVoice();
+    };
+    const handleKeyUp = (event) => {
+      if (!isPushToTalkKey(event)) return;
+      event.preventDefault();
+      setPushToTalkActive(false);
+    };
+    document.addEventListener('keydown', handleKeyDown, true);
+    document.addEventListener('keyup', handleKeyUp, true);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+      document.removeEventListener('keyup', handleKeyUp, true);
+      setPushToTalkActive(false);
+    };
+  }, [connectVoice, mode]);
+
   const disconnectVoice = useCallback(() => {
     setPushToTalkActive(false);
     setSession(null);
@@ -157,11 +158,11 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
 
   const handlePushPointerDown = useCallback((event) => {
     event.preventDefault();
+    setPushToTalkActive(true);
     if (!session) {
       connectVoice();
       return;
     }
-    setPushToTalkActive(true);
   }, [connectVoice, session]);
 
   const releasePushToTalk = useCallback(() => {
@@ -485,6 +486,11 @@ function mapVoiceStatusToAuraState(state) {
   if (state === 'error' || state === 'failed') return 'failed';
   if (state === 'idle' || state === 'done') return 'idle';
   return 'listening';
+}
+
+function isPushToTalkKey(event) {
+  if (event.metaKey || event.ctrlKey || event.altKey) return false;
+  return event.code === 'KeyT' || event.key?.toLowerCase() === 't';
 }
 
 function formatTokenEndpointError(status) {
