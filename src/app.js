@@ -687,7 +687,7 @@ function initMapLensControls(bundle) {
         border-radius: 0;
         background: rgba(31, 247, 255, 0.045);
         color: var(--color-text-muted);
-        font: 0.75rem var(--font-body);
+        font: 0.68rem var(--font-body);
       }
       .map-lens-trigger {
         width: 100%;
@@ -731,9 +731,10 @@ function initMapLensControls(bundle) {
         display: block;
       }
       .map-lens-option {
-        padding: 0.48rem 0.65rem;
+        padding: 0.38rem 0.58rem;
         color: var(--color-text-muted);
         cursor: pointer;
+        font: 0.68rem var(--font-body);
         white-space: nowrap;
       }
       .map-lens-option::before {
