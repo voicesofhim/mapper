@@ -122,6 +122,54 @@ describe('local Ask-the-Map retrieval server helpers', () => {
     expect(vector.map(n => Number(n.toFixed(2)))).toEqual([0.6, 0.8]);
   });
 
+  it('uses vector retrieval for Ollama server mode even when domainDir is present', async () => {
+    const executeCalls = [];
+    const response = await answerQuery('developer tooling for private agents', {
+      domainDir: 'data/domains',
+      domainId: 'all',
+      embeddingProvider: 'ollama',
+      model: 'qwen3-embedding:4b',
+      topK: 5,
+      embedder: {
+        async embed() {
+          return [1, 0];
+        },
+      },
+      db: {
+        async execute(sql) {
+          executeCalls.push(sql);
+          return {
+            rows: [{
+              id: 'db-c1',
+              dataset_id: 'slab:test',
+              participant_id: 'SLAB-001',
+              source_type: 'application',
+              title: 'Developer tooling',
+              summary: 'The team builds local developer tooling for private agents.',
+              excerpt: 'Private agent developer tooling evidence.',
+              themes: 'SLAB||application-form',
+              confidence: 0.8,
+              score: 0,
+              umap_x: 0.2,
+              umap_y: 0.4,
+              source_id: 's1',
+              source_label: 'Application',
+              source_ref: 'local-seed.sql',
+              embedding_vector_array: [1, 0],
+            }],
+          };
+        },
+      },
+    });
+
+    expect(executeCalls).toHaveLength(1);
+    expect(response.highlighted_map_item_ids).toEqual(['db-c1']);
+    expect(response.metadata).toMatchObject({
+      local_only: true,
+      retrieval_model: 'qwen3-embedding:4b',
+    });
+  });
+
   it('can answer from a selected local domain bundle without stale DB ids', async () => {
     await mkdir(join(root, 'data/private-domains'), { recursive: true });
     const privateRoot = await mkdtemp(join(root, 'data/private-domains/test-ask-'));

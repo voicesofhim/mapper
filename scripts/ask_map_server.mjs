@@ -400,7 +400,7 @@ export async function createEmbeddingWorker(options = {}) {
 
 export async function answerQuery(query, context) {
   const cleanQuery = sanitizeQuery(query);
-  if (context.domainDir) {
+  if (shouldUseStaticBundleRetrieval(context)) {
     const rows = await loadStaticBundleRows(context.domainDir, context.domainId || 'all');
     const matches = rankStaticEvidence(cleanQuery, rows, {
       topK: context.topK,
@@ -480,6 +480,7 @@ export async function createAskMapServer(options = {}) {
         filters: body.filters || {},
         domainDir: body.domainDir,
         domainId: body.domainId,
+        retrievalMode: body.retrievalMode,
       });
       writeJson(res, 200, response);
     } catch (err) {
@@ -643,6 +644,13 @@ function staticEvidenceScore(row, terms) {
 
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
+}
+
+function shouldUseStaticBundleRetrieval(context) {
+  if (!context.domainDir) return false;
+  if (context.retrievalMode === 'static') return true;
+  if (context.retrievalMode === 'vector') return false;
+  return context.embeddingProvider !== 'ollama';
 }
 
 function coerceEmbeddingVector(rawVector, dimensions) {
