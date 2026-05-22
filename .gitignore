@@ -346,3 +346,6 @@ data/domains/.working/
 
 # Video audit working files (v2)
 data/videos/.working/audit-v2/
+
+# Local model downloads
+models/

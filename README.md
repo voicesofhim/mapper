@@ -243,17 +243,18 @@ Provider details:
 Set up the local model environment:
 
 ```bash
-python3 -m venv .venv-embeddinggemma
-. .venv-embeddinggemma/bin/activate
-pip install -r requirements-embeddinggemma.txt
+npm run setup:embeddinggemma
 ```
+
+This creates `.venv-embeddinggemma`, installs the Hugging Face `hf` CLI and Sentence Transformers dependencies, checks local Hugging Face auth, and downloads the model into ignored `models/embeddinggemma-300m/`. If needed, first accept the Gemma license on Hugging Face, then run `hf auth login` or set `HF_TOKEN` in your local shell. Do not commit that token.
 
 Then run the importer with the local provider:
 
 ```bash
 npm run import:accelerator -- \
   --embedding-provider embeddinggemma \
-  --embedding-model google/embeddinggemma-300M \
+  --embedding-model models/embeddinggemma-300m \
+  --embedding-command .venv-embeddinggemma/bin/python \
   --embedding-dimensions 768
 ```
 
@@ -269,9 +270,12 @@ npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-di
 # Custom Python executable or sidecar
 npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-command .venv-embeddinggemma/bin/python
 npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-script scripts/embed_embeddinggemma.py
+
+# Install deps/auth only, without downloading the model
+npm run setup:embeddinggemma -- --skip-download
 ```
 
-The first real model run may require accepting the Gemma license on Hugging Face and authenticating locally with a Hugging Face token. Do not commit that token; keep it in your shell, keychain, or ignored local environment.
+The setup script uses the Hugging Face CLI documented as `hf auth login` and `hf download`. Model files live under `models/`, which is ignored by git.
 
 Google describes EmbeddingGemma as a 308M-parameter local/on-device embedding model with 768-dimensional embeddings, flexible output dimensions down to 128 via Matryoshka Representation Learning, and offline operation. See:
 

@@ -279,17 +279,18 @@ Use local Google EmbeddingGemma.
 Local setup:
 
 ```bash
-python3 -m venv .venv-embeddinggemma
-. .venv-embeddinggemma/bin/activate
-pip install -r requirements-embeddinggemma.txt
+npm run setup:embeddinggemma
 ```
+
+This creates `.venv-embeddinggemma`, installs `requirements-embeddinggemma.txt`, provides the Hugging Face `hf` CLI, checks auth with `hf auth whoami`, and downloads the model into ignored `models/embeddinggemma-300m/` using `hf download`. The developer may need to accept the Gemma license on Hugging Face before the download works.
 
 Run the importer with the local provider:
 
 ```bash
 npm run import:accelerator -- \
   --embedding-provider embeddinggemma \
-  --embedding-model google/embeddinggemma-300M \
+  --embedding-model models/embeddinggemma-300m \
+  --embedding-command .venv-embeddinggemma/bin/python \
   --embedding-dimensions 768
 ```
 
@@ -302,11 +303,14 @@ npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-de
 # Use the project venv Python explicitly
 npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-command .venv-embeddinggemma/bin/python
 
+# Install dependencies and authenticate without downloading
+npm run setup:embeddinggemma -- --skip-download
+
 # Smaller Matryoshka vector for quick local experiments
 npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-dimensions 256
 ```
 
-The first real model run may require accepting the Gemma license on Hugging Face and authenticating locally. Keep the token out of the repo and out of committed shell scripts.
+Keep Hugging Face tokens local only: use the interactive `hf auth login`, a local keychain, or an uncommitted shell environment variable such as `HF_TOKEN`.
 
 Relevant Google docs:
 
@@ -328,6 +332,7 @@ Implemented files:
 ```text
 scripts/import_accelerator_dataset.mjs
 scripts/embed_embeddinggemma.py
+scripts/setup_embeddinggemma.sh
 requirements-embeddinggemma.txt
 tests/accelerator/importer.test.js
 ```
@@ -522,9 +527,9 @@ No key was found in repo files.
 ## Suggested Next Steps
 
 1. **Run and verify real local EmbeddingGemma**
-   - Install `requirements-embeddinggemma.txt` in `.venv-embeddinggemma`.
-   - Accept the Gemma license and authenticate Hugging Face locally if needed.
-   - Run `npm run import:accelerator -- --embedding-provider embeddinggemma`.
+   - Accept the Gemma license on Hugging Face if needed.
+   - Run `npm run setup:embeddinggemma`.
+   - Run `npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-model models/embeddinggemma-300m --embedding-command .venv-embeddinggemma/bin/python`.
    - Inspect generated clusters and SQL vector BLOB lengths.
 
 2. **Add mixed-source manifest ingestion**

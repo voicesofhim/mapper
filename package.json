@@ -12,6 +12,7 @@
     "test:all": "vitest run",
     "test:accelerator:visual": "playwright test tests/visual/accelerator-observatory.spec.js",
     "import:accelerator": "node scripts/import_accelerator_dataset.mjs",
+    "setup:embeddinggemma": "bash scripts/setup_embeddinggemma.sh",
     "bench": "vitest bench",
     "test:visual": "playwright test"
   },

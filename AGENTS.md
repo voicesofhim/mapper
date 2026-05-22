@@ -78,10 +78,8 @@ Current implementation:
 Local model setup:
 
 ```bash
-python3 -m venv .venv-embeddinggemma
-. .venv-embeddinggemma/bin/activate
-pip install -r requirements-embeddinggemma.txt
-npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-model google/embeddinggemma-300M
+npm run setup:embeddinggemma
+npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-model models/embeddinggemma-300m --embedding-command .venv-embeddinggemma/bin/python
 ```
 
 Keep this local-first:
