@@ -289,7 +289,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
             <b>{Math.round(displayedMicLevel * 100)}%</b>
           </div>
 
-          <div className="ask-voice-mini-transcript" aria-live="polite">
+          <div className={`ask-voice-mini-transcript${liveTranscript.length ? ' has-text' : ''}`} aria-live="polite">
             <div>
               {liveTranscript.length ? liveTranscript.map((entry) => (
                 <p key={entry.id} data-final={entry.final ? 'true' : 'false'}>
@@ -309,8 +309,11 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
               onPointerCancel={releasePushToTalk}
               onPointerLeave={releasePushToTalk}
             >
-              <span>Push to Talk</span>
-              <small>{session ? 'Hold T or hold button' : 'Click to connect'}</small>
+              <span className="ask-voice-action-label">
+                <i aria-hidden="true" />
+                Push to Talk
+              </span>
+              <small>{pushToTalkActive ? 'Listening...' : session ? 'Hold T to speak' : 'Click to connect'}</small>
             </button>
           </div>
         </div>
@@ -809,8 +812,12 @@ function ensureVoiceStyles() {
       margin-top: 0.5rem;
       padding: 0.45rem;
       border: 0;
-      background: rgba(0, 0, 0, 0.16);
+      background: rgba(0, 0, 0, 0.1);
       min-height: 3.8rem;
+      transition: background 0.16s ease;
+    }
+    .ask-voice-mini-transcript.has-text {
+      background: rgba(0, 0, 0, 0.18);
     }
     .ask-voice-mini-transcript div {
       display: grid;
@@ -821,13 +828,19 @@ function ensureVoiceStyles() {
     }
     .ask-voice-mini-transcript p {
       margin: 0;
-      color: var(--color-text);
+      color: rgba(145, 165, 188, 0.58);
       font: 0.68rem/1.35 var(--font-body);
       overflow-wrap: anywhere;
     }
+    .ask-voice-mini-transcript.has-text p {
+      color: var(--color-text);
+    }
     .ask-voice-mini-transcript p[data-final="false"] {
-      color: var(--color-text-muted);
+      color: rgba(145, 165, 188, 0.72);
       font-style: italic;
+    }
+    .ask-voice-mini-transcript.has-text p[data-final="false"] {
+      color: var(--color-text-muted);
     }
     .ask-voice-heard {
       margin-top: 0.25rem;
@@ -865,10 +878,27 @@ function ensureVoiceStyles() {
       font: 0.58rem/1.15 var(--font-body);
       text-transform: none;
     }
+    .ask-voice-action-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.36rem;
+    }
+    .ask-voice-action-label i {
+      width: 0.38rem;
+      height: 0.38rem;
+      border-radius: 50%;
+      background: rgba(31, 247, 255, 0.22);
+      box-shadow: 0 0 0 rgba(31, 247, 255, 0);
+      transition: background 0.16s ease, box-shadow 0.16s ease;
+    }
     .ask-voice-actions button.is-hot {
       background: rgba(31, 247, 255, 0.16);
       color: var(--color-primary);
       box-shadow: 0 0 16px rgba(31, 247, 255, 0.18), inset 0 0 18px rgba(31, 247, 255, 0.08);
+    }
+    .ask-voice-actions button.is-hot .ask-voice-action-label i {
+      background: var(--color-primary);
+      box-shadow: 0 0 10px rgba(31, 247, 255, 0.9);
     }
     .ask-voice-diagnostics {
       position: relative;
