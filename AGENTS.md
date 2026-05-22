@@ -17,7 +17,7 @@ Build Knowledge Mapper as an accelerator participant research tool:
 - Evidence panel for interviews, prior interviews, social posts, mentor notes, program material, and reflections.
 - Local Turso/libSQL as the canonical database.
 - Static Mapper-compatible JSON as the current frontend delivery format.
-- Local EmbeddingGemma as the production embedding provider.
+- Local embeddings as the production embedding path, using EmbeddingGemma or Ollama.
 - Future LiveKit integration should stay local-only for this phase.
 
 ## Important Context
@@ -74,6 +74,7 @@ Current implementation:
 
 - `local` provider: deterministic hash embeddings for fixture/test generation.
 - `embeddinggemma` provider: local Google EmbeddingGemma through `scripts/embed_embeddinggemma.py`.
+- `ollama` provider: local Ollama `/api/embed` using installed models such as `qwen3-embedding:4b`, `nomic-embed-text:latest`, or `mxbai-embed-large:latest`.
 - `openai` provider: optional experimental path from earlier exploration; not preferred.
 
 Local model setup:
@@ -81,6 +82,8 @@ Local model setup:
 ```bash
 npm run setup:embeddinggemma
 npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-model google/embeddinggemma-300M --embedding-model-path models/embeddinggemma-300m --embedding-command .venv-embeddinggemma/bin/python
+npm run import:accelerator -- --embedding-provider ollama --embedding-model qwen3-embedding:4b
+npm run ask:server -- --embedding-provider ollama --embedding-model qwen3-embedding:4b
 ```
 
 Keep this local-first:

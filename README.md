@@ -16,7 +16,7 @@ Implemented and pushed to `main`:
 - Future voice-agent map actions through `window.mapperActions` and `mapper:action` events.
 - Canonical Turso/libSQL schema in `scripts/accelerator-schema.sql`.
 - Import pipeline for anonymized interview markdown.
-- Local Google EmbeddingGemma provider via a Python/Sentence Transformers sidecar.
+- Local embedding providers through Google EmbeddingGemma or Ollama.
 - Seed domain generated from 3 anonymized fixture interviews.
 - Static Mapper JSON export plus Turso seed SQL.
 - Tests for schema, importer, exporter, no-browser-UMAP, and visual behavior.
@@ -223,13 +223,16 @@ Outputs:
 
 ## Embedding Pipeline
 
-The importer has three provider paths:
+The importer has four provider paths:
 
 - `local`: deterministic hash embeddings for tests and offline fixture generation.
 - `embeddinggemma`: local Google EmbeddingGemma embeddings through `scripts/embed_embeddinggemma.py`.
+- `ollama`: local Ollama embeddings through `http://127.0.0.1:11434/api/embed`.
 - `openai`: optional legacy/experimental path from earlier exploration; not the preferred direction.
 
-The intended production path is **local Google EmbeddingGemma**, not OpenAI.
+The intended production path is local embeddings, not OpenAI. EmbeddingGemma is
+the original local default; Ollama is supported for machines that already have
+local embedding models installed.
 
 Provider details:
 
@@ -277,6 +280,39 @@ npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-sc
 npm run setup:embeddinggemma -- --skip-download
 ```
 
+Use an installed Ollama embedding model instead of EmbeddingGemma:
+
+```bash
+# Highest-quality local option on the current workstation.
+npm run import:accelerator -- \
+  --embedding-provider ollama \
+  --embedding-model qwen3-embedding:4b
+
+# Smaller/faster options.
+npm run import:accelerator -- --embedding-provider ollama --embedding-model nomic-embed-text:latest
+npm run import:accelerator -- --embedding-provider ollama --embedding-model mxbai-embed-large:latest
+```
+
+Ask-the-Map must use the same model and dimensions as the imported vectors:
+
+```bash
+npm run ask:server -- \
+  --embedding-provider ollama \
+  --embedding-model qwen3-embedding:4b
+```
+
+Optional Ollama flags:
+
+```bash
+--ollama-url http://127.0.0.1:11434
+--embedding-dimensions 768
+--ollama-document-prefix "search_document: "
+--ollama-query-prefix "search_query: "
+```
+
+If you change embedding models or dimensions, re-run the importer so stored
+evidence vectors and query vectors live in the same embedding space.
+
 The setup script uses the Hugging Face CLI documented as `hf auth login` and `hf download`. Model files live under `models/`, which is ignored by git.
 
 Google describes EmbeddingGemma as a 308M-parameter local/on-device embedding model with 768-dimensional embeddings, flexible output dimensions down to 128 via Matryoshka Representation Learning, and offline operation. See:
@@ -315,7 +351,7 @@ For open-ended local retrieval, run the local Ask server alongside Vite:
 npm run ask:server
 ```
 
-The server binds to `127.0.0.1:8787`, creates or refreshes an ignored local libSQL database at `data/accelerator/local/accelerator-seed.sqlite`, loads a persistent local EmbeddingGemma worker, embeds typed questions with the `Retrieval-query` prompt, searches stored chunk vectors by cosine similarity, and returns evidence IDs for frontend highlighting. UMAP is not used for answer ranking; it remains a visualization layout only.
+The server binds to `127.0.0.1:8787`, creates or refreshes an ignored local libSQL database at `data/accelerator/local/accelerator-seed.sqlite`, loads the selected local embedding provider, embeds typed questions, searches stored chunk vectors by cosine similarity, and returns evidence IDs for frontend highlighting. UMAP is not used for answer ranking; it remains a visualization layout only.
 
 Run both pieces in two terminals:
 
@@ -463,7 +499,7 @@ That means 7 embedding rows, 7 stored vector blobs, each 384 bytes in the local 
 
 ## Next Priorities
 
-1. Run the real EmbeddingGemma sidecar on approved anonymized seed inputs and review the resulting map.
+1. Run the real local embedding provider on approved anonymized seed inputs and review the resulting map.
 2. Support mixed-source ingestion through manifests, not just interview markdown.
 3. Replace seed fixtures with the first approved anonymized participant exports.
 4. Add real semantic Ask-the-Map retrieval over local Turso chunks/vectors.

@@ -6,6 +6,7 @@ import {
   buildEmbeddingRecords,
   chunkText,
   computeUmapCoordinates,
+  createOllamaEmbeddings,
   parseAnonymizedInterview,
   stripEmbeddingVectors,
   toTursoSeedSql,
@@ -156,6 +157,81 @@ I need structure before execution.
     });
     expect(embeddings[0].vector_blob_hex).toBeTruthy();
     expect(computeUmapCoordinates(embeddings)[0].projection_version).toBe('umap-embeddinggemma-google-embeddinggemma-300m-v1');
+  });
+
+  it('can use local Ollama embeddings with a mocked embed endpoint', async () => {
+    const calls = [];
+    const fetchImpl = async (url, request) => {
+      calls.push({ url, request: JSON.parse(request.body) });
+      return {
+        ok: true,
+        async json() {
+          return {
+            embeddings: [
+              [3, 4, 100],
+              [0, 5, 100],
+            ],
+          };
+        },
+      };
+    };
+
+    const embeddings = await buildEmbeddingRecords([
+      { id: 'c1', title: 'One', summary: 'Summary', anonymized_text: 'Anonymized text one.', themes: ['learning'], source_type: 'interview' },
+      { id: 'c2', title: 'Two', summary: 'Summary', anonymized_text: 'Anonymized text two.', themes: ['execution'], source_type: 'mentor_note' },
+    ], {
+      embeddingProvider: 'ollama',
+      embeddingModel: 'nomic-embed-text:latest',
+      embeddingDimensions: 2,
+      embeddingBatchSize: 2,
+      ollamaUrl: '127.0.0.1:11434/',
+      fetchImpl,
+    });
+
+    expect(calls[0].url).toBe('http://127.0.0.1:11434/api/embed');
+    expect(calls[0].request.model).toBe('nomic-embed-text:latest');
+    expect(calls[0].request.input[0]).toMatch(/^search_document: /);
+    expect(embeddings[0]).toMatchObject({
+      embedding_provider: 'ollama',
+      embedding_model: 'nomic-embed-text:latest',
+      embedding_dimensions: 2,
+    });
+    expect(embeddings[0].embedding_vector.map(n => Number(n.toFixed(2)))).toEqual([0.6, 0.8]);
+    expect(embeddings[0].metadata_json).toMatchObject({
+      runtime: 'ollama',
+      endpoint: '/api/embed',
+      local_only: true,
+      dimensions_requested: 2,
+      document_prefix_applied: true,
+      input_redaction: 'anonymized_text_only',
+    });
+    expect(computeUmapCoordinates(embeddings)[0].projection_version).toBe('umap-ollama-nomic-embed-text-latest-v1');
+  });
+
+  it('normalizes Ollama embedding batches and validates response cardinality', async () => {
+    const vectors = await createOllamaEmbeddings(['a'], {
+      model: 'qwen3-embedding:4b',
+      baseUrl: 'http://localhost:11434',
+      dimensions: 2,
+      fetchImpl: async () => ({
+        ok: true,
+        async json() {
+          return { embeddings: [[6, 8, 10]] };
+        },
+      }),
+    });
+
+    expect(vectors[0].map(n => Number(n.toFixed(2)))).toEqual([0.6, 0.8]);
+
+    await expect(createOllamaEmbeddings(['a', 'b'], {
+      model: 'qwen3-embedding:4b',
+      fetchImpl: async () => ({
+        ok: true,
+        async json() {
+          return { embeddings: [[1, 0]] };
+        },
+      }),
+    })).rejects.toThrow(/returned 1 vectors for 2 inputs/);
   });
 
   it('stores vector blobs in Turso SQL but strips them from frontend JSON', async () => {

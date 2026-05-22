@@ -7,6 +7,7 @@ import {
   answerQuery,
   buildAskMapResponse,
   cosineSimilarity,
+  embedOllamaQuestion,
   float32ArrayFromBlob,
   loadStaticBundleRows,
   rankEvidence,
@@ -94,6 +95,81 @@ describe('local Ask-the-Map retrieval server helpers', () => {
       filters: { datasetId: 'slab:test' },
     });
     expect(ranked.map(row => row.id)).toEqual(['c1']);
+  });
+
+  it('embeds Ask-the-Map queries through Ollama when selected', async () => {
+    const calls = [];
+    const vector = await embedOllamaQuestion('Who needs structure?', {
+      model: 'mxbai-embed-large:latest',
+      ollamaUrl: 'localhost:11434/',
+      dimensions: 2,
+      fetchImpl: async (url, request) => {
+        calls.push({ url, request: JSON.parse(request.body) });
+        return {
+          ok: true,
+          async json() {
+            return { embeddings: [[3, 4, 99]] };
+          },
+        };
+      },
+    });
+
+    expect(calls[0].url).toBe('http://localhost:11434/api/embed');
+    expect(calls[0].request).toMatchObject({
+      model: 'mxbai-embed-large:latest',
+    });
+    expect(calls[0].request.input).toMatch(/^Represent this sentence for searching relevant passages: /);
+    expect(vector.map(n => Number(n.toFixed(2)))).toEqual([0.6, 0.8]);
+  });
+
+  it('uses vector retrieval for Ollama server mode even when domainDir is present', async () => {
+    const executeCalls = [];
+    const response = await answerQuery('developer tooling for private agents', {
+      domainDir: 'data/domains',
+      domainId: 'all',
+      embeddingProvider: 'ollama',
+      model: 'qwen3-embedding:4b',
+      topK: 5,
+      embedder: {
+        async embed() {
+          return [1, 0];
+        },
+      },
+      db: {
+        async execute(sql) {
+          executeCalls.push(sql);
+          return {
+            rows: [{
+              id: 'db-c1',
+              dataset_id: 'slab:test',
+              participant_id: 'SLAB-001',
+              source_type: 'application',
+              title: 'Developer tooling',
+              summary: 'The team builds local developer tooling for private agents.',
+              excerpt: 'Private agent developer tooling evidence.',
+              themes: 'SLAB||application-form',
+              confidence: 0.8,
+              score: 0,
+              umap_x: 0.2,
+              umap_y: 0.4,
+              source_id: 's1',
+              source_label: 'Application',
+              source_ref: 'local-seed.sql',
+              embedding_vector_array: [1, 0],
+            }],
+          };
+        },
+      },
+    });
+
+    expect(executeCalls).toHaveLength(1);
+    expect(response.highlighted_map_item_ids).toEqual(['db-c1']);
+    expect(response.metadata).toMatchObject({
+      local_only: true,
+      retrieval_model: 'qwen3-embedding:4b',
+    });
+    expect(executeCalls[0]).toContain('e.embedding_provider = :embeddingProvider');
+    expect(executeCalls[0]).toContain('e.embedding_model = :embeddingModel');
   });
 
   it('can answer from a selected local domain bundle without stale DB ids', async () => {

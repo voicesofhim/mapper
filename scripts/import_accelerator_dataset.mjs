@@ -6,11 +6,11 @@
  * - parses anonymized interview markdown files
  * - chunks source text
  * - assigns evidence themes
- * - creates embedding vectors with local deterministic fixtures, EmbeddingGemma, or optional OpenAI
+ * - creates embedding vectors with local deterministic fixtures, EmbeddingGemma, Ollama, or optional OpenAI
  * - computes UMAP x/y coordinates with umap-js
  * - exports Mapper-compatible JSON and optional Turso/libSQL seed SQL
  *
- * Production runs are expected to use the local EmbeddingGemma provider.
+ * Production runs are expected to use a local embedding provider.
  * Local hash mode remains available for offline tests and fixture generation.
  */
 
@@ -37,6 +37,8 @@ const DEFAULT_OPENAI_EMBEDDING_MODEL = 'text-embedding-3-small';
 const DEFAULT_EMBEDDINGGEMMA_MODEL = 'google/embeddinggemma-300M';
 const DEFAULT_EMBEDDINGGEMMA_PROMPT_NAME = 'Retrieval-document';
 const DEFAULT_EMBEDDINGGEMMA_SCRIPT = join(PROJECT_ROOT, 'scripts/embed_embeddinggemma.py');
+const DEFAULT_OLLAMA_EMBEDDING_MODEL = 'qwen3-embedding:4b';
+const DEFAULT_OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
 const LOCAL_PROJECTION_VERSION = 'umap-local-hash-v1';
 
 const THEME_RULES = [
@@ -128,6 +130,8 @@ export async function buildAcceleratorDataset(options = {}) {
     embeddingScript: options.embeddingScript,
     embeddingDevice: options.embeddingDevice,
     embeddingBatchSize: options.embeddingBatchSize,
+    ollamaUrl: options.ollamaUrl,
+    ollamaDocumentPrefix: options.ollamaDocumentPrefix,
     apiKey: options.apiKey,
     fetchImpl: options.fetchImpl,
     embeddingGemmaRunner: options.embeddingGemmaRunner,
@@ -264,6 +268,7 @@ export function chunkText(text, maxChars = 420) {
 export async function buildEmbeddingRecords(chunks, options = {}) {
   const provider = options.embeddingProvider || 'local';
   if (provider === 'embeddinggemma') return buildEmbeddingGemmaRecords(chunks, options);
+  if (provider === 'ollama') return buildOllamaEmbeddingRecords(chunks, options);
   if (provider === 'openai') return buildOpenAIEmbeddingRecords(chunks, options);
   if (provider !== 'local') throw new Error(`Unsupported embedding provider "${provider}"`);
   return chunks.map(chunk => buildEmbeddingRecord(chunk));
@@ -344,6 +349,75 @@ async function runEmbeddingGemmaSidecar(chunks, options = {}) {
   });
 }
 
+export async function buildOllamaEmbeddingRecords(chunks, options = {}) {
+  const model = options.embeddingModel || process.env.OLLAMA_EMBEDDING_MODEL || DEFAULT_OLLAMA_EMBEDDING_MODEL;
+  const baseUrl = normalizeOllamaBaseUrl(options.ollamaUrl || process.env.OLLAMA_HOST || DEFAULT_OLLAMA_BASE_URL);
+  const dimensions = numberOr(options.embeddingDimensions, process.env.OLLAMA_EMBEDDING_DIMENSIONS);
+  const batchSize = Number(options.embeddingBatchSize || process.env.OLLAMA_EMBEDDING_BATCH_SIZE || 32);
+  const documentPrefix = options.ollamaDocumentPrefix ?? process.env.OLLAMA_DOCUMENT_PREFIX ?? defaultOllamaDocumentPrefix(model);
+  const inputs = chunks.map(chunk => withPrefix(embeddingTextForChunk(chunk), documentPrefix));
+  const vectors = await createOllamaEmbeddings(inputs, {
+    model,
+    baseUrl,
+    dimensions,
+    batchSize,
+    fetchImpl: options.fetchImpl,
+  });
+
+  if (vectors.length !== chunks.length) {
+    throw new Error(`Ollama returned ${vectors.length} vectors for ${chunks.length} chunks.`);
+  }
+
+  return chunks.map((chunk, index) => embeddingRecordFromVector(chunk, {
+    provider: 'ollama',
+    model,
+    vector: vectors[index],
+    metadata: {
+      runtime: 'ollama',
+      endpoint: '/api/embed',
+      base_url: baseUrl,
+      local_only: true,
+      dimensions_requested: dimensions || null,
+      document_prefix_applied: Boolean(documentPrefix),
+      input_redaction: 'anonymized_text_only',
+    },
+  }));
+}
+
+export async function createOllamaEmbeddings(inputs, options = {}) {
+  const fetchImpl = options.fetchImpl || globalThis.fetch;
+  if (!fetchImpl) throw new Error('fetch is required for Ollama embedding requests.');
+
+  const model = options.model || DEFAULT_OLLAMA_EMBEDDING_MODEL;
+  const baseUrl = normalizeOllamaBaseUrl(options.baseUrl || DEFAULT_OLLAMA_BASE_URL);
+  const requestedBatchSize = Number(options.batchSize || 32);
+  const batchSize = Number.isFinite(requestedBatchSize) ? Math.max(1, requestedBatchSize) : 32;
+  const vectors = [];
+
+  for (let start = 0; start < inputs.length; start += batchSize) {
+    const batch = inputs.slice(start, start + batchSize);
+    const response = await fetchImpl(`${baseUrl}/api/embed`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, input: batch }),
+    });
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => response.statusText);
+      throw new Error(`Ollama embeddings request failed: ${response.status} ${detail}`);
+    }
+
+    const json = await response.json();
+    const embeddings = Array.isArray(json.embeddings) ? json.embeddings : [];
+    if (embeddings.length !== batch.length) {
+      throw new Error(`Ollama embeddings response returned ${embeddings.length} vectors for ${batch.length} inputs.`);
+    }
+    vectors.push(...embeddings.map(vector => coerceEmbeddingVector(vector, options.dimensions)));
+  }
+
+  return vectors;
+}
+
 function runJsonProcess(command, args, payload) {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, { stdio: ['pipe', 'pipe', 'pipe'] });
@@ -385,6 +459,23 @@ function embeddingRecordFromVector(chunk, { provider, model, vector, metadata = 
     input_sha256: sha256(chunk.anonymized_text),
     metadata_json: metadata,
   };
+}
+
+function coerceEmbeddingVector(rawVector, dimensions) {
+  const requestedDimensions = numberOr(dimensions);
+  let vector = Array.from(rawVector || [], Number);
+  if (requestedDimensions && vector.length > requestedDimensions) {
+    vector = vector.slice(0, requestedDimensions);
+  }
+  if (!vector.length || vector.some(value => !Number.isFinite(value))) {
+    throw new Error('Embedding provider returned an empty or non-finite vector.');
+  }
+  return normalizeVector(vector);
+}
+
+function normalizeVector(vector) {
+  const norm = Math.hypot(...vector) || 1;
+  return vector.map(value => value / norm);
 }
 
 export async function buildOpenAIEmbeddingRecords(chunks, options = {}) {
@@ -1003,6 +1094,22 @@ function numberOr(...values) {
   return undefined;
 }
 
+function normalizeOllamaBaseUrl(value) {
+  const url = String(value || DEFAULT_OLLAMA_BASE_URL).trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//i.test(url)) return `http://${url}`;
+  return url;
+}
+
+function defaultOllamaDocumentPrefix(model) {
+  const lower = String(model || '').toLowerCase();
+  if (lower.includes('nomic')) return 'search_document: ';
+  return '';
+}
+
+function withPrefix(text, prefix) {
+  return prefix ? `${prefix}${text}` : text;
+}
+
 function normalize(value, min, max) {
   if (max === min) return 0.5;
   const padded = 0.08 + ((value - min) / (max - min)) * 0.84;
@@ -1058,6 +1165,8 @@ async function main() {
     embeddingScript: args.embeddingScript,
     embeddingDevice: args.embeddingDevice,
     embeddingBatchSize: args.embeddingBatchSize,
+    ollamaUrl: args.ollamaUrl,
+    ollamaDocumentPrefix: args.ollamaDocumentPrefix,
   });
   const frontendBundle = stripEmbeddingVectors(bundle);
 

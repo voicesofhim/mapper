@@ -232,6 +232,8 @@ export async function buildSlabDataset(options = {}) {
     embeddingScript: options.embeddingScript,
     embeddingDevice: options.embeddingDevice,
     embeddingBatchSize: options.embeddingBatchSize,
+    ollamaUrl: options.ollamaUrl,
+    ollamaDocumentPrefix: options.ollamaDocumentPrefix,
     embeddingGemmaRunner: options.embeddingGemmaRunner,
   });
   const coordinates = computeUmapCoordinates(embeddings);
@@ -481,6 +483,8 @@ async function main() {
     embeddingScript: args.embeddingScript,
     embeddingDevice: args.embeddingDevice,
     embeddingBatchSize: args.embeddingBatchSize,
+    ollamaUrl: args.ollamaUrl,
+    ollamaDocumentPrefix: args.ollamaDocumentPrefix,
   });
   const frontendBundle = stripEmbeddingVectors(bundle);
   const domainOutDir = resolve(args.domainOutDir || DEFAULT_PRIVATE_DOMAIN_DIR);

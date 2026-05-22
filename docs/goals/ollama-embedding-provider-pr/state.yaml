@@ -1,0 +1,192 @@
+version: 2
+
+goal:
+  title: "Ollama Embedding Provider PR"
+  slug: "ollama-embedding-provider-pr"
+  kind: recovery
+  tranche: "Audit, repair if needed, verify, and push the Ollama embedding provider PR."
+  status: done
+  intake:
+    original_request: "Use GoalBuddy to implement, check, and push this PR."
+    interpreted_outcome: "The Ollama embedding provider PR is implemented, verified, pushed, and audited against the requested local-model embedding outcome."
+    input_shape: recovery
+    audience: "project maintainers and local research users"
+    authority: requested
+    proof_type: test
+    completion_proof: "Draft PR is open and pushed, focused tests/checks pass, and unrelated build blocker is documented."
+    likely_misfire: "Stopping at an open PR without checking import/query parity, docs, tests, and rebuild warnings."
+    blind_spots_considered:
+      - "Stored evidence vectors and query vectors must use the same model and dimensions."
+      - "Tests should mock Ollama rather than require a local daemon."
+      - "Changing embedding models invalidates existing UMAP coordinates."
+      - "The existing frontend build blocker should be documented, not fixed in this PR."
+    existing_plan_facts:
+      - "Draft PR #3 exists on branch codex/add-ollama-embeddings."
+      - "A commit adding the provider has already been pushed."
+
+rules:
+  pm_owns_state: true
+  one_active_task: true
+  max_write_workers: 1
+  no_implementation_without_worker_or_pm_task: true
+  no_completion_without_judge_or_pm_audit: true
+  planning_is_not_completion: true
+  queued_required_worker_blocks_completion: true
+  continuous_until_full_outcome: true
+  missing_input_or_credentials_do_not_stop_goal: true
+  preserve_and_validate_existing_plan: true
+  intake_misfire_must_be_audited: true
+
+agents:
+  scout: installed
+  worker: installed
+  judge: installed
+
+active_task: null
+
+tasks:
+  - id: T001
+    type: scout
+    assignee: Scout
+    status: done
+    reasoning_hint: default
+    objective: "Audit the current PR diff and identify any implementation, verification, documentation, or push gaps."
+    inputs:
+      - "PR #3"
+      - "Current branch diff"
+      - "README.md"
+      - "docs/EMBEDDING_PIPELINE.md"
+      - "scripts/import_accelerator_dataset.mjs"
+      - "scripts/ask_map_server.mjs"
+      - "tests/accelerator"
+    constraints:
+      - "Read-only."
+      - "Do not edit implementation files."
+      - "Focus on gaps that affect the user's requested Ollama/local-model embedding outcome."
+    expected_output:
+      - "Findings with file-path evidence."
+      - "Required follow-up Worker task if gaps exist."
+      - "Verification commands to rerun."
+    receipt:
+      result: done
+      summary: "PR #3 is open and pushed; import, SLAB forwarding, docs, and mocked direct embedding tests are present. Gap: domainDir requests can take the static lexical path before query embeddings run."
+      evidence:
+        - "src/app.js sends domainDir in Ask-the-Map requests."
+        - "scripts/ask_map_server.mjs returns static bundle results before provider embedding when context.domainDir is present."
+        - "tests covered embedOllamaQuestion directly but not answerQuery through the actual server routing branch."
+      required_follow_up_worker_task: "Gate the domainDir path so Ollama-selected server mode uses vector-backed retrieval by default, and add a focused mocked answerQuery test."
+      verification_commands:
+        - "node --check scripts/import_accelerator_dataset.mjs"
+        - "node --check scripts/ask_map_server.mjs"
+        - "node --check scripts/import_slab_dataset.mjs"
+        - "npm test"
+  - id: T002
+    type: worker
+    assignee: Worker
+    status: done
+    reasoning_hint: default
+    objective: "Gate static domainDir retrieval so Ollama-selected Ask-the-Map requests use vector-backed retrieval by default, and add a focused mocked test."
+    allowed_files:
+      - "AGENTS.md"
+      - "README.md"
+      - "docs/EMBEDDING_PIPELINE.md"
+      - "scripts/ask_map_server.mjs"
+      - "scripts/import_accelerator_dataset.mjs"
+      - "scripts/import_slab_dataset.mjs"
+      - "tests/accelerator/ask-server.test.js"
+      - "tests/accelerator/importer.test.js"
+    verify:
+      - "node --check scripts/import_accelerator_dataset.mjs"
+      - "node --check scripts/ask_map_server.mjs"
+      - "npm test"
+    stop_if:
+      - "Need files outside allowed_files."
+      - "A live Ollama daemon would be required for tests."
+      - "The fix would expand into unrelated build or frontend work."
+    receipt:
+      result: done
+      changed_files:
+        - "scripts/ask_map_server.mjs"
+        - "tests/accelerator/ask-server.test.js"
+      commands:
+        - cmd: "node --check scripts/import_accelerator_dataset.mjs"
+          status: pass
+        - cmd: "node --check scripts/ask_map_server.mjs"
+          status: pass
+        - cmd: "node --check scripts/import_slab_dataset.mjs"
+          status: pass
+        - cmd: "npm test"
+          status: pass
+      summary: "Ollama-selected Ask-the-Map requests now use vector retrieval by default even when domainDir is present; static bundle retrieval remains available via retrievalMode: static. Added answerQuery coverage for the domainDir plus ollama route."
+  - id: T003
+    type: pm
+    assignee: PM
+    status: done
+    reasoning_hint: default
+    objective: "Run verification, commit/push any follow-up changes, and update the PR if needed."
+    inputs:
+      - "T001 receipt"
+      - "T002 receipt if activated"
+    constraints:
+      - "Stage only files that belong to this GoalBuddy/PR tranche."
+      - "Document unrelated blockers rather than fixing them."
+    expected_output:
+      - "Verification results."
+      - "Push result."
+      - "PR URL/state."
+    receipt:
+      result: done
+      commands:
+        - cmd: "git commit -m \"tighten ollama ask-map retrieval\""
+          status: pass
+        - cmd: "git push"
+          status: pass
+      summary: "Committed and pushed the Scout-driven follow-up fix to PR #3. Branch codex/add-ollama-embeddings advanced from 745419b to d634b82."
+      pr:
+        url: "https://github.com/voicesofhim/mapper/pull/3"
+        branch: "codex/add-ollama-embeddings"
+        latest_commit: "d634b82"
+  - id: T999
+    type: judge
+    assignee: Judge
+    status: done
+    reasoning_hint: default
+    objective: "Audit whether the PR satisfies the original user outcome."
+    inputs:
+      - "All done task receipts"
+      - "Last verification"
+      - "Current git status"
+      - "PR state"
+    constraints:
+      - "Do not implement."
+      - "Reject completion if required Worker work is still queued or active."
+    expected_output:
+      - "complete | not_complete"
+      - "full_outcome_complete: true | false"
+      - "missing evidence"
+      - "next task if not complete"
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      evidence:
+        - "PR #3 is open and draft: https://github.com/voicesofhim/mapper/pull/3"
+        - "PR head branch codex/add-ollama-embeddings is pushed at d634b82."
+        - "Implementation supports embeddingProvider=ollama for imports and Ask-the-Map query embeddings."
+        - "Tests cover mocked Ollama import embeddings, query embeddings, and domainDir plus ollama vector retrieval."
+        - "Verification passed: node --check scripts/import_accelerator_dataset.mjs; node --check scripts/ask_map_server.mjs; node --check scripts/import_slab_dataset.mjs; npm test."
+        - "npm test passed 9 test files and 51 tests."
+      missing_evidence: []
+      next_task_if_not_complete: null
+      summary: "No further Worker task is required for the requested local Ollama embedding provider PR."
+
+checks:
+  dirty_fingerprint: "only final GoalBuddy state receipt pending before final push"
+  last_verification:
+    result: pass
+    task: T002
+    commands:
+      - "node --check scripts/import_accelerator_dataset.mjs"
+      - "node --check scripts/ask_map_server.mjs"
+      - "node --check scripts/import_slab_dataset.mjs"
+      - "npm test"
