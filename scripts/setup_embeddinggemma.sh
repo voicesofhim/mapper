@@ -79,8 +79,10 @@ if [[ -n "${HF_TOKEN:-}" ]]; then
   "${HF_BIN}" auth login --token "${HF_TOKEN}" >/dev/null
 fi
 
-if ! "${HF_BIN}" auth whoami >/dev/null 2>&1; then
+AUTH_STATUS="$("${HF_BIN}" auth whoami 2>&1 || true)"
+if [[ "${AUTH_STATUS}" == *"Not logged in"* || "${AUTH_STATUS}" == *"Invalid user token"* || "${AUTH_STATUS}" == *"Token is invalid"* ]]; then
   echo "[embeddinggemma] Hugging Face login is required to access Gemma-gated weights."
+  echo "[embeddinggemma] First accept access for ${MODEL_ID} at https://huggingface.co/google/embeddinggemma-300m if your account has not already done so."
   echo "[embeddinggemma] A browser/token prompt may open. Do not commit or paste the token into repo files."
   "${HF_BIN}" auth login
 fi
@@ -92,8 +94,21 @@ fi
 
 echo "[embeddinggemma] Downloading ${MODEL_ID} to ${MODEL_DIR}"
 mkdir -p "${MODEL_DIR}"
-"${HF_BIN}" download "${MODEL_ID}" \
-  --local-dir "${MODEL_DIR}"
+if ! "${HF_BIN}" download "${MODEL_ID}" --local-dir "${MODEL_DIR}"; then
+  cat >&2 <<ERROR
+[embeddinggemma] Download failed.
+
+Most likely causes:
+  1. The local Hugging Face account has not accepted the Gemma/EmbeddingGemma license.
+  2. The local Hugging Face token is missing or does not have access to gated models.
+  3. The token was not saved by 'hf auth login'.
+
+Fix locally, without committing secrets:
+  .venv-embeddinggemma/bin/hf auth login
+  npm run setup:embeddinggemma
+ERROR
+  exit 1
+fi
 
 echo "[embeddinggemma] Verifying local sidecar help"
 "${VENV_DIR}/bin/python" "${ROOT_DIR}/scripts/embed_embeddinggemma.py" --help >/dev/null
