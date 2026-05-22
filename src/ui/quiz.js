@@ -194,7 +194,7 @@ export function init(container) {
       <div class="ask-chat-surface">
         <form class="ask-map-form">
           <textarea class="ask-map-input" aria-label="Research question" placeholder="Ask about participant patterns, tensions, themes, or evidence..."></textarea>
-          <button class="ask-map-submit" type="submit">Ask</button>
+          <button class="ask-map-submit" type="submit">SEARCH</button>
         </form>
         <div class="ask-map-samples" aria-label="Sample research questions"></div>
       </div>
