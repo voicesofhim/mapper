@@ -189,7 +189,22 @@ export async function ensureLocalDatabase(options = {}) {
   return { db, dbPath };
 }
 
-export async function loadEvidenceRows(db) {
+export async function loadEvidenceRows(db, options = {}) {
+  const filters = [];
+  const args = {};
+  if (options.embeddingProvider) {
+    filters.push('e.embedding_provider = :embeddingProvider');
+    args.embeddingProvider = options.embeddingProvider;
+  }
+  if (options.model) {
+    filters.push('e.embedding_model = :embeddingModel');
+    args.embeddingModel = options.model;
+  }
+  if (Number(options.dimensions) > 0) {
+    filters.push('e.embedding_dimensions = :embeddingDimensions');
+    args.embeddingDimensions = Number(options.dimensions);
+  }
+
   const result = await db.execute(`
     select
       c.id,
@@ -225,8 +240,9 @@ export async function loadEvidenceRows(db) {
       and c.visibility in ('researcher', 'participant', 'public')
       and c.contains_sensitive_data = 0
       and e.embedding_vector is not null
+      ${filters.length ? `and ${filters.join('\n      and ')}` : ''}
     group by c.id, e.id, u.id
-  `);
+  `, args);
   return result.rows;
 }
 
@@ -415,7 +431,11 @@ export async function answerQuery(query, context) {
     context.embedder = await createEmbeddingWorker(context);
   }
   const queryVector = await embedQuestion(cleanQuery, context);
-  const rows = await loadEvidenceRows(context.db);
+  const rows = await loadEvidenceRows(context.db, {
+    embeddingProvider: context.embeddingProvider,
+    model: context.model,
+    dimensions: context.dimensions,
+  });
   const matches = rankEvidence(queryVector, rows, {
     topK: context.topK,
     filters: context.filters,

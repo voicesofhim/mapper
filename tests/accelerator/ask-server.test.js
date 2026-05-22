@@ -168,6 +168,8 @@ describe('local Ask-the-Map retrieval server helpers', () => {
       local_only: true,
       retrieval_model: 'qwen3-embedding:4b',
     });
+    expect(executeCalls[0]).toContain('e.embedding_provider = :embeddingProvider');
+    expect(executeCalls[0]).toContain('e.embedding_model = :embeddingModel');
   });
 
   it('can answer from a selected local domain bundle without stale DB ids', async () => {
