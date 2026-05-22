@@ -186,7 +186,7 @@ export function init(container) {
     <div class="quiz-content ask-map-content" data-ask-mode="chat">
       <div class="ask-map-topline">
         <div class="ask-map-heading">
-          <div class="ask-map-title">Ask the Map</div>
+          <div class="ask-map-title">Search the Map</div>
         <div class="ask-map-subtitle">Answers are grounded only in the synthetic evidence bundle. Interpretations are labeled as inferences.</div>
         </div>
         <div class="ask-map-mode-root" aria-label="Ask mode"></div>
@@ -250,7 +250,7 @@ function setAskMode(mode) {
 function attachDrawerBehavior(container) {
   const drawerPull = document.createElement('div');
   drawerPull.className = 'drawer-pull';
-  drawerPull.setAttribute('aria-label', 'Toggle Ask the Map drawer');
+  drawerPull.setAttribute('aria-label', 'Toggle Search the Map drawer');
   const pullBar = document.createElement('div');
   pullBar.className = 'drawer-pull-bar';
   drawerPull.appendChild(pullBar);

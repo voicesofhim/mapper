@@ -309,7 +309,11 @@ function ensureVoiceStyles() {
       color: var(--color-text-muted);
     }
     .ask-voice-scope {
+      width: min(100%, 224px);
+      aspect-ratio: 1 / 1;
       margin-top: 0.5rem;
+      margin-left: auto;
+      margin-right: auto;
       border: 1px solid rgba(31, 247, 255, 0.16);
       background:
         linear-gradient(90deg, rgba(31, 247, 255, 0.045) 1px, transparent 1px),
@@ -328,7 +332,7 @@ function ensureVoiceStyles() {
     }
     .mapper-livekit-aura {
       width: 100%;
-      height: 118px;
+      height: 100%;
       display: block;
       overflow: hidden;
       background:
@@ -372,8 +376,8 @@ function ensureVoiceStyles() {
       .ask-voice-card {
         width: 100%;
       }
-      .mapper-livekit-aura {
-        height: 112px;
+      .ask-voice-scope {
+        width: min(100%, 220px);
       }
     }
   `;
