@@ -12,7 +12,7 @@
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, stat } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createClient } from '@libsql/client';
@@ -95,10 +95,26 @@ export function rankEvidence(queryVector, rows, options = {}) {
       };
     })
     .filter(row => Number.isFinite(row.score))
+    .filter(row => !filters.datasetId || filters.datasetId === 'all' || row.dataset_id === filters.datasetId)
     .filter(row => !filters.participantId || filters.participantId === 'all' || row.participant_id === filters.participantId)
     .filter(row => !filters.sourceType || filters.sourceType === 'all' || row.source_type === filters.sourceType)
     .filter(row => !filters.theme || filters.theme === 'all' || row.themes.includes(filters.theme))
     .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
+}
+
+export function rankStaticEvidence(query, rows, options = {}) {
+  const filters = options.filters || {};
+  const terms = tokenizeQuery(query);
+  const topK = Math.max(1, Math.min(MAX_TOP_K, Number(options.topK || DEFAULT_TOP_K)));
+  return rows
+    .filter(row => !filters.datasetId || filters.datasetId === 'all' || row.dataset_id === filters.datasetId)
+    .filter(row => !filters.participantId || filters.participantId === 'all' || row.participant_id === filters.participantId)
+    .filter(row => !filters.sourceType || filters.sourceType === 'all' || row.source_type === filters.sourceType)
+    .filter(row => !filters.theme || filters.theme === 'all' || (row.themes || []).includes(filters.theme))
+    .map(row => ({ ...row, score: staticEvidenceScore(row, terms) }))
+    .filter(row => row.score > 0)
+    .sort((a, b) => b.score - a.score || b.confidence - a.confidence)
     .slice(0, topK);
 }
 
@@ -174,6 +190,7 @@ export async function loadEvidenceRows(db) {
   const result = await db.execute(`
     select
       c.id,
+      c.dataset_id,
       c.participant_id as canonical_participant_id,
       p.display_code as participant_id,
       c.source_id,
@@ -208,6 +225,29 @@ export async function loadEvidenceRows(db) {
     group by c.id, e.id, u.id
   `);
   return result.rows;
+}
+
+export async function loadStaticBundleRows(domainDir, domainId = 'all') {
+  const bundlePath = safeDomainBundlePath(domainDir, domainId);
+  const bundle = JSON.parse(await readFile(bundlePath, 'utf8'));
+  return (bundle.map_items || bundle.articles || []).map(item => ({
+    id: item.id,
+    dataset_id: item.dataset_id || item.metadata_json?.dataset_id || item.source?.dataset_id || '',
+    participant_id: item.participant_id,
+    source_id: item.metadata_json?.source_id || item.source?.id || '',
+    source_type: item.source_type,
+    title: item.title,
+    summary: item.summary,
+    anonymized_text: item.anonymized_text,
+    excerpt: item.excerpt || item.anonymized_text,
+    themes: Array.isArray(item.themes) ? item.themes : [],
+    sentiment: item.sentiment || 'unknown',
+    confidence: Number(item.confidence ?? 0.75),
+    source_label: item.source?.label || item.source?.title || '',
+    source_ref: item.source?.source_ref || '',
+    umap_x: Number(item.umap_x ?? item.x),
+    umap_y: Number(item.umap_y ?? item.y),
+  }));
 }
 
 export async function embedQuestion(query, options = {}) {
@@ -327,6 +367,18 @@ export async function createEmbeddingWorker(options = {}) {
 
 export async function answerQuery(query, context) {
   const cleanQuery = sanitizeQuery(query);
+  if (context.domainDir) {
+    const rows = await loadStaticBundleRows(context.domainDir, context.domainId || 'all');
+    const matches = rankStaticEvidence(cleanQuery, rows, {
+      topK: context.topK,
+      filters: context.filters,
+    });
+    return buildAskMapResponse(cleanQuery, matches, {
+      model: 'static-domain-bundle',
+      followUp: 'Which of these local evidence points should we inspect more closely?',
+    });
+  }
+  if (!context.embedder) context.embedder = await createEmbeddingWorker(context);
   const queryVector = await embedQuestion(cleanQuery, context);
   const rows = await loadEvidenceRows(context.db);
   const matches = rankEvidence(queryVector, rows, {
@@ -341,7 +393,7 @@ export async function createAskMapServer(options = {}) {
   const context = {
     db,
     dbPath,
-    embedder: options.embedder || await createEmbeddingWorker(options),
+    embedder: options.embedder || null,
     python: options.python || DEFAULT_PYTHON,
     embedScript: options.embedScript || DEFAULT_EMBED_SCRIPT,
     model: options.model || DEFAULT_EMBEDDING_MODEL,
@@ -387,6 +439,8 @@ export async function createAskMapServer(options = {}) {
         ...context,
         topK: body.topK,
         filters: body.filters || {},
+        domainDir: body.domainDir,
+        domainId: body.domainId,
       });
       writeJson(res, 200, response);
     } catch (err) {
@@ -507,6 +561,47 @@ function parseThemes(value) {
   return String(value).split('||').map(theme => theme.trim()).filter(Boolean);
 }
 
+function safeDomainBundlePath(domainDir, domainId) {
+  const cleanDir = String(domainDir || '')
+    .trim()
+    .replace(/^\/+|\/+$/g, '');
+  const cleanDomainId = String(domainId || 'all').replace(/[^a-zA-Z0-9_-]/g, '');
+  if (!cleanDir || /^[a-z]+:/i.test(cleanDir) || cleanDir.startsWith('//') || cleanDir.includes('..') || cleanDir.includes('\\')) {
+    throw new Error('Unsafe domainDir.');
+  }
+  if (!cleanDir.startsWith('data/private-domains/') && cleanDir !== 'data/domains') {
+    throw new Error('domainDir must point to a local Mapper data directory.');
+  }
+  const path = resolve(PROJECT_ROOT, cleanDir, `${cleanDomainId || 'all'}.json`);
+  if (!path.startsWith(`${PROJECT_ROOT}${sep}`)) throw new Error('Unsafe domain bundle path.');
+  return path;
+}
+
+function tokenizeQuery(query) {
+  return String(query || '')
+    .toLowerCase()
+    .match(/[a-z][a-z0-9-]{2,}/g)
+    ?.filter(token => !STATIC_STOPWORDS.has(token)) || [];
+}
+
+function staticEvidenceScore(row, terms) {
+  if (!terms.length) return 0;
+  const title = String(row.title || '').toLowerCase();
+  const summary = String(row.summary || '').toLowerCase();
+  const excerpt = String(row.excerpt || row.anonymized_text || '').toLowerCase();
+  const themes = (row.themes || []).join(' ').toLowerCase();
+  const participant = String(row.participant_id || '').toLowerCase();
+  let score = 0;
+  for (const term of terms) {
+    if (title.includes(term)) score += 4;
+    if (themes.includes(term)) score += 3;
+    if (summary.includes(term)) score += 2;
+    if (excerpt.includes(term)) score += 1;
+    if (participant.includes(term)) score += 1;
+  }
+  return Number((score / Math.max(1, terms.length)).toFixed(4));
+}
+
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
@@ -528,6 +623,13 @@ async function hasSeedData(db) {
     return false;
   }
 }
+
+const STATIC_STOPWORDS = new Set([
+  'the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'when', 'then', 'than', 'but',
+  'about', 'have', 'has', 'had', 'was', 'were', 'are', 'our', 'you', 'they', 'them', 'their',
+  'there', 'because', 'before', 'after', 'really', 'very', 'just', 'like', 'would', 'could',
+  'should', 'need', 'want', 'what', 'where', 'which', 'who', 'how', 'does',
+]);
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));

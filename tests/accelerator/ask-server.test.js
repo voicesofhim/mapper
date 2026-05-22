@@ -1,10 +1,21 @@
 import { describe, expect, it } from 'vitest';
+import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { dirname, join, relative, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import {
+  answerQuery,
   buildAskMapResponse,
   cosineSimilarity,
   float32ArrayFromBlob,
+  loadStaticBundleRows,
   rankEvidence,
+  rankStaticEvidence,
 } from '../../scripts/ask_map_server.mjs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const root = resolve(__dirname, '../..');
 
 describe('local Ask-the-Map retrieval server helpers', () => {
   it('decodes float32 vector blobs from libSQL rows', () => {
@@ -70,6 +81,61 @@ describe('local Ask-the-Map retrieval server helpers', () => {
       filters: { participantId: 'P-1', sourceType: 'mentor_note' },
     });
     expect(ranked.map(row => row.id)).toEqual(['c2']);
+  });
+
+  it('filters vector rows by dataset id', () => {
+    const rows = [
+      { id: 'c1', dataset_id: 'slab:test', participant_id: 'P-1', source_type: 'interview', themes: 'SLAB', embedding_vector_array: [1, 0] },
+      { id: 'c2', dataset_id: 'seed:test', participant_id: 'P-1', source_type: 'interview', themes: 'seed', embedding_vector_array: [1, 0] },
+    ];
+
+    const ranked = rankEvidence([1, 0], rows, {
+      topK: 5,
+      filters: { datasetId: 'slab:test' },
+    });
+    expect(ranked.map(row => row.id)).toEqual(['c1']);
+  });
+
+  it('can answer from a selected local domain bundle without stale DB ids', async () => {
+    await mkdir(join(root, 'data/private-domains'), { recursive: true });
+    const privateRoot = await mkdtemp(join(root, 'data/private-domains/test-ask-'));
+    await writeFile(join(privateRoot, 'all.json'), JSON.stringify({
+      schema_version: 'accelerator-demo-v1',
+      domain: { id: 'all', name: 'SLAB Test', content_model: 'accelerator_research' },
+      map_items: [{
+        id: 'slab-c1',
+        dataset_id: 'slab:test',
+        participant_id: 'SLAB-001',
+        source_type: 'application',
+        title: 'Developer tooling',
+        summary: 'The team builds local developer tooling for private agents.',
+        excerpt: 'Private agent developer tooling evidence.',
+        themes: ['SLAB', 'application-form'],
+        confidence: 0.8,
+        umap_x: 0.2,
+        umap_y: 0.4,
+        source: { id: 's1', label: 'Application' },
+      }],
+    }));
+
+    const domainDir = relative(root, privateRoot);
+    const rows = await loadStaticBundleRows(domainDir, 'all');
+    const ranked = rankStaticEvidence('developer tooling for private agents', rows, {
+      filters: { datasetId: 'slab:test' },
+    });
+    const response = await answerQuery('developer tooling for private agents', {
+      domainDir,
+      domainId: 'all',
+      filters: { datasetId: 'slab:test' },
+      topK: 5,
+    });
+
+    expect(ranked.map(row => row.id)).toEqual(['slab-c1']);
+    expect(response.highlighted_map_item_ids).toEqual(['slab-c1']);
+    expect(response.metadata).toMatchObject({
+      local_only: true,
+      retrieval_model: 'static-domain-bundle',
+    });
   });
 
   it('returns negative infinity for mismatched vectors', () => {

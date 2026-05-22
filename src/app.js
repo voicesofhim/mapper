@@ -17,6 +17,7 @@ import {
 import * as registry from './domain/registry.js';
 import { load as loadDomain, loadQuestionsForDomain } from './domain/loader.js';
 import { indexQuestions } from './domain/questions.js';
+import { getDomainDataDir } from './domain/data-path.js';
 import { Estimator } from './learning/estimator.js';
 import { Sampler } from './learning/sampler.js';
 import { getCentrality } from './learning/curriculum.js';
@@ -87,10 +88,12 @@ let questionIndex = new Map();
 let mergedVideoWindows = []; // Accumulated window coords from recent unwatched-between videos
 let mapInitialized = false; // True once articles/questions/labels are set on the renderer
 let activeLens = {
+  datasetId: 'all',
   participantId: 'all',
   sourceType: 'all',
   theme: 'all',
   colorBy: 'source_type',
+  showPaths: false,
   highlightedIds: [],
 };
 let lensControls = null;
@@ -629,6 +632,7 @@ function getAllMapItems() {
 
 function getFilteredMapItems() {
   return getAllMapItems().filter(item => {
+    if (activeLens.datasetId !== 'all' && datasetIdForItem(item) !== activeLens.datasetId) return false;
     if (activeLens.participantId !== 'all' && item.participant_id !== activeLens.participantId) return false;
     if (activeLens.sourceType !== 'all' && item.source_type !== activeLens.sourceType) return false;
     if (activeLens.theme !== 'all' && !(item.themes || []).includes(activeLens.theme)) return false;
@@ -640,10 +644,14 @@ function applyLensToMap() {
   if (!isAcceleratorBundle() || !renderer) return;
   const filtered = getFilteredMapItems();
   renderer.setPoints(articlesToPoints(filtered));
-  renderer.setParticipantPaths(participantPathsFromItems(filtered));
+  setParticipantPathsForItems(filtered);
   videoPanel.setEvidence(evidenceToMarkers(filtered));
   renderer.highlightMapItems(activeLens.highlightedIds || []);
   window.dispatchEvent(new CustomEvent('mapper:lens-change', { detail: { ...activeLens, count: filtered.length } }));
+}
+
+function setParticipantPathsForItems(items) {
+  renderer.setParticipantPaths(activeLens.showPaths ? participantPathsFromItems(items) : []);
 }
 
 function evidenceToMarkers(items) {
@@ -687,6 +695,7 @@ function initMapLensControls(bundle) {
         position: relative;
       }
       .map-lens-trigger,
+      .map-lens-toggle,
       .map-lens-clear {
         min-height: 34px;
         border: 1px solid var(--color-border);
@@ -710,6 +719,17 @@ function initMapLensControls(bundle) {
         padding: 0 0.7rem;
         cursor: pointer;
         font-weight: 700;
+      }
+      .map-lens-toggle {
+        padding: 0 0.68rem;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .map-lens-toggle[aria-pressed="true"] {
+        border-color: var(--color-primary);
+        color: var(--color-primary);
+        background: rgba(31, 247, 255, 0.1);
+        box-shadow: 0 0 8px rgba(31, 247, 255, 0.18);
       }
       .map-lens-arrow {
         color: var(--color-text-muted);
@@ -758,6 +778,7 @@ function initMapLensControls(bundle) {
         color: var(--color-primary);
       }
       .map-lens-clear:hover,
+      .map-lens-toggle:hover,
       .map-lens-trigger:hover,
       .map-lens-trigger:focus {
         border-color: var(--color-primary);
@@ -782,6 +803,9 @@ function initMapLensControls(bundle) {
         .map-lens-clear {
           flex: 1 1 100%;
         }
+        .map-lens-toggle {
+          flex: 1 1 calc(50% - 0.25rem);
+        }
       }
     `;
     document.head.appendChild(style);
@@ -791,10 +815,12 @@ function initMapLensControls(bundle) {
   lensControls.className = 'map-lens-bar';
   lensControls.hidden = true;
   lensControls.innerHTML = `
+    ${lensDropdownMarkup('datasetId', 'Filter by dataset')}
     ${lensDropdownMarkup('participantId', 'Filter by participant')}
     ${lensDropdownMarkup('sourceType', 'Filter by source type')}
     ${lensDropdownMarkup('theme', 'Filter by theme')}
     ${lensDropdownMarkup('colorBy', 'Color by')}
+    <button class="map-lens-toggle" type="button" aria-pressed="false">Paths</button>
     <button class="map-lens-clear" type="button">Clear lens</button>
   `;
   container.appendChild(lensControls);
@@ -826,16 +852,25 @@ function initMapLensControls(bundle) {
 
   lensControls.querySelector('.map-lens-clear')?.addEventListener('click', () => {
     activeLens = {
+      datasetId: 'all',
       participantId: 'all',
       sourceType: 'all',
       theme: 'all',
       colorBy: 'source_type',
+      showPaths: false,
       highlightedIds: [],
     };
     for (const dropdown of lensControls.querySelectorAll('.map-lens-dropdown')) {
       setLensDropdownValue(dropdown, activeLens[dropdown.dataset.lens]);
     }
     clearMapLens();
+    updatePathToggle();
+    applyLensToMap();
+  });
+
+  lensControls.querySelector('.map-lens-toggle')?.addEventListener('click', () => {
+    activeLens = { ...activeLens, showPaths: !activeLens.showPaths };
+    updatePathToggle();
     applyLensToMap();
   });
 }
@@ -873,15 +908,20 @@ function updateMapLensControls(bundle) {
 
   const participants = bundle.participants || [];
   const items = bundle.map_items || bundle.articles || [];
+  const datasets = datasetsFromBundle(bundle, items);
   const sourceTypes = [...new Set(items.map(i => i.source_type).filter(Boolean))].sort();
   const themes = [...new Set(items.flatMap(i => i.themes || []))].sort();
 
+  populateLensDropdown(lensControls.querySelector('[data-lens="datasetId"]'), [
+    ['all', 'All datasets'],
+    ...datasets.map(dataset => [dataset.id, dataset.label]),
+  ], activeLens.datasetId);
   populateLensDropdown(lensControls.querySelector('[data-lens="participantId"]'), [
     ['all', 'All participants'],
-    ...participants.map(p => [p.display_code, `${p.display_code} · ${p.role}`]),
+    ...participants.map(p => [p.display_code, participantLensLabel(p)]),
   ], activeLens.participantId);
   populateLensDropdown(lensControls.querySelector('[data-lens="sourceType"]'), [
-    ['all', 'All sources'],
+    ['all', 'All source types'],
     ...sourceTypes.map(type => [type, type.replace(/_/g, ' ')]),
   ], activeLens.sourceType);
   populateLensDropdown(lensControls.querySelector('[data-lens="theme"]'), [
@@ -907,6 +947,47 @@ function updateMapLensControls(bundle) {
       setLensDropdownValue(dropdown, fallback);
     }
   }
+  updatePathToggle();
+}
+
+function updatePathToggle() {
+  const toggle = lensControls?.querySelector('.map-lens-toggle');
+  if (!toggle) return;
+  toggle.setAttribute('aria-pressed', String(Boolean(activeLens.showPaths)));
+}
+
+function datasetsFromBundle(bundle, items) {
+  const datasets = new Map();
+  if (bundle.dataset?.id) {
+    datasets.set(bundle.dataset.id, bundle.dataset.name || datasetLabel(bundle.dataset.id));
+  }
+  for (const item of items || []) {
+    const id = datasetIdForItem(item);
+    if (id && !datasets.has(id)) datasets.set(id, datasetLabel(id));
+  }
+  if (datasets.size === 0 && isAcceleratorBundle(bundle)) {
+    const id = bundle.domain?.id || 'accelerator';
+    datasets.set(id, bundle.domain?.name || datasetLabel(id));
+  }
+  return [...datasets.entries()]
+    .map(([id, label]) => ({ id, label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function datasetIdForItem(item) {
+  return item?.dataset_id || item?.metadata_json?.dataset_id || item?.source?.dataset_id || '';
+}
+
+function datasetLabel(id) {
+  if (String(id).startsWith('slab:')) return 'SLAB';
+  return String(id || 'Dataset').replace(/[:_-]+/g, ' ');
+}
+
+function participantLensLabel(participant) {
+  const code = participant.display_code || participant.id;
+  const team = participant.profile_json?.team_display;
+  if (team && team !== code) return `${code} · ${team}`;
+  return [code, participant.role].filter(Boolean).join(' · ');
 }
 
 function populateLensDropdown(dropdown, options, selectedValue) {
@@ -1134,7 +1215,7 @@ async function switchDomain(domainId) {
     renderer.setPoints(articlesToPoints(allDomainBundle.articles));
     if (isAcceleratorBundle()) {
       updateMapLensControls(currentDomainBundle);
-      renderer.setParticipantPaths(participantPathsFromItems(currentDomainBundle.map_items || currentDomainBundle.articles));
+      setParticipantPathsForItems(currentDomainBundle.map_items || currentDomainBundle.articles);
       videoPanel.setEvidence(evidenceToMarkers(currentDomainBundle.map_items || currentDomainBundle.articles));
       if (lensControls) lensControls.hidden = false;
     }
@@ -1166,16 +1247,18 @@ async function switchDomain(domainId) {
   } else if (isAcceleratorBundle(targetBundle)) {
     currentDomainBundle = targetBundle;
     activeLens = {
+      datasetId: 'all',
       participantId: 'all',
       sourceType: 'all',
       theme: 'all',
       colorBy: activeLens.colorBy || 'source_type',
+      showPaths: false,
       highlightedIds: [],
     };
     updateMapLensControls(currentDomainBundle);
     renderer.setLabels(currentDomainBundle.labels || [], GLOBAL_REGION, GLOBAL_GRID_SIZE);
     renderer.setPoints(articlesToPoints(currentDomainBundle.articles || currentDomainBundle.map_items || []));
-    renderer.setParticipantPaths(participantPathsFromItems(currentDomainBundle.map_items || currentDomainBundle.articles));
+    setParticipantPathsForItems(currentDomainBundle.map_items || currentDomainBundle.articles);
     videoPanel.setEvidence(evidenceToMarkers(currentDomainBundle.map_items || currentDomainBundle.articles));
     renderer.highlightMapItems([]);
     renderer.setSelectedPoint(null);
@@ -1403,7 +1486,10 @@ async function queryLocalAskMap(queryText) {
       body: JSON.stringify({
         query: queryText,
         topK: 5,
+        domainDir: privateDomainDirForAsk(),
+        domainId: currentDomainBundle?.domain?.id || 'all',
         filters: {
+          datasetId: activeLens.datasetId,
           participantId: activeLens.participantId,
           sourceType: activeLens.sourceType,
           theme: activeLens.theme,
@@ -1419,6 +1505,11 @@ async function queryLocalAskMap(queryText) {
   } finally {
     window.clearTimeout(timeout);
   }
+}
+
+function privateDomainDirForAsk() {
+  const dir = getDomainDataDir();
+  return dir === 'data/domains' ? '' : dir;
 }
 
 function matchAskQuestion(queryText, questions) {

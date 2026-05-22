@@ -22,7 +22,7 @@ The original education/quiz/Khan Academy domain has been reinterpreted as:
 - a local Turso/libSQL-backed canonical data model with static JSON export for the current frontend;
 - a future local-only LiveKit voice-agent target through frontend map action hooks.
 
-The app is functional with synthetic/seed data. The importer now includes a local Google EmbeddingGemma provider through a Python/Sentence Transformers sidecar. The next major work is running that provider against approved anonymized seed data, expanding ingestion beyond interview markdown, and adding local Turso-backed semantic retrieval.
+The app is functional with checked-in seed data and local-only private preview buckets. The importer includes a local Google EmbeddingGemma provider through a Python/Sentence Transformers sidecar, plus a deterministic local hash provider for tests and smoke previews. The first real-source adapter is `scripts/import_slab_dataset.mjs`; it imports the SLAB repo into ignored local bundles and Turso/libSQL seed SQL without committing generated evidence data. See `docs/EMBEDDING_PIPELINE.md` before changing ingestion, embeddings, tags, or dataset storage.
 
 ## What Has Been Done
 

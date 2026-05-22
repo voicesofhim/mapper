@@ -1,5 +1,7 @@
 /** Domain hierarchy initialization and lookup. */
 
+import { domainDataUrl } from './data-path.js';
+
 let domains = null;
 let idMap = null;
 let childrenMap = null;
@@ -16,7 +18,7 @@ function assertInitialized() {
  */
 export async function init(basePath) {
   const base = basePath ?? (import.meta.env.BASE_URL || '/mapper/');
-  const url = `${base}data/domains/index.json`;
+  const url = domainDataUrl('index.json', base);
 
   const res = await fetch(url);
   if (!res.ok) {
