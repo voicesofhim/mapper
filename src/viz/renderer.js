@@ -680,7 +680,7 @@ export class Renderer {
     this._renderWebGLOverlay(w, h);
     this._startWebGLAnimation();
 
-    if (this._highlightedIds.size > 0 || this._isThinking) {
+    if (this._highlightedIds.size > 0 || this._isThinking || this._participantPaths.length > 0) {
       this._scheduleRender();
     }
   }
@@ -758,7 +758,6 @@ export class Renderer {
       node: gl.createBuffer(),
       line: gl.createBuffer(),
       tracer: gl.createBuffer(),
-      tracerSprite: gl.createBuffer(),
     };
     gl.disable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
@@ -899,7 +898,6 @@ export class Renderer {
 
     const lineData = [];
     const tracerData = [];
-    const tracerSprites = [];
     const hasHighlightLens = this._highlightedIds.size > 0;
     const pushLine = (target, a, b, color, alpha) => {
       const [ax, ay] = this._screenToClip(a.x, a.y, w, h);
@@ -937,19 +935,6 @@ export class Renderer {
             y: a.y + (b.y - a.y) * t1,
           };
           pushLine(tracerData, ta, tb, color, hasHighlightLens ? 0.18 : 0.28);
-          const beadT = Math.min(1, t1);
-          const bead = {
-            x: a.x + (b.x - a.x) * beadT,
-            y: a.y + (b.y - a.y) * beadT,
-          };
-          const [cx, cy] = this._screenToClip(bead.x, bead.y, w, h);
-          tracerSprites.push(
-            cx, cy,
-            color[0] / 255, color[1] / 255, color[2] / 255,
-            hasHighlightLens ? 0.24 : 0.38,
-            (30 + Math.sin(time * 2.4 + pathIndex + i + pass) * 4.0) * this._dpr,
-            time * 0.4 + pathIndex + i + pass * 2.1
-          );
         }
       }
     }
@@ -973,7 +958,6 @@ export class Renderer {
 
     drawLines(this._glBuffers.line, lineData, 1);
     drawLines(this._glBuffers.tracer, tracerData, 1);
-    this._drawWebGLSpriteData(gl, this._glBuffers.tracerSprite, tracerSprites, time);
   }
 
   _drawObservatoryBackdrop(ctx, w, h) {
@@ -1296,17 +1280,6 @@ export class Renderer {
           ctx.lineWidth = (1.65 + pass * 0.25) / this._zoom;
           ctx.lineCap = 'round';
           ctx.stroke();
-
-          const beadPulse = 0.5 + 0.5 * Math.sin(now * 3.0 + pathIndex + i + pass);
-          const beadRadius = (7.5 + beadPulse * 2.5) / this._zoom;
-          const glow = ctx.createRadialGradient(ex, ey, 0, ex, ey, beadRadius * 3.2);
-          glow.addColorStop(0, `rgba(240, 255, 255, ${alpha * 0.9})`);
-          glow.addColorStop(0.28, `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${alpha * 0.54})`);
-          glow.addColorStop(1, `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0)`);
-          ctx.beginPath();
-          ctx.arc(ex, ey, beadRadius * 3.2, 0, Math.PI * 2);
-          ctx.fillStyle = glow;
-          ctx.fill();
         }
       }
     }
