@@ -93,10 +93,12 @@ let activeLens = {
   sourceType: 'all',
   theme: 'all',
   colorBy: 'source_type',
+  heatMode: 'density',
   showPaths: false,
   highlightedIds: [],
 };
 let lensControls = null;
+let lastAskHeat = { itemIds: [], scoresById: {} };
 
 function isAcceleratorBundle(bundle = allDomainBundle) {
   return bundle?.schema_version === 'accelerator-demo-v1' || bundle?.domain?.content_model === 'accelerator_research';
@@ -616,7 +618,7 @@ function applyLensToMap() {
   setParticipantPathsForItems(filtered);
   videoPanel.setEvidence(evidenceToMarkers(filtered));
   renderer.highlightMapItems(activeLens.highlightedIds || []);
-  renderer.setHeatAttractors(heatAttractorsFromItems(activeLens.highlightedIds || []));
+  syncHeatLayer(filtered);
   window.dispatchEvent(new CustomEvent('mapper:lens-change', { detail: { ...activeLens, count: filtered.length } }));
 }
 
@@ -641,9 +643,37 @@ function evidenceToMarkers(items) {
   }));
 }
 
+function syncHeatLayer(filteredItems = getFilteredMapItems()) {
+  if (!renderer) return;
+  const heatMode = activeLens.heatMode || 'density';
+  renderer.setHeatMode(heatMode);
+
+  if (heatMode === 'ask_relevance') {
+    renderer.setHeatAttractors(heatAttractorsFromItems(lastAskHeat.itemIds, {
+      scoresById: lastAskHeat.scoresById,
+      limit: 34,
+      maxRadius: 190,
+    }));
+    return;
+  }
+
+  if (heatMode === 'selected_lens') {
+    const filteredIds = (filteredItems || []).map(item => item.id).filter(Boolean);
+    renderer.setHeatAttractors(heatAttractorsFromItems(filteredIds, {
+      limit: 80,
+      maxRadius: 170,
+      minRadius: 92,
+    }));
+    return;
+  }
+
+  renderer.setHeatAttractors([]);
+}
+
 function heatAttractorsFromItems(itemIds, options = {}) {
   const scoresById = options.scoresById || {};
-  const ids = [...new Set((itemIds || []).map(String))].slice(0, 30);
+  const limit = options.limit || 30;
+  const ids = sampleHeatIds([...new Set((itemIds || []).map(String))], limit);
   const scores = ids
     .map(id => Number(scoresById[id]))
     .filter(Number.isFinite);
@@ -671,11 +701,21 @@ function heatAttractorsFromItems(itemIds, options = {}) {
         x: item.x ?? item.umap_x,
         y: item.y ?? item.umap_y,
         weight,
-        radius: Math.max(74, 162 - index * 12),
+        radius: Math.max(options.minRadius || 74, (options.maxRadius || 162) - index * 3.2),
         color: palette[index % palette.length],
       };
     })
     .filter(Boolean);
+}
+
+function sampleHeatIds(ids, limit) {
+  if (ids.length <= limit) return ids;
+  const sampled = [];
+  const step = (ids.length - 1) / Math.max(1, limit - 1);
+  for (let i = 0; i < limit; i++) {
+    sampled.push(ids[Math.round(i * step)]);
+  }
+  return sampled;
 }
 
 function initMapLensControls(bundle) {
@@ -695,7 +735,7 @@ function initMapLensControls(bundle) {
         display: flex;
         flex-wrap: wrap;
         gap: 0.45rem;
-        max-width: min(760px, calc(100% - 28px));
+        max-width: min(940px, calc(100% - 28px));
       }
       .map-lens-bar[hidden] { display: none !important; }
       .map-lens-dropdown {
@@ -827,6 +867,7 @@ function initMapLensControls(bundle) {
     ${lensDropdownMarkup('sourceType', 'Filter by source type')}
     ${lensDropdownMarkup('theme', 'Filter by theme')}
     ${lensDropdownMarkup('colorBy', 'Color by')}
+    ${lensDropdownMarkup('heatMode', 'Heat mode')}
     <button class="map-lens-toggle" type="button" aria-pressed="false">Paths</button>
     <button class="map-lens-clear" type="button">Clear lens</button>
   `;
@@ -864,6 +905,7 @@ function initMapLensControls(bundle) {
       sourceType: 'all',
       theme: 'all',
       colorBy: 'source_type',
+      heatMode: 'density',
       showPaths: false,
       highlightedIds: [],
     };
@@ -944,12 +986,20 @@ function updateMapLensControls(bundle) {
     ['trustInMentorship', 'Color: mentorship trust'],
     ['publicPrivateTension', 'Color: public/private tension'],
   ], activeLens.colorBy);
+  populateLensDropdown(lensControls.querySelector('[data-lens="heatMode"]'), [
+    ['off', 'Heat: off'],
+    ['density', 'Heat: density'],
+    ['ask_relevance', 'Heat: ask relevance'],
+    ['selected_lens', 'Heat: selected lens'],
+  ], activeLens.heatMode);
 
   for (const dropdown of lensControls.querySelectorAll('.map-lens-dropdown')) {
     if (dropdown.querySelector(`.map-lens-option[data-value="${cssEscape(activeLens[dropdown.dataset.lens])}"]`)) {
       setLensDropdownValue(dropdown, activeLens[dropdown.dataset.lens]);
     } else {
-      const fallback = dropdown.dataset.lens === 'colorBy' ? 'source_type' : 'all';
+      const fallback = dropdown.dataset.lens === 'colorBy' ? 'source_type'
+        : dropdown.dataset.lens === 'heatMode' ? 'density'
+          : 'all';
       activeLens = { ...activeLens, [dropdown.dataset.lens]: fallback };
       setLensDropdownValue(dropdown, fallback);
     }
@@ -1227,6 +1277,7 @@ async function switchDomain(domainId) {
       updateMapLensControls(currentDomainBundle);
       setParticipantPathsForItems(currentDomainBundle.map_items || currentDomainBundle.articles);
       videoPanel.setEvidence(evidenceToMarkers(currentDomainBundle.map_items || currentDomainBundle.articles));
+      syncHeatLayer(currentDomainBundle.map_items || currentDomainBundle.articles);
       if (lensControls) lensControls.hidden = false;
     }
     renderer.setAnsweredQuestions(responsesToAnsweredDots($responses.get(), questionIndex));
@@ -1262,6 +1313,7 @@ async function switchDomain(domainId) {
       sourceType: 'all',
       theme: 'all',
       colorBy: activeLens.colorBy || 'source_type',
+      heatMode: activeLens.heatMode || 'density',
       showPaths: false,
       highlightedIds: [],
     };
@@ -1271,7 +1323,7 @@ async function switchDomain(domainId) {
     setParticipantPathsForItems(currentDomainBundle.map_items || currentDomainBundle.articles);
     videoPanel.setEvidence(evidenceToMarkers(currentDomainBundle.map_items || currentDomainBundle.articles));
     renderer.highlightMapItems([]);
-    renderer.setHeatAttractors([]);
+    syncHeatLayer(currentDomainBundle.map_items || currentDomainBundle.articles);
     renderer.setSelectedPoint(null);
   }
 
@@ -1427,6 +1479,7 @@ async function handleAskMap(queryText, question) {
       const scoresById = Object.fromEntries((localResponse.evidence || [])
         .filter(item => item?.id)
         .map(item => [String(item.id), item.score]));
+      lastAskHeat = { itemIds: matchedIds, scoresById };
       quiz.showAskResponse(response);
       highlightMapItems(matchedIds, queryText, { focus: true, focusIds: matchedIds.slice(0, 3), scoresById });
       showEvidencePanel(evidence, { close: true });
@@ -1440,12 +1493,14 @@ async function handleAskMap(queryText, question) {
   if (!matched?.answer) {
     const staticResponse = staticAskResponse(queryText);
     if (!staticResponse) {
+      lastAskHeat = { itemIds: [], scoresById: {} };
       quiz.showAskResponse(null);
       clearMapLens();
       return;
     }
     const itemIds = staticResponse.highlighted_map_item_ids || [];
     const evidence = itemIds.map(findMapItem).filter(Boolean);
+    lastAskHeat = { itemIds, scoresById: {} };
     quiz.showAskResponse(staticResponse);
     highlightMapItems(itemIds, queryText, { focus: true, focusIds: itemIds.slice(0, 3) });
     showEvidencePanel(evidence, { close: true });
@@ -1454,6 +1509,7 @@ async function handleAskMap(queryText, question) {
 
   const itemIds = matched.answer.highlighted_map_item_ids || matched.answer.item_ids || [];
   const evidence = itemIds.map(findMapItem).filter(Boolean);
+  lastAskHeat = { itemIds, scoresById: {} };
   const response = {
     ...matched.answer,
     evidence: evidence.map(item => ({
@@ -1582,7 +1638,7 @@ function staticAskResponse(queryText) {
 function highlightMapItems(itemIds, reason = '', options = {}) {
   activeLens = { ...activeLens, highlightedIds: itemIds || [] };
   renderer.highlightMapItems(itemIds || []);
-  renderer.setHeatAttractors(heatAttractorsFromItems(itemIds || [], options));
+  syncHeatLayer();
   if (options.focus) {
     const focusIds = options.focusIds || itemIds || [];
     renderer.focusMapItems(focusIds, { maxZoom: 1.05, minSpan: 0.7, duration: 1800 });
@@ -1622,7 +1678,7 @@ function setMapLens({ theme, colorBy, highlightedIds } = {}) {
 function clearMapLens() {
   activeLens = { ...activeLens, highlightedIds: [] };
   renderer.highlightMapItems([]);
-  renderer.setHeatAttractors([]);
+  syncHeatLayer();
   renderer.setSelectedPoint(null);
 }
 
@@ -1880,6 +1936,17 @@ function handleReset() {
   mapInitialized = false;
   domainQuestionCount = 0;
   aggregatedQuestions = [];
+  activeLens = {
+    datasetId: 'all',
+    participantId: 'all',
+    sourceType: 'all',
+    theme: 'all',
+    colorBy: 'source_type',
+    heatMode: 'density',
+    showPaths: false,
+    highlightedIds: [],
+  };
+  lastAskHeat = { itemIds: [], scoresById: {} };
   switchGeneration++;
   renderer.abortTransition();
   estimator.reset();
@@ -1889,6 +1956,7 @@ function handleReset() {
   renderer.setPoints([]);
   renderer.setVideos([]);
   renderer.setHeatmap([], GLOBAL_REGION);
+  renderer.setHeatMode('density');
   renderer.setHeatAttractors([]);
   renderer.setLabels([]);
   renderer.setAnsweredQuestions([]);

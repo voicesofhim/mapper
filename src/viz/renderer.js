@@ -40,6 +40,7 @@ export class Renderer {
     this._heatmapEstimates = [];
     this._heatmapRegion = null;
     this._heatAttractors = [];
+    this._heatMode = 'density';
     this._answeredData = [];
     this._videoMarkers = [];
     this._videoTrajectories = new Map(); // videoId → [{x, y}] in temporal order
@@ -262,6 +263,14 @@ export class Renderer {
         return Number.isFinite(attractor?.x) && Number.isFinite(attractor?.y);
       })
       .slice(0, 80);
+    this._scheduleRender();
+    this._startWebGLAnimation();
+  }
+
+  setHeatMode(mode = 'density') {
+    const nextMode = ['off', 'density', 'ask_relevance', 'selected_lens'].includes(mode) ? mode : 'density';
+    if (this._heatMode === nextMode) return;
+    this._heatMode = nextMode;
     this._scheduleRender();
     this._startWebGLAnimation();
   }
@@ -923,10 +932,11 @@ export class Renderer {
   }
 
   _drawWebGLHeatAttractors(gl, w, h, time) {
+    if (this._heatMode === 'off') return;
     if (!this._points.length) return;
 
     const data = [];
-    const hasExplicitAttractors = this._heatAttractors.length > 0;
+    const hasExplicitAttractors = this._heatMode !== 'density' && this._heatAttractors.length > 0;
     const highlightedSet = this._highlightedIds;
     const pointById = new Map(this._points.map((point) => [String(point.id), point]));
 
@@ -936,22 +946,23 @@ export class Renderer {
         const point = attractor.id != null ? (pointById.get(String(attractor.id)) || attractor) : attractor;
         if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) continue;
         const screen = this._worldToScreen(point, w, h);
-        const size = Math.max(46, Math.min(260, attractor.radius || 132)) * this._dpr;
+        const size = Math.max(52, Math.min(320, attractor.radius || 148)) * this._dpr;
         const weight = Math.max(0.08, Math.min(1.25, attractor.weight ?? 0.85));
         const color = attractor.color || this._heatColorForIndex(index);
         const [cx, cy] = this._screenToClip(screen.x, screen.y, w, h);
         data.push(
           cx, cy,
-          color[0] / 255, color[1] / 255, color[2] / 255, 0.72,
+          color[0] / 255, color[1] / 255, color[2] / 255, 0.76,
           size,
           weight,
           (index + 1) * 2.173
         );
       }
     } else {
+      if (this._heatMode !== 'density') return;
       const visible = this._points.filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
       if (!visible.length) return;
-      const sampleLimit = 1500;
+      const sampleLimit = 1700;
       const stride = Math.max(1, Math.ceil(visible.length / sampleLimit));
       for (let index = 0; index < visible.length; index += stride) {
         const point = visible[index];
@@ -961,9 +972,9 @@ export class Renderer {
         const [cx, cy] = this._screenToClip(screen.x, screen.y, w, h);
         data.push(
           cx, cy,
-          0.09, 0.84, 0.94, hasExplicitAttractors || highlightedSet.size ? 0.0 : 0.11,
-          84 * this._dpr,
-          0.34,
+          0.08, 0.82, 0.94, highlightedSet.size ? 0.08 : 0.18,
+          142 * this._dpr,
+          highlightedSet.size ? 0.28 : 0.46,
           index * 0.713
         );
       }
