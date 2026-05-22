@@ -325,12 +325,18 @@ function ensureVoiceStyles() {
       overflow: hidden;
       position: relative;
     }
-    .ask-voice-scope::before {
+    .ask-voice-scope::before,
+    .ask-voice-scope::after {
       content: "";
       position: absolute;
       inset: 0;
-      background: linear-gradient(180deg, transparent 0 48%, rgba(31, 247, 255, 0.08) 50%, transparent 52% 100%);
       pointer-events: none;
+    }
+    .ask-voice-scope::before {
+      background: linear-gradient(180deg, transparent 0 48%, rgba(31, 247, 255, 0.08) 50%, transparent 52% 100%);
+    }
+    .ask-voice-scope::after {
+      background: linear-gradient(90deg, transparent 0 48%, rgba(31, 247, 255, 0.065) 50%, transparent 52% 100%);
     }
     .mapper-livekit-aura {
       width: 100%;
