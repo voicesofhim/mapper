@@ -1261,7 +1261,7 @@ function highlightMapItems(itemIds, reason = '', options = {}) {
   renderer.highlightMapItems(itemIds || []);
   if (options.focus) {
     const focusIds = options.focusIds || itemIds || [];
-    renderer.focusMapItems(focusIds, { maxZoom: 3.1, minSpan: 0.18, duration: 720 });
+    renderer.focusMapItems(focusIds, { maxZoom: 1.22, minSpan: 0.62, duration: 1450 });
   }
   window.dispatchEvent(new CustomEvent('mapper:highlight-items', {
     detail: { itemIds, reason, focus: !!options.focus },

@@ -792,22 +792,11 @@ export class Renderer {
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
         ctx.beginPath();
-        ctx.arc(px, py, radius * (isSelected ? 3.1 : 3.35 + highlightBreath * 0.34), 0, Math.PI * 2);
+        ctx.arc(px, py, radius * (isSelected ? 3.1 : 3.05 + highlightBreath * 0.42), 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${isSelected ? 0.82 : 0.58 + pulse * 0.16})`;
         ctx.lineWidth = (isSelected ? 1.35 : 1.25) / this._zoom;
         ctx.stroke();
         ctx.restore();
-
-        if (isHighlighted) {
-          ctx.save();
-          ctx.globalCompositeOperation = 'screen';
-          ctx.beginPath();
-          ctx.arc(px, py, radius * (6.2 + highlightBreath * 1.4), 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(255, 255, 255, ${0.18 + highlightBreath * 0.1})`;
-          ctx.lineWidth = 1.15 / this._zoom;
-          ctx.stroke();
-          ctx.restore();
-        }
       }
     }
     ctx.restore();
@@ -847,25 +836,14 @@ export class Renderer {
       const y = point.y * h;
       const color = point.color || [170, 220, 255, 230];
       const rankedScale = Math.max(0.72, 1 - index * 0.12);
-      const ring = (26 + pulse * 9) * rankedScale * intro / this._zoom;
-      const glow = ctx.createRadialGradient(x, y, 0, x, y, ring * 2.05);
+      const glowRadius = (28 + pulse * 8) * rankedScale * intro / this._zoom;
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, glowRadius * 2.05);
       glow.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.32)`);
       glow.addColorStop(0.42, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.105)`);
       glow.addColorStop(1, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0)`);
       ctx.beginPath();
-      ctx.arc(x, y, ring * 2.05, 0, Math.PI * 2);
+      ctx.arc(x, y, glowRadius * 2.05, 0, Math.PI * 2);
       ctx.fillStyle = glow;
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(x, y, ring, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(235, 248, 255, ${0.5 + pulse * 0.16})`;
-      ctx.lineWidth = 1.45 / this._zoom;
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.arc(x, y, Math.max(3.5 / this._zoom, ring * 0.12), 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(246, 252, 255, ${0.86 + pulse * 0.08})`;
       ctx.fill();
     });
     ctx.restore();
