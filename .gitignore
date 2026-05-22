@@ -352,3 +352,6 @@ models/
 
 # Local libSQL/Turso working databases
 data/accelerator/local/
+
+# Local scratch logs, screenshots, and service pid files
+tmp/

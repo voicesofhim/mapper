@@ -49,7 +49,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
       });
       setStatus('Connecting to local voice agent');
     } catch (err) {
-      setError(err?.message || 'Could not connect to local LiveKit');
+      setError(formatConnectionError(err));
       setStatus('Local voice unavailable');
     }
   }, []);
@@ -266,6 +266,14 @@ function formatTokenEndpointError(status) {
   if (status === 400) return 'Token request rejected by local server.';
   if (status >= 500) return 'Local token server error.';
   return `Local token server returned ${status}.`;
+}
+
+function formatConnectionError(err) {
+  const message = err?.message || '';
+  if (/failed to fetch|networkerror|load failed/i.test(message)) {
+    return 'Local token server offline. Start ask:server.';
+  }
+  return message || 'Could not connect to local LiveKit';
 }
 
 function ensureVoiceStyles() {
