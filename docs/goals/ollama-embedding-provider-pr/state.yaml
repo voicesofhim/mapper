@@ -5,7 +5,7 @@ goal:
   slug: "ollama-embedding-provider-pr"
   kind: recovery
   tranche: "Audit, repair if needed, verify, and push the Ollama embedding provider PR."
-  status: active
+  status: done
   intake:
     original_request: "Use GoalBuddy to implement, check, and push this PR."
     interpreted_outcome: "The Ollama embedding provider PR is implemented, verified, pushed, and audited against the requested local-model embedding outcome."
@@ -42,7 +42,7 @@ agents:
   worker: installed
   judge: installed
 
-active_task: T003
+active_task: null
 
 tasks:
   - id: T001
@@ -121,7 +121,7 @@ tasks:
   - id: T003
     type: pm
     assignee: PM
-    status: active
+    status: done
     reasoning_hint: default
     objective: "Run verification, commit/push any follow-up changes, and update the PR if needed."
     inputs:
@@ -134,11 +134,22 @@ tasks:
       - "Verification results."
       - "Push result."
       - "PR URL/state."
-    receipt: null
+    receipt:
+      result: done
+      commands:
+        - cmd: "git commit -m \"tighten ollama ask-map retrieval\""
+          status: pass
+        - cmd: "git push"
+          status: pass
+      summary: "Committed and pushed the Scout-driven follow-up fix to PR #3. Branch codex/add-ollama-embeddings advanced from 745419b to d634b82."
+      pr:
+        url: "https://github.com/voicesofhim/mapper/pull/3"
+        branch: "codex/add-ollama-embeddings"
+        latest_commit: "d634b82"
   - id: T999
     type: judge
     assignee: Judge
-    status: queued
+    status: done
     reasoning_hint: default
     objective: "Audit whether the PR satisfies the original user outcome."
     inputs:
@@ -154,11 +165,28 @@ tasks:
       - "full_outcome_complete: true | false"
       - "missing evidence"
       - "next task if not complete"
-    receipt: null
+    receipt:
+      result: done
+      decision: complete
+      full_outcome_complete: true
+      evidence:
+        - "PR #3 is open and draft: https://github.com/voicesofhim/mapper/pull/3"
+        - "PR head branch codex/add-ollama-embeddings is pushed at d634b82."
+        - "Implementation supports embeddingProvider=ollama for imports and Ask-the-Map query embeddings."
+        - "Tests cover mocked Ollama import embeddings, query embeddings, and domainDir plus ollama vector retrieval."
+        - "Verification passed: node --check scripts/import_accelerator_dataset.mjs; node --check scripts/ask_map_server.mjs; node --check scripts/import_slab_dataset.mjs; npm test."
+        - "npm test passed 9 test files and 51 tests."
+      missing_evidence: []
+      next_task_if_not_complete: null
+      summary: "No further Worker task is required for the requested local Ollama embedding provider PR."
 
 checks:
-  dirty_fingerprint: unknown
+  dirty_fingerprint: "only final GoalBuddy state receipt pending before final push"
   last_verification:
-    result: unknown
-    task: null
-    commands: []
+    result: pass
+    task: T002
+    commands:
+      - "node --check scripts/import_accelerator_dataset.mjs"
+      - "node --check scripts/ask_map_server.mjs"
+      - "node --check scripts/import_slab_dataset.mjs"
+      - "npm test"
