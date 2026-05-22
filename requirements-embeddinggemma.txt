@@ -1,0 +1,6 @@
+# Local-only EmbeddingGemma runtime for scripts/embed_embeddinggemma.py.
+# Google currently documents the preview transformers branch for this model.
+sentence-transformers>=5.1.0
+torch>=2.6.0
+huggingface_hub>=0.34.0
+git+https://github.com/huggingface/transformers@v4.56.0-Embedding-Gemma-preview

@@ -1,6 +1,6 @@
 # Agent Handoff: Knowledge Mapper Accelerator Observatory
 
-Last updated: 2026-05-21
+Last updated: 2026-05-22
 
 Primary repo: `voicesofhim/mapper`
 
@@ -19,10 +19,10 @@ The original education/quiz/Khan Academy domain has been reinterpreted as:
 - a semantic evidence map of accelerator participant research;
 - an Ask-the-Map interface for grounded research questions;
 - an Evidence panel for excerpts and supporting signals;
-- a Turso/libSQL-backed canonical data model with static JSON export for the current frontend;
-- a future LiveKit voice-agent target through frontend map action hooks.
+- a local Turso/libSQL-backed canonical data model with static JSON export for the current frontend;
+- a future local-only LiveKit voice-agent target through frontend map action hooks.
 
-The app is functional with synthetic/seed data. The next major work is replacing fixture embeddings with local Google EmbeddingGemma embeddings and expanding ingestion beyond interview markdown.
+The app is functional with synthetic/seed data. The importer now includes a local Google EmbeddingGemma provider through a Python/Sentence Transformers sidecar. The next major work is running that provider against approved anonymized seed data, expanding ingestion beyond interview markdown, and adding local Turso-backed semantic retrieval.
 
 ## What Has Been Done
 
@@ -152,11 +152,11 @@ window.dispatchEvent(new CustomEvent('mapper:action', {
 }))
 ```
 
-These hooks are intended for a future LiveKit voice agent:
+These hooks are intended for a future local-only LiveKit voice agent:
 
 1. User speaks.
 2. LiveKit agent transcribes/responds.
-3. Backend searches Turso/embeddings.
+3. Local backend searches local Turso/embeddings.
 4. Backend returns grounded answer and map actions.
 5. Frontend highlights nodes and updates evidence.
 
@@ -203,6 +203,8 @@ The browser should not receive:
 - API keys;
 - vector blobs;
 - private source material beyond approved anonymized excerpts.
+
+Current architecture note: Turso/libSQL should be local-only for this phase. Do not configure a remote Turso cloud database unless the project owner explicitly changes the governance requirement.
 
 ## Current Seed Data
 
@@ -265,23 +267,46 @@ npm run import:accelerator
 The importer currently supports:
 
 - `local`: deterministic hash embeddings for offline fixtures and tests.
+- `embeddinggemma`: local Google EmbeddingGemma through `scripts/embed_embeddinggemma.py`.
 - `openai`: provider-backed path added during exploration.
 
-The OpenAI path is not the intended production direction anymore. It should be considered optional/experimental or removed after EmbeddingGemma is implemented.
+The OpenAI path is not the intended production direction anymore. It should be considered optional/experimental or removed once it is no longer useful for contract tests.
 
 ### Production Direction
 
 Use local Google EmbeddingGemma.
 
-Recommended provider shape:
+Local setup:
+
+```bash
+python3 -m venv .venv-embeddinggemma
+. .venv-embeddinggemma/bin/activate
+pip install -r requirements-embeddinggemma.txt
+```
+
+Run the importer with the local provider:
 
 ```bash
 npm run import:accelerator -- \
   --embedding-provider embeddinggemma \
-  --embedding-model google/embeddinggemma-300M
+  --embedding-model google/embeddinggemma-300M \
+  --embedding-dimensions 768
 ```
 
-The actual command may differ depending on whether the next developer implements a Node wrapper, Python sidecar, or CLI bridge.
+Useful local flags:
+
+```bash
+# Apple Silicon acceleration
+npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-device mps
+
+# Use the project venv Python explicitly
+npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-command .venv-embeddinggemma/bin/python
+
+# Smaller Matryoshka vector for quick local experiments
+npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-dimensions 256
+```
+
+The first real model run may require accepting the Gemma license on Hugging Face and authenticating locally. Keep the token out of the repo and out of committed shell scripts.
 
 Relevant Google docs:
 
@@ -296,36 +321,31 @@ Google describes EmbeddingGemma as:
 - flexible output dimensions down to 128 through Matryoshka Representation Learning;
 - suitable for offline/private embedding workflows.
 
-### Recommended EmbeddingGemma Implementation Plan
+### EmbeddingGemma Implementation
 
-Add a new provider to `scripts/import_accelerator_dataset.mjs`:
+Implemented files:
 
-```js
-if (provider === 'embeddinggemma') return buildEmbeddingGemmaRecords(chunks, options);
+```text
+scripts/import_accelerator_dataset.mjs
+scripts/embed_embeddinggemma.py
+requirements-embeddinggemma.txt
+tests/accelerator/importer.test.js
 ```
 
-Suggested implementation options:
+How it works:
 
-1. **Python sidecar script**
-   - Add `scripts/embed_embeddinggemma.py`.
-   - Use `sentence-transformers`.
-   - Load `google/embeddinggemma-300M`.
-   - Accept JSONL input from stdin or a temp file.
-   - Return JSONL with `{ chunk_id, vector }`.
-   - Node importer calls Python via `child_process.spawn`.
+1. `npm run import:accelerator -- --embedding-provider embeddinggemma` calls `buildEmbeddingGemmaRecords`.
+2. The Node importer spawns `scripts/embed_embeddinggemma.py`.
+3. The Python sidecar reads `{ items: [{ id, text }] }` JSON from stdin.
+4. It loads `google/embeddinggemma-300M` with Sentence Transformers.
+5. It encodes anonymized chunk text with `prompt_name="Retrieval-document"` by default.
+6. It returns `{ id, embedding }` JSON to Node.
+7. Node stores vectors as float arrays and BLOB hex, computes UMAP, writes local Turso seed SQL, and strips vector blobs from frontend JSON.
 
-2. **Precomputed vectors file**
-   - Add `--embedding-input path/to/vectors.jsonl`.
-   - Python/Colab/local ML script generates vectors separately.
-   - Node importer reads vectors and continues Turso/UMAP export.
-   - This is often simpler and safer for early real data.
+Still useful future options:
 
-3. **Local model service**
-   - Run a small local HTTP embedding service.
-   - Node importer calls `http://127.0.0.1:PORT/embed`.
-   - Useful if multiple tools will share the same local model.
-
-Recommended first pass: option 2 or option 1.
+- Add `--embedding-input path/to/vectors.jsonl` for externally precomputed local vectors.
+- Add a local HTTP embedding service at `127.0.0.1` if multiple tools will share the loaded model.
 
 ### Embedding Record Requirements
 
@@ -372,7 +392,7 @@ This accepts embedding vectors, fits UMAP, normalizes coordinates to `[0,1]`, an
 
 For production data:
 
-- use a stable projection version, e.g. `umap-embeddinggemma-300m-v1`;
+- use the generated stable projection version, e.g. `umap-embeddinggemma-google-embeddinggemma-300m-v1`;
 - store UMAP params in `params_json`;
 - consider larger `n_neighbors` once there are enough chunks;
 - keep seed/fixed randomness for repeatability;
@@ -471,11 +491,12 @@ Expected for current local fixture:
 
 - `AGENTS.md` previously contained stale ContextLab/Khan-specific details. It has been replaced with accelerator-specific guidance.
 - The OpenAI provider code exists but is not the desired production path.
+- The EmbeddingGemma sidecar is implemented, but the real model run still depends on local Python dependencies, Gemma license access, and local Hugging Face auth.
 - The importer currently has only basic deterministic theme inference.
 - Ask-the-Map is static/sample-question based, not live semantic retrieval.
 - Real participant data has not been imported.
-- No Turso cloud instance is configured in repo.
-- No LiveKit integration is implemented yet.
+- No Turso cloud instance is configured in repo; this is intentional because Turso/libSQL is local-only for now.
+- No LiveKit integration is implemented yet; when added, it should be local-only for this phase.
 - The repo still includes legacy Mapper code and tests.
 - `npm audit` reports existing dependency vulnerabilities; not yet addressed.
 
@@ -500,11 +521,11 @@ No key was found in repo files.
 
 ## Suggested Next Steps
 
-1. **Implement EmbeddingGemma provider**
-   - Add `embeddinggemma` provider in `scripts/import_accelerator_dataset.mjs`.
-   - Prefer Python sidecar or precomputed vectors file.
-   - Store vectors in Turso SQL as BLOBs.
-   - Keep vectors out of frontend JSON.
+1. **Run and verify real local EmbeddingGemma**
+   - Install `requirements-embeddinggemma.txt` in `.venv-embeddinggemma`.
+   - Accept the Gemma license and authenticate Hugging Face locally if needed.
+   - Run `npm run import:accelerator -- --embedding-provider embeddinggemma`.
+   - Inspect generated clusters and SQL vector BLOB lengths.
 
 2. **Add mixed-source manifest ingestion**
    - Support interviews, prior interviews, social posts, mentor notes, program material, reflections.
@@ -526,7 +547,8 @@ No key was found in repo files.
    - Participant mode: careful reflective wording and stricter visibility filtering.
 
 6. **LiveKit bridge**
-   - Add backend endpoint or websocket for map actions.
+   - Add local backend endpoint or websocket for map actions.
+   - Keep LiveKit local-only for this phase.
    - Have voice agent return `mapper:action` payloads.
 
 7. **CI and governance**
@@ -553,4 +575,4 @@ Start here:
    - `src/ui/video-panel.js`
    - `src/viz/renderer.js`
 
-The next high-leverage PR should be the local EmbeddingGemma provider plus a mixed-source manifest scaffold.
+The next high-leverage PR should run the real local EmbeddingGemma model on approved anonymized inputs and add the mixed-source manifest scaffold.

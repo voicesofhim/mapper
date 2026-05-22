@@ -16,6 +16,7 @@ Implemented and pushed to `main`:
 - Future voice-agent map actions through `window.mapperActions` and `mapper:action` events.
 - Canonical Turso/libSQL schema in `scripts/accelerator-schema.sql`.
 - Import pipeline for anonymized interview markdown.
+- Local Google EmbeddingGemma provider via a Python/Sentence Transformers sidecar.
 - Seed domain generated from 3 anonymized fixture interviews.
 - Static Mapper JSON export plus Turso seed SQL.
 - Tests for schema, importer, exporter, no-browser-UMAP, and visual behavior.
@@ -81,6 +82,7 @@ npm run test:legacy
 │   └── videos/                              # Legacy Mapper video assets
 ├── scripts/
 │   ├── accelerator-schema.sql               # Canonical Turso/libSQL schema
+│   ├── embed_embeddinggemma.py              # Local EmbeddingGemma sidecar
 │   ├── import_accelerator_dataset.mjs       # Markdown -> chunks -> embeddings -> UMAP -> JSON/SQL
 │   └── export_accelerator_domain.mjs        # Turso/static export normalizer
 ├── src/
@@ -160,7 +162,7 @@ It defines:
 - `umap_coordinates`: precomputed 2D projection coordinates linked to an embedding.
 - `research_questions` and `question_evidence`: grounded Ask-the-Map responses and supporting chunks.
 
-The frontend should not connect directly to Turso for the current Mapper-compatible build. Turso is the canonical backend; static JSON remains the browser delivery format.
+The frontend should not connect directly to Turso for the current Mapper-compatible build. Turso/libSQL is the canonical backend, but for this phase it should be run locally only; static JSON remains the browser delivery format.
 
 ## Import Pipeline
 
@@ -218,24 +220,58 @@ Outputs:
 - `data/accelerator/exports/accelerator-seed.sql`
 - `data/domains/accelerator-seed.json`
 
-## Embedding Pipeline Direction
+## Embedding Pipeline
 
-The current checked-in importer has two code paths:
+The importer has three provider paths:
 
 - `local`: deterministic hash embeddings for tests and offline fixture generation.
-- `openai`: provider-backed embedding path added during exploration, but no longer the preferred production direction.
+- `embeddinggemma`: local Google EmbeddingGemma embeddings through `scripts/embed_embeddinggemma.py`.
+- `openai`: optional legacy/experimental path from earlier exploration; not the preferred direction.
 
-The intended production path is now **local Google EmbeddingGemma**, not OpenAI.
+The intended production path is **local Google EmbeddingGemma**, not OpenAI.
 
-Planned provider:
+Provider details:
 
 - Provider name: `embeddinggemma`
 - Model: `google/embeddinggemma-300M` / `google/embeddinggemma-300m`
-- Runtime: local Python sidecar or local CLI, likely using Sentence Transformers.
+- Runtime: local Python sidecar using Sentence Transformers.
 - Output: float vectors stored as Turso/libSQL BLOBs in `embeddings.embedding_vector`.
 - Metadata: provider, model id, dimensions, vector hash, input hash.
 - UMAP: computed in Node or Python after embeddings are generated.
 - Frontend JSON: should include only embedding metadata and UMAP coordinates, not vector blobs.
+
+Set up the local model environment:
+
+```bash
+python3 -m venv .venv-embeddinggemma
+. .venv-embeddinggemma/bin/activate
+pip install -r requirements-embeddinggemma.txt
+```
+
+Then run the importer with the local provider:
+
+```bash
+npm run import:accelerator -- \
+  --embedding-provider embeddinggemma \
+  --embedding-model google/embeddinggemma-300M \
+  --embedding-dimensions 768
+```
+
+Useful optional flags:
+
+```bash
+# Apple Silicon
+npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-device mps
+
+# Smaller Matryoshka vector for local experiments
+npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-dimensions 256
+
+# Custom Python executable or sidecar
+npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-command .venv-embeddinggemma/bin/python
+npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-script scripts/embed_embeddinggemma.py
+```
+
+The first real model run may require accepting the Gemma license on Hugging Face and authenticating locally with a Hugging Face token. Do not commit that token; keep it in your shell, keychain, or ignored local environment.
 
 Google describes EmbeddingGemma as a 308M-parameter local/on-device embedding model with 768-dimensional embeddings, flexible output dimensions down to 128 via Matryoshka Representation Learning, and offline operation. See:
 
@@ -270,6 +306,8 @@ Ask-the-Map currently uses grounded sample questions from domain JSON:
 It does not pretend to be a full AI answer engine yet. It matches known questions/aliases and highlights evidence IDs. The future backend should search Turso/embeddings, generate a grounded answer, and send map actions back to the frontend.
 
 ## Future LiveKit / Voice-Agent Hooks
+
+LiveKit is not implemented yet. When it is added, it should be local-only for this phase, with a local agent/backend reading from local Turso/libSQL and emitting frontend map actions.
 
 The app exposes:
 
@@ -339,10 +377,10 @@ That means 7 embedding rows, 7 stored vector blobs, each 384 bytes in the local 
 
 ## Next Priorities
 
-1. Replace or deprecate the OpenAI provider path with an `embeddinggemma` local provider.
-2. Add a Python sidecar or CLI wrapper for `google/embeddinggemma-300M`.
-3. Support mixed-source ingestion through manifests, not just interview markdown.
-4. Replace seed fixtures with the first approved anonymized participant exports.
-5. Add real semantic Ask-the-Map retrieval over Turso chunks/vectors.
-6. Add researcher vs participant-facing mode.
+1. Run the real EmbeddingGemma sidecar on approved anonymized seed inputs and review the resulting map.
+2. Support mixed-source ingestion through manifests, not just interview markdown.
+3. Replace seed fixtures with the first approved anonymized participant exports.
+4. Add real semantic Ask-the-Map retrieval over local Turso chunks/vectors.
+5. Add researcher vs participant-facing mode.
+6. Add the future LiveKit bridge as local-only.
 7. Add CI checks for import/export contract and no-secret scanning.

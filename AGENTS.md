@@ -15,9 +15,10 @@ Build Knowledge Mapper as an accelerator participant research tool:
 - Interactive semantic map of anonymized participant evidence.
 - Ask-the-Map grounded answers with highlighted source chunks.
 - Evidence panel for interviews, prior interviews, social posts, mentor notes, program material, and reflections.
-- Turso/libSQL as the canonical database.
+- Local Turso/libSQL as the canonical database.
 - Static Mapper-compatible JSON as the current frontend delivery format.
-- Local EmbeddingGemma planned as the production embedding provider.
+- Local EmbeddingGemma as the production embedding provider.
+- Future LiveKit integration should stay local-only for this phase.
 
 ## Important Context
 
@@ -29,6 +30,7 @@ This is no longer primarily the original Wikipedia/Khan Academy educational app.
 README.md
 AGENT_HANDOFF.md
 scripts/accelerator-schema.sql
+scripts/embed_embeddinggemma.py
 scripts/import_accelerator_dataset.mjs
 scripts/export_accelerator_domain.mjs
 data/domains/index.json
@@ -59,6 +61,7 @@ tests/visual/accelerator-observatory.spec.js
 npm install
 npm run dev
 npm run import:accelerator
+npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-model google/embeddinggemma-300M
 npm test
 npm run build
 npm run test:accelerator:visual -- --project=chromium
@@ -69,14 +72,24 @@ npm run test:accelerator:visual -- --project=chromium
 Current implementation:
 
 - `local` provider: deterministic hash embeddings for fixture/test generation.
-- `openai` provider: experimental provider-backed path from earlier exploration.
+- `embeddinggemma` provider: local Google EmbeddingGemma through `scripts/embed_embeddinggemma.py`.
+- `openai` provider: optional experimental path from earlier exploration; not preferred.
 
-Preferred next implementation:
+Local model setup:
 
-- Add `embeddinggemma` provider using local Google EmbeddingGemma.
-- Store vectors in Turso/libSQL `embeddings.embedding_vector`.
+```bash
+python3 -m venv .venv-embeddinggemma
+. .venv-embeddinggemma/bin/activate
+pip install -r requirements-embeddinggemma.txt
+npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-model google/embeddinggemma-300M
+```
+
+Keep this local-first:
+
+- Store vectors in local Turso/libSQL `embeddings.embedding_vector`.
 - Compute UMAP outside the browser.
 - Export static Mapper JSON without vector blobs.
+- Keep future LiveKit agent/backend local-only until the project explicitly changes that requirement.
 
 Relevant Google docs:
 

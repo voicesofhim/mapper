@@ -113,6 +113,48 @@ I need structure before execution.
     expect(computeUmapCoordinates(embeddings)[0].projection_version).toBe('umap-openai-text-embedding-3-small-v1');
   });
 
+  it('can use local EmbeddingGemma embeddings with a mocked sidecar response', async () => {
+    const sidecarCalls = [];
+    const embeddings = await buildEmbeddingRecords([
+      { id: 'c1', title: 'One', summary: 'Summary', anonymized_text: 'Anonymized text one.', themes: ['learning'], source_type: 'interview' },
+      { id: 'c2', title: 'Two', summary: 'Summary', anonymized_text: 'Anonymized text two.', themes: ['execution'], source_type: 'mentor_note' },
+    ], {
+      embeddingProvider: 'embeddinggemma',
+      embeddingModel: 'google/embeddinggemma-300M',
+      embeddingDimensions: 4,
+      embeddingPromptName: 'Retrieval-document',
+      embeddingBatchSize: 2,
+      embeddingGemmaRunner: async (items, options) => {
+        sidecarCalls.push({ items, options });
+        return [
+          [0.1, 0.2, 0.3, 0.4],
+          [0.4, 0.3, 0.2, 0.1],
+        ];
+      },
+    });
+
+    expect(sidecarCalls[0].items).toHaveLength(2);
+    expect(sidecarCalls[0].options).toMatchObject({
+      model: 'google/embeddinggemma-300M',
+      dimensions: 4,
+      promptName: 'Retrieval-document',
+      batchSize: 2,
+    });
+    expect(embeddings[0]).toMatchObject({
+      embedding_provider: 'embeddinggemma',
+      embedding_model: 'google/embeddinggemma-300M',
+      embedding_dimensions: 4,
+    });
+    expect(embeddings[0].metadata_json).toMatchObject({
+      runtime: 'sentence-transformers',
+      prompt_name: 'Retrieval-document',
+      local_only: true,
+      input_redaction: 'anonymized_text_only',
+    });
+    expect(embeddings[0].vector_blob_hex).toBeTruthy();
+    expect(computeUmapCoordinates(embeddings)[0].projection_version).toBe('umap-embeddinggemma-google-embeddinggemma-300m-v1');
+  });
+
   it('stores vector blobs in Turso SQL but strips them from frontend JSON', async () => {
     const bundle = await buildAcceleratorDataset({
       inputDir: resolve(root, 'data/accelerator/raw/anonymized-interviews'),

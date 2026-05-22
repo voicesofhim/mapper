@@ -6,17 +6,18 @@
  * - parses anonymized interview markdown files
  * - chunks source text
  * - assigns evidence themes
- * - creates embedding vectors with either a local deterministic provider or OpenAI
+ * - creates embedding vectors with local deterministic fixtures, EmbeddingGemma, or optional OpenAI
  * - computes UMAP x/y coordinates with umap-js
  * - exports Mapper-compatible JSON and optional Turso/libSQL seed SQL
  *
- * Production runs are expected to use a local EmbeddingGemma provider next.
+ * Production runs are expected to use the local EmbeddingGemma provider.
  * Local hash mode remains available for offline tests and fixture generation.
  */
 
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, extname, join, resolve } from 'node:path';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { UMAP } from 'umap-js';
 import { normalizeAcceleratorExport } from './export_accelerator_domain.mjs';
@@ -33,6 +34,9 @@ const SOURCE_TYPES = new Set(['interview', 'prior_interview', 'social', 'mentor_
 const LOCAL_EMBEDDING_DIMENSIONS = 96;
 const LOCAL_EMBEDDING_MODEL = 'local-hash-evidence-v1';
 const DEFAULT_OPENAI_EMBEDDING_MODEL = 'text-embedding-3-small';
+const DEFAULT_EMBEDDINGGEMMA_MODEL = 'google/embeddinggemma-300M';
+const DEFAULT_EMBEDDINGGEMMA_PROMPT_NAME = 'Retrieval-document';
+const DEFAULT_EMBEDDINGGEMMA_SCRIPT = join(PROJECT_ROOT, 'scripts/embed_embeddinggemma.py');
 const LOCAL_PROJECTION_VERSION = 'umap-local-hash-v1';
 
 const THEME_RULES = [
@@ -118,8 +122,14 @@ export async function buildAcceleratorDataset(options = {}) {
     embeddingProvider: options.embeddingProvider,
     embeddingModel: options.embeddingModel,
     embeddingDimensions: options.embeddingDimensions,
+    embeddingPromptName: options.embeddingPromptName,
+    embeddingCommand: options.embeddingCommand,
+    embeddingScript: options.embeddingScript,
+    embeddingDevice: options.embeddingDevice,
+    embeddingBatchSize: options.embeddingBatchSize,
     apiKey: options.apiKey,
     fetchImpl: options.fetchImpl,
+    embeddingGemmaRunner: options.embeddingGemmaRunner,
   });
   const coordinates = computeUmapCoordinates(embeddings, {
     projectionVersion: projectionVersionForEmbeddings(embeddings),
@@ -252,6 +262,7 @@ export function chunkText(text, maxChars = 420) {
 
 export async function buildEmbeddingRecords(chunks, options = {}) {
   const provider = options.embeddingProvider || 'local';
+  if (provider === 'embeddinggemma') return buildEmbeddingGemmaRecords(chunks, options);
   if (provider === 'openai') return buildOpenAIEmbeddingRecords(chunks, options);
   if (provider !== 'local') throw new Error(`Unsupported embedding provider "${provider}"`);
   return chunks.map(chunk => buildEmbeddingRecord(chunk));
@@ -259,20 +270,117 @@ export async function buildEmbeddingRecords(chunks, options = {}) {
 
 export function buildEmbeddingRecord(chunk) {
   const vector = embedText(embeddingTextForChunk(chunk));
-  const bytes = Buffer.from(Float32Array.from(vector).buffer);
+  return embeddingRecordFromVector(chunk, {
+    provider: 'local',
+    model: LOCAL_EMBEDDING_MODEL,
+    vector,
+    metadata: {
+      note: 'Local deterministic embedding for pipeline validation; replace with production embedding provider for real analysis.',
+    },
+  });
+}
+
+export async function buildEmbeddingGemmaRecords(chunks, options = {}) {
+  const model = options.embeddingModel || process.env.EMBEDDINGGEMMA_MODEL || DEFAULT_EMBEDDINGGEMMA_MODEL;
+  const dimensions = numberOr(options.embeddingDimensions, process.env.EMBEDDINGGEMMA_DIMENSIONS);
+  const promptName = options.embeddingPromptName || process.env.EMBEDDINGGEMMA_PROMPT_NAME || DEFAULT_EMBEDDINGGEMMA_PROMPT_NAME;
+  const vectors = options.embeddingGemmaRunner
+    ? await options.embeddingGemmaRunner(chunks.map(chunk => ({
+      id: chunk.id,
+      text: embeddingTextForChunk(chunk),
+      title: chunk.title,
+    })), { model, dimensions, promptName, batchSize: options.embeddingBatchSize })
+    : await runEmbeddingGemmaSidecar(chunks, { ...options, model, dimensions, promptName });
+
+  if (vectors.length !== chunks.length) {
+    throw new Error(`EmbeddingGemma returned ${vectors.length} vectors for ${chunks.length} chunks.`);
+  }
+
+  return chunks.map((chunk, index) => embeddingRecordFromVector(chunk, {
+    provider: 'embeddinggemma',
+    model,
+    vector: vectors[index],
+    metadata: {
+      runtime: 'sentence-transformers',
+      prompt_name: promptName,
+      local_only: true,
+      dimensions_requested: dimensions || null,
+      input_redaction: 'anonymized_text_only',
+    },
+  }));
+}
+
+async function runEmbeddingGemmaSidecar(chunks, options = {}) {
+  const command = options.embeddingCommand || process.env.EMBEDDINGGEMMA_COMMAND || process.env.PYTHON || 'python3';
+  const script = resolve(options.embeddingScript || process.env.EMBEDDINGGEMMA_SCRIPT || DEFAULT_EMBEDDINGGEMMA_SCRIPT);
+  const args = [
+    script,
+    '--model', options.model,
+    '--prompt-name', options.promptName,
+    '--batch-size', String(options.embeddingBatchSize || options.batchSize || process.env.EMBEDDINGGEMMA_BATCH_SIZE || 16),
+  ];
+  if (options.dimensions) args.push('--dimensions', String(options.dimensions));
+  if (options.embeddingDevice || process.env.EMBEDDINGGEMMA_DEVICE) {
+    args.push('--device', options.embeddingDevice || process.env.EMBEDDINGGEMMA_DEVICE);
+  }
+
+  const payload = {
+    items: chunks.map(chunk => ({
+      id: chunk.id,
+      text: embeddingTextForChunk(chunk),
+      title: chunk.title,
+    })),
+  };
+
+  const result = await runJsonProcess(command, args, payload);
+  const byId = new Map((result.items || []).map(item => [item.id, item.embedding]));
+  return chunks.map(chunk => {
+    const vector = byId.get(chunk.id);
+    if (!Array.isArray(vector)) throw new Error(`EmbeddingGemma did not return a vector for chunk ${chunk.id}.`);
+    return vector;
+  });
+}
+
+function runJsonProcess(command, args, payload) {
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn(command, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', data => { stdout += data.toString(); });
+    child.stderr.on('data', data => { stderr += data.toString(); });
+    child.on('error', reject);
+    child.on('close', code => {
+      if (code !== 0) {
+        reject(new Error(`EmbeddingGemma sidecar exited with ${code}: ${stderr || stdout}`));
+        return;
+      }
+      try {
+        resolvePromise(JSON.parse(stdout));
+      } catch (err) {
+        reject(new Error(`EmbeddingGemma sidecar returned invalid JSON: ${err.message}`));
+      }
+    });
+    child.stdin.end(`${JSON.stringify(payload)}\n`);
+  });
+}
+
+function embeddingRecordFromVector(chunk, { provider, model, vector, metadata = {} }) {
+  const cleanVector = vector.map(Number);
+  if (!cleanVector.length || cleanVector.some(value => !Number.isFinite(value))) {
+    throw new Error(`Invalid embedding vector for chunk ${chunk.id}.`);
+  }
+  const bytes = Buffer.from(Float32Array.from(cleanVector).buffer);
   return {
     id: `${chunk.id}-embedding`,
     chunk_id: chunk.id,
-    embedding_provider: 'local',
-    embedding_model: LOCAL_EMBEDDING_MODEL,
-    embedding_dimensions: LOCAL_EMBEDDING_DIMENSIONS,
-    embedding_vector: vector,
+    embedding_provider: provider,
+    embedding_model: model,
+    embedding_dimensions: cleanVector.length,
+    embedding_vector: cleanVector,
     vector_blob_hex: bytes.toString('hex'),
     vector_sha256: sha256(bytes),
     input_sha256: sha256(chunk.anonymized_text),
-    metadata_json: {
-      note: 'Local deterministic embedding for pipeline validation; replace with production embedding provider for real analysis.',
-    },
+    metadata_json: metadata,
   };
 }
 
@@ -301,23 +409,16 @@ export async function buildOpenAIEmbeddingRecords(chunks, options = {}) {
 
     vectors.forEach((vector, index) => {
       const chunk = batch[index];
-      const bytes = Buffer.from(Float32Array.from(vector).buffer);
-      records.push({
-        id: `${chunk.id}-embedding`,
-        chunk_id: chunk.id,
-        embedding_provider: 'openai',
-        embedding_model: model,
-        embedding_dimensions: vector.length,
-        embedding_vector: vector,
-        vector_blob_hex: bytes.toString('hex'),
-        vector_sha256: sha256(bytes),
-        input_sha256: sha256(chunk.anonymized_text),
-        metadata_json: {
+      records.push(embeddingRecordFromVector(chunk, {
+        provider: 'openai',
+        model,
+        vector,
+        metadata: {
           encoding_format: 'float',
           dimensions_requested: dimensions || null,
           input_redaction: 'anonymized_text_only',
         },
-      });
+      }));
     });
   }
   return records;
@@ -848,8 +949,13 @@ async function main() {
     domainId: args.domainId || 'accelerator-seed',
     domainName: args.domainName || 'Accelerator Seed Interviews',
     embeddingProvider: args.embeddingProvider || process.env.ACCELERATOR_EMBEDDING_PROVIDER || 'local',
-    embeddingModel: args.embeddingModel || process.env.OPENAI_EMBEDDING_MODEL,
-    embeddingDimensions: args.embeddingDimensions || process.env.OPENAI_EMBEDDING_DIMENSIONS,
+    embeddingModel: args.embeddingModel || process.env.EMBEDDING_MODEL,
+    embeddingDimensions: args.embeddingDimensions || process.env.EMBEDDING_DIMENSIONS,
+    embeddingPromptName: args.embeddingPromptName,
+    embeddingCommand: args.embeddingCommand,
+    embeddingScript: args.embeddingScript,
+    embeddingDevice: args.embeddingDevice,
+    embeddingBatchSize: args.embeddingBatchSize,
   });
   const frontendBundle = stripEmbeddingVectors(bundle);
 
