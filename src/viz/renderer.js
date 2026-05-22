@@ -41,6 +41,7 @@ export class Renderer {
     this._showVideoMarkers = true;
     this._highlightedIds = new Set();
     this._highlightRank = new Map();
+    this._highlightStartedAt = 0;
     this._selectedPointId = null;
     this._participantPaths = [];
     this._questions = [];
@@ -296,15 +297,16 @@ export class Renderer {
     const normalized = (ids || []).map(String);
     this._highlightedIds = new Set(normalized);
     this._highlightRank = new Map(normalized.map((id, index) => [id, index]));
+    this._highlightStartedAt = normalized.length ? performance.now() : 0;
     this._scheduleRender();
   }
 
   focusMapItems(ids = [], options = {}) {
     const idSet = new Set((ids || []).map(String));
-    if (idSet.size < 2 || this._points.length === 0) return;
+    if (idSet.size < 1 || this._points.length === 0) return;
 
     const points = this._points.filter((p) => idSet.has(String(p.id)));
-    if (points.length < 2) return;
+    if (points.length < 1) return;
 
     let xMin = Infinity;
     let xMax = -Infinity;
@@ -608,6 +610,7 @@ export class Renderer {
     ctx.scale(this._zoom, this._zoom);
 
     this._drawParticipantPaths(ctx, w, h);
+    this._drawHighlightConstellation(ctx, w, h);
     this._drawPoints(ctx, w, h);
     this._drawVideos(ctx, w, h);
     this._drawVideoTrajectory(ctx, w, h);
@@ -765,7 +768,7 @@ export class Renderer {
       const isSelected = this._selectedPointId && String(p.id) === this._selectedPointId;
       const rank = this._highlightRank.get(String(p.id)) ?? 0;
       const baseAlpha = (color[3] ?? 190) / 255;
-      const mutedAlpha = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? baseAlpha * 0.16 : baseAlpha;
+      const mutedAlpha = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? baseAlpha * 0.1 : baseAlpha;
       const alpha = isSelected ? 0.96 : isHighlighted ? 0.92 : isHovered ? 0.82 : mutedAlpha;
       const highlightScale = Math.max(1.22, 1.58 - rank * 0.12);
       const radius = baseR * (isSelected ? 1.68 : isHighlighted ? highlightScale + pulse * 0.18 : isHovered ? 1.36 : hasHighlightLens ? 0.86 : 1);
@@ -807,6 +810,58 @@ export class Renderer {
         }
       }
     }
+    ctx.restore();
+  }
+
+  _drawHighlightConstellation(ctx, w, h) {
+    if (this._highlightedIds.size === 0 || this._points.length === 0) return;
+    const highlighted = this._points
+      .filter((p) => this._highlightedIds.has(String(p.id)))
+      .sort((a, b) => (this._highlightRank.get(String(a.id)) ?? 999) - (this._highlightRank.get(String(b.id)) ?? 999));
+    if (!highlighted.length) return;
+
+    const elapsed = this._highlightStartedAt ? performance.now() - this._highlightStartedAt : 9999;
+    const intro = Math.min(1, elapsed / 650);
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 480);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    if (highlighted.length > 1) {
+      ctx.beginPath();
+      highlighted.forEach((point, index) => {
+        const x = point.x * w;
+        const y = point.y * h;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = `rgba(180, 220, 255, ${0.18 + pulse * 0.1})`;
+      ctx.lineWidth = (2.2 * intro) / this._zoom;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    }
+
+    highlighted.forEach((point, index) => {
+      const x = point.x * w;
+      const y = point.y * h;
+      const color = point.color || [170, 220, 255, 230];
+      const rankedScale = Math.max(0.72, 1 - index * 0.12);
+      const ring = (18 + pulse * 7) * rankedScale * intro / this._zoom;
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, ring * 1.8);
+      glow.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.26)`);
+      glow.addColorStop(0.45, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.09)`);
+      glow.addColorStop(1, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0)`);
+      ctx.beginPath();
+      ctx.arc(x, y, ring * 1.8, 0, Math.PI * 2);
+      ctx.fillStyle = glow;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(x, y, ring, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(230, 246, 255, ${0.42 + pulse * 0.18})`;
+      ctx.lineWidth = 1.2 / this._zoom;
+      ctx.stroke();
+    });
     ctx.restore();
   }
 
