@@ -295,8 +295,12 @@ tag UI
   do not yet have a first-class faceted filter UI.
 
 Ask server
-  The local Ask server should be parameterized by dataset/domain path so it can
-  query the same private bundle selected in the browser.
+  The browser sends the active private `domainDir` to the local Ask server. For
+  private static preview bundles, the server ranks evidence from that exact
+  bundle and returns matching map item IDs, avoiding stale seed/synthetic IDs.
+  The Turso/libSQL vector path remains available for public/default bundles and
+  should be the next path to harden for private datasets once local vector DB
+  promotion is explicit.
 
 PII policy
   Regex redaction catches obvious contact/secret patterns. Future adapters may

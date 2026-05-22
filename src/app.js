@@ -17,6 +17,7 @@ import {
 import * as registry from './domain/registry.js';
 import { load as loadDomain, loadQuestionsForDomain } from './domain/loader.js';
 import { indexQuestions } from './domain/questions.js';
+import { getDomainDataDir } from './domain/data-path.js';
 import { Estimator } from './learning/estimator.js';
 import { Sampler } from './learning/sampler.js';
 import { getCentrality } from './learning/curriculum.js';
@@ -1447,7 +1448,10 @@ async function queryLocalAskMap(queryText) {
       body: JSON.stringify({
         query: queryText,
         topK: 5,
+        domainDir: privateDomainDirForAsk(),
+        domainId: currentDomainBundle?.domain?.id || 'all',
         filters: {
+          datasetId: activeLens.datasetId,
           participantId: activeLens.participantId,
           sourceType: activeLens.sourceType,
           theme: activeLens.theme,
@@ -1463,6 +1467,11 @@ async function queryLocalAskMap(queryText) {
   } finally {
     window.clearTimeout(timeout);
   }
+}
+
+function privateDomainDirForAsk() {
+  const dir = getDomainDataDir();
+  return dir === 'data/domains' ? '' : dir;
 }
 
 function matchAskQuestion(queryText, questions) {
