@@ -259,7 +259,7 @@ const PANEL_CSS = `
     top: 0;
     bottom: 0;
     width: var(--video-sidebar-width);
-    background: var(--color-surface);
+    background: var(--color-panel-deep);
     box-shadow: 2px 0 24px rgba(0,0,0,0.3), 1px 0 0 var(--color-border);
     z-index: 10;
     display: flex;
@@ -413,7 +413,7 @@ const PANEL_CSS = `
     border: 1.5px solid var(--color-border);
     border-left: none;
     border-radius: 0 8px 8px 0;
-    background: var(--color-surface);
+    background: var(--color-panel-deep);
     color: var(--color-text-muted);
     cursor: pointer;
     display: flex;

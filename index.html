@@ -36,6 +36,7 @@
             --color-bg: #050912;
             --color-surface: #0b1220;
             --color-surface-raised: #121c2e;
+            --color-panel-deep: #030912;
             --color-primary: #1ff7ff;
             --color-primary-light: #a9ffff;
             --color-primary-fill: rgba(31,247,255,0.10);
@@ -432,7 +433,7 @@
             top: 0;
             bottom: 0;
             width: var(--quiz-sidebar-width);
-            background: var(--color-surface);
+            background: var(--color-panel-deep);
             box-shadow: -2px 0 24px rgba(0,0,0,0.3), -1px 0 0 var(--color-border);
             z-index: 10;
             display: flex;
@@ -464,7 +465,7 @@
             border: 1.5px solid var(--color-border);
             border-right: none;
             border-radius: 8px 0 0 8px;
-            background: var(--color-surface);
+            background: var(--color-panel-deep);
             color: var(--color-text-muted);
             cursor: pointer;
             display: flex;
@@ -816,7 +817,7 @@
                 flex-shrink: 0;
                 display: flex;
                 flex-direction: column;
-                background: var(--color-surface);
+                background: var(--color-panel-deep);
             }
             #quiz-panel:not(.open) .quiz-content { display: none; }
             /* Hide everything except drawer pull when closed (important overrides inline styles) */
