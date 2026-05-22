@@ -87,6 +87,7 @@ let questionIndex = new Map();
 let mergedVideoWindows = []; // Accumulated window coords from recent unwatched-between videos
 let mapInitialized = false; // True once articles/questions/labels are set on the renderer
 let activeLens = {
+  datasetId: 'all',
   participantId: 'all',
   sourceType: 'all',
   theme: 'all',
@@ -629,6 +630,7 @@ function getAllMapItems() {
 
 function getFilteredMapItems() {
   return getAllMapItems().filter(item => {
+    if (activeLens.datasetId !== 'all' && datasetIdForItem(item) !== activeLens.datasetId) return false;
     if (activeLens.participantId !== 'all' && item.participant_id !== activeLens.participantId) return false;
     if (activeLens.sourceType !== 'all' && item.source_type !== activeLens.sourceType) return false;
     if (activeLens.theme !== 'all' && !(item.themes || []).includes(activeLens.theme)) return false;
@@ -791,6 +793,7 @@ function initMapLensControls(bundle) {
   lensControls.className = 'map-lens-bar';
   lensControls.hidden = true;
   lensControls.innerHTML = `
+    ${lensDropdownMarkup('datasetId', 'Filter by dataset')}
     ${lensDropdownMarkup('participantId', 'Filter by participant')}
     ${lensDropdownMarkup('sourceType', 'Filter by source type')}
     ${lensDropdownMarkup('theme', 'Filter by theme')}
@@ -826,6 +829,7 @@ function initMapLensControls(bundle) {
 
   lensControls.querySelector('.map-lens-clear')?.addEventListener('click', () => {
     activeLens = {
+      datasetId: 'all',
       participantId: 'all',
       sourceType: 'all',
       theme: 'all',
@@ -873,15 +877,20 @@ function updateMapLensControls(bundle) {
 
   const participants = bundle.participants || [];
   const items = bundle.map_items || bundle.articles || [];
+  const datasets = datasetsFromBundle(bundle, items);
   const sourceTypes = [...new Set(items.map(i => i.source_type).filter(Boolean))].sort();
   const themes = [...new Set(items.flatMap(i => i.themes || []))].sort();
 
+  populateLensDropdown(lensControls.querySelector('[data-lens="datasetId"]'), [
+    ['all', 'All datasets'],
+    ...datasets.map(dataset => [dataset.id, dataset.label]),
+  ], activeLens.datasetId);
   populateLensDropdown(lensControls.querySelector('[data-lens="participantId"]'), [
     ['all', 'All participants'],
-    ...participants.map(p => [p.display_code, `${p.display_code} · ${p.role}`]),
+    ...participants.map(p => [p.display_code, participantLensLabel(p)]),
   ], activeLens.participantId);
   populateLensDropdown(lensControls.querySelector('[data-lens="sourceType"]'), [
-    ['all', 'All sources'],
+    ['all', 'All source types'],
     ...sourceTypes.map(type => [type, type.replace(/_/g, ' ')]),
   ], activeLens.sourceType);
   populateLensDropdown(lensControls.querySelector('[data-lens="theme"]'), [
@@ -907,6 +916,40 @@ function updateMapLensControls(bundle) {
       setLensDropdownValue(dropdown, fallback);
     }
   }
+}
+
+function datasetsFromBundle(bundle, items) {
+  const datasets = new Map();
+  if (bundle.dataset?.id) {
+    datasets.set(bundle.dataset.id, bundle.dataset.name || datasetLabel(bundle.dataset.id));
+  }
+  for (const item of items || []) {
+    const id = datasetIdForItem(item);
+    if (id && !datasets.has(id)) datasets.set(id, datasetLabel(id));
+  }
+  if (datasets.size === 0 && isAcceleratorBundle(bundle)) {
+    const id = bundle.domain?.id || 'accelerator';
+    datasets.set(id, bundle.domain?.name || datasetLabel(id));
+  }
+  return [...datasets.entries()]
+    .map(([id, label]) => ({ id, label }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function datasetIdForItem(item) {
+  return item?.dataset_id || item?.metadata_json?.dataset_id || item?.source?.dataset_id || '';
+}
+
+function datasetLabel(id) {
+  if (String(id).startsWith('slab:')) return 'SLAB';
+  return String(id || 'Dataset').replace(/[:_-]+/g, ' ');
+}
+
+function participantLensLabel(participant) {
+  const code = participant.display_code || participant.id;
+  const team = participant.profile_json?.team_display;
+  if (team && team !== code) return `${code} · ${team}`;
+  return [code, participant.role].filter(Boolean).join(' · ');
 }
 
 function populateLensDropdown(dropdown, options, selectedValue) {
@@ -1166,6 +1209,7 @@ async function switchDomain(domainId) {
   } else if (isAcceleratorBundle(targetBundle)) {
     currentDomainBundle = targetBundle;
     activeLens = {
+      datasetId: 'all',
       participantId: 'all',
       sourceType: 'all',
       theme: 'all',

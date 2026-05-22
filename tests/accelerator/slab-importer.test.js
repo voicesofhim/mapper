@@ -51,6 +51,7 @@ describe('SLAB dataset adapter', () => {
 
     expect(bundle.dataset).toMatchObject({
       id: 'slab:shape-rotator-spring-2026',
+      name: 'SLAB',
       status: 'local_preview',
     });
     expect(bundle.import_summary).toMatchObject({
@@ -59,6 +60,7 @@ describe('SLAB dataset adapter', () => {
       skipped_records: 1,
     });
     expect(bundle.map_items[0].participant_id).toBe('SLAB-001');
+    expect(bundle.participants[0].profile_json.team_display).toBe('Example Team');
     expect(bundle.map_items[0].themes).toContain('SLAB');
     expect(bundle.map_items[0].tags).toEqual(expect.arrayContaining([
       expect.objectContaining({ type: 'dataset', name: 'SLAB' }),

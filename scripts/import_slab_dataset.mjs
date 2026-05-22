@@ -50,7 +50,7 @@ export async function buildSlabDataset(options = {}) {
   const repoPath = resolve(options.repoPath || process.env.SLAB_REPO_PATH || '../SLAB');
   const cohort = options.cohort || DEFAULT_COHORT;
   const datasetId = options.datasetId || DEFAULT_DATASET_ID;
-  const datasetName = options.datasetName || `SLAB ${cohort}`;
+  const datasetName = options.datasetName || 'SLAB';
   const domainId = options.domainId || DEFAULT_DOMAIN_ID;
   const domainName = options.domainName || DEFAULT_DOMAIN_NAME;
   const profilesDir = join(repoPath, 'data', cohort, 'profiles');
@@ -85,6 +85,7 @@ export async function buildSlabDataset(options = {}) {
     const participantCode = `SLAB-${String(subjectIndex + 1).padStart(3, '0')}`;
     const participantId = `${datasetId}:subject:${sha256(subjectId).slice(0, 16)}`;
     const manifest = await loadManifest(profileDir, subjectId);
+    const teamDisplay = safeText(manifest.teamDisplay || subjectId);
 
     participants.push({
       id: participantId,
@@ -95,6 +96,7 @@ export async function buildSlabDataset(options = {}) {
       cohort,
       profile_json: {
         external_subject_sha256: sha256(subjectId),
+        team_display: teamDisplay,
         team_tagline: safeText(manifest.teamTagline || ''),
       },
       consent_level: 'private_research',

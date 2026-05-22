@@ -128,9 +128,12 @@ Every SLAB item also includes the visible theme:
 SLAB
 ```
 
-That means the existing theme dropdown can filter SLAB immediately, while the
-database still retains more precise tags such as `source_family`, `source_mode`,
-`depth_level`, `manipulability_class`, and `acquisition_method`.
+That means the dataset dropdown can filter the repo bucket as `SLAB`, and the
+theme dropdown can still filter the visible `SLAB` theme. The source dropdown is
+for source types such as `application`, `interview`, `public_trace`, and
+`derived_analysis`; it is not the right place for repo names. The database still
+retains more precise tags such as `source_family`, `source_mode`, `depth_level`,
+`manipulability_class`, and `acquisition_method`.
 
 ## SLAB Import Adapter
 
