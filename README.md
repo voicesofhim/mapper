@@ -55,6 +55,8 @@ npm run preview
 
 # Accelerator import/export pipeline
 npm run import:accelerator
+npm run import:partner -- --source /path/to/private/export --mode inspect
+npm run import:partner -- --source /path/to/private/export --mode ingest --approval data/private-exports/partner/import-approval.json
 npm run ask:server
 
 # Tests
@@ -220,6 +222,31 @@ Outputs:
 - `data/accelerator/exports/accelerator-seed.json`
 - `data/accelerator/exports/accelerator-seed.sql`
 - `data/domains/accelerator-seed.json`
+
+## Partner Private Dataset Import
+
+For partner-owned tools with private labels or personality/profile meshes, do a
+local approval-gated import:
+
+```bash
+npm run import:partner -- --source /path/to/private/export --mode inspect
+```
+
+Review the ignored artifacts in `data/private-exports/partner/`, especially
+`import-report.md` and `import-approval.template.json`. Save an edited approval
+as `data/private-exports/partner/import-approval.json`, set `"approved": true`,
+then run:
+
+```bash
+npm run import:partner -- \
+  --source /path/to/private/export \
+  --mode ingest \
+  --approval data/private-exports/partner/import-approval.json
+```
+
+Approved ingest writes private Mapper preview files to
+`data/private-domains/partner/` and local export/SQL/ontology reports to
+`data/private-exports/partner/`. These paths are ignored by Git.
 
 ## Embedding Pipeline
 

@@ -329,6 +329,84 @@ Recommended steps:
 7. Use `?domainDir=data/private-domains/<source>` for browser previews.
 8. Do not commit generated private JSON, SQL, SQLite, or source corpora.
 
+## Partner Dataset Inspect / Approval Flow
+
+For partner-owned tools with private labels, personality profiles, or their own
+tagging mesh, use the generic partner adapter as the first integration point:
+
+```bash
+npm run import:partner -- --source /path/to/partner/export --mode inspect
+```
+
+Inspect mode does not embed or write Mapper bundles. It scans local JSON, JSONL,
+Markdown, and text exports, then writes ignored review artifacts:
+
+```text
+data/private-exports/partner/import-report.md
+data/private-exports/partner/import-report.json
+data/private-exports/partner/label-inventory.json
+data/private-exports/partner/tag-cooccurrence.json
+data/private-exports/partner/privacy-findings.json
+data/private-exports/partner/ontology-candidates.json
+data/private-exports/partner/sample-records.json
+data/private-exports/partner/import-approval.template.json
+```
+
+Review `import-report.md` and the approval template. Save an edited copy as:
+
+```text
+data/private-exports/partner/import-approval.json
+```
+
+Set `"approved": true`, remove fields that should not be stored or embedded,
+and optionally merge labels into canonical ontology names:
+
+```json
+{
+  "approved": true,
+  "dataset_id": "partner:spring-2026",
+  "approved_text_fields": ["profile_summary", "content"],
+  "approved_label_fields": ["labels", "personality.traits", "support_needs"],
+  "denied_fields": ["email", "phone", "legal_name", "private_admin_notes"],
+  "approved_tag_types": ["personality_trait", "participant_need", "support_need"],
+  "label_merges": {
+    "personality_trait:high agency": "personality_trait:high_agency",
+    "participant_need:needs structure": "support_need:execution_structure"
+  }
+}
+```
+
+Then run approved ingest:
+
+```bash
+npm run import:partner -- \
+  --source /path/to/partner/export \
+  --mode ingest \
+  --approval data/private-exports/partner/import-approval.json
+```
+
+Ingest mode reruns the local scan, keeps only approved fields, redacts obvious
+contact/secret values, maps partner labels into structured tags, then reuses the
+existing local embedding, UMAP, SQL, and private Mapper bundle machinery. It
+writes ignored outputs under:
+
+```text
+data/private-domains/partner/
+data/private-exports/partner/partner-export.json
+data/private-exports/partner/partner-seed.sql
+data/private-exports/partner/ontology-report.json
+```
+
+Preview with:
+
+```text
+http://localhost:5173/mapper/?domainDir=data/private-domains/partner
+```
+
+This flow treats partner labels as candidate ontology evidence. The importer can
+propose tag groups and co-occurrence patterns, but humans promote or reject them
+through the approval file before anything enters the canonical map pipeline.
+
 ## Known Limitations To Refine
 
 The current system is ready for local visualization testing, not final research

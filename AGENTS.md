@@ -61,6 +61,8 @@ tests/visual/accelerator-observatory.spec.js
 npm install
 npm run dev
 npm run import:accelerator
+npm run import:partner -- --source /path/to/private/export --mode inspect
+npm run import:partner -- --source /path/to/private/export --mode ingest --approval data/private-exports/partner/import-approval.json
 npm run ask:server
 npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-model google/embeddinggemma-300M
 npm test
@@ -90,6 +92,9 @@ Keep this local-first:
 - Export static Mapper JSON without vector blobs.
 - Serve open-ended Ask-the-Map retrieval through `npm run ask:server`, which binds locally and searches local libSQL vector BLOBs by cosine similarity.
 - Keep future LiveKit agent/backend local-only until the project explicitly changes that requirement.
+- For partner/private datasets, run `import:partner` in `inspect` mode first.
+  Only run `ingest` with a reviewed approval file; partner labels are candidate
+  ontology evidence until approved.
 
 Relevant Google docs:
 
