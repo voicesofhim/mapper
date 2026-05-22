@@ -641,6 +641,7 @@ function ensureVoiceStyles() {
       border: 1px solid rgba(31, 247, 255, 0.28);
       background: rgba(3, 12, 22, 0.72);
       min-width: 132px;
+      overflow: hidden;
     }
     .ask-mode-buttons button,
     .ask-voice-actions button {
@@ -657,7 +658,10 @@ function ensureVoiceStyles() {
       transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
     }
     .ask-mode-buttons button:focus,
-    .ask-mode-buttons button:focus-visible,
+    .ask-mode-buttons button:focus-visible {
+      outline: none !important;
+      box-shadow: inset 0 0 0 1px rgba(31, 247, 255, 0.72), inset 0 0 16px rgba(31, 247, 255, 0.08) !important;
+    }
     .ask-voice-actions button:focus,
     .ask-voice-actions button:focus-visible {
       outline: 1px solid rgba(31, 247, 255, 0.82) !important;
