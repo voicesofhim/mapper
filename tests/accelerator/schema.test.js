@@ -8,11 +8,15 @@ const schema = readFileSync(resolve(root, 'scripts/accelerator-schema.sql'), 'ut
 describe('accelerator canonical Turso schema', () => {
   it('models participants, sources, chunks, themes, embeddings, UMAP, and privacy fields', () => {
     for (const table of [
+      'datasets',
+      'import_batches',
       'participants',
       'sources',
       'chunks',
       'themes',
       'chunk_themes',
+      'tags',
+      'chunk_tags',
       'embeddings',
       'umap_coordinates',
       'research_questions',
@@ -24,7 +28,10 @@ describe('accelerator canonical Turso schema', () => {
     expect(schema).toContain('consent_level');
     expect(schema).toContain('visibility');
     expect(schema).toContain('anonymization_level');
+    expect(schema).toContain('dataset_id');
+    expect(schema).toContain('import_batch_id');
     expect(schema).toContain('embedding_model');
+    expect(schema).toContain('embedding_role');
     expect(schema).toContain('umap_x real not null');
     expect(schema).toContain('mapper_export_items');
   });

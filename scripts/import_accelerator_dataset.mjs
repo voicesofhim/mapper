@@ -525,17 +525,49 @@ function projectionVersionForEmbeddings(embeddings) {
 export function toTursoSeedSql(bundle) {
   const participants = bundle.participants || [];
   const items = bundle.map_items || [];
-  const sourceById = new Map(items.map(item => [item.metadata_json?.source_id || item.source?.id, item.source]).filter(([id]) => id));
+  const sourceById = new Map();
+  for (const source of bundle.sources || []) {
+    if (source?.id) sourceById.set(source.id, source);
+  }
+  for (const item of items) {
+    const sourceId = item.metadata_json?.source_id || item.source?.id;
+    if (sourceId && item.source) sourceById.set(sourceId, item.source);
+  }
   const themeNames = [...new Set(items.flatMap(item => item.themes || []))];
+  const tagRows = collectTags(items);
 
   const lines = [
     'pragma foreign_keys = on;',
     'begin transaction;',
   ];
 
+  if (bundle.dataset?.id) {
+    lines.push(insertSql('datasets', {
+      id: bundle.dataset.id,
+      name: bundle.dataset.name || bundle.dataset.id,
+      source_repo_url: bundle.dataset.source_repo_url,
+      cohort: bundle.dataset.cohort,
+      status: bundle.dataset.status || 'active',
+      metadata_json: JSON.stringify(bundle.dataset.metadata_json || {}),
+    }));
+  }
+
+  if (bundle.import_batch?.id) {
+    lines.push(insertSql('import_batches', {
+      id: bundle.import_batch.id,
+      dataset_id: bundle.import_batch.dataset_id || bundle.dataset?.id,
+      repo_url: bundle.import_batch.repo_url,
+      repo_commit_sha: bundle.import_batch.repo_commit_sha,
+      imported_at: bundle.import_batch.imported_at,
+      importer_name: bundle.import_batch.importer_name,
+      metadata_json: JSON.stringify(bundle.import_batch.metadata_json || {}),
+    }));
+  }
+
   for (const participant of participants) {
     lines.push(insertSql('participants', {
       id: participant.id,
+      dataset_id: participant.dataset_id || bundle.dataset?.id || null,
       display_code: participant.display_code,
       role: participant.role,
       company_stage: participant.company_stage,
@@ -550,6 +582,8 @@ export function toTursoSeedSql(bundle) {
   for (const source of sourceById.values()) {
     lines.push(insertSql('sources', {
       id: source.id,
+      dataset_id: source.dataset_id || bundle.dataset?.id || null,
+      import_batch_id: source.import_batch_id || bundle.import_batch?.id || null,
       participant_id: source.participant_id,
       source_type: source.source_type,
       title: source.title,
@@ -559,6 +593,9 @@ export function toTursoSeedSql(bundle) {
       collected_at: source.collected_at,
       raw_text_ref: source.raw_text_ref,
       raw_text_allowed: source.raw_text_allowed || 0,
+      source_path: source.source_path,
+      external_id: source.external_id,
+      content_sha256: source.content_sha256,
       consent_level: source.consent_level || 'anonymized_research',
       visibility: source.visibility || 'researcher',
       metadata_json: JSON.stringify(source.metadata_json || {}),
@@ -574,14 +611,27 @@ export function toTursoSeedSql(bundle) {
     }));
   }
 
+  for (const tag of tagRows.values()) {
+    lines.push(insertSql('tags', {
+      id: tag.id,
+      tag_type: tag.type,
+      name: tag.name,
+      description: tag.description || null,
+    }));
+  }
+
   for (const item of items) {
     const sourceId = item.metadata_json?.source_id || item.source?.id;
     const canonicalParticipantId = item.metadata_json?.canonical_participant_id || participantIdForDisplayCode(participants, item.participant_id);
     lines.push(insertSql('chunks', {
       id: item.id,
+      dataset_id: item.dataset_id || item.metadata_json?.dataset_id || bundle.dataset?.id || null,
+      import_batch_id: item.import_batch_id || item.metadata_json?.import_batch_id || bundle.import_batch?.id || null,
       participant_id: canonicalParticipantId,
       source_id: sourceId,
       chunk_index: item.metadata_json?.sequence || 0,
+      external_id: item.external_id || item.metadata_json?.external_id || null,
+      content_sha256: item.content_sha256 || item.metadata_json?.content_sha256 || null,
       source_type: item.source_type,
       title: item.title,
       summary: item.summary,
@@ -591,8 +641,8 @@ export function toTursoSeedSql(bundle) {
       confidence: item.confidence,
       token_count: item.metadata_json?.token_count || estimateTokens(item.anonymized_text || item.excerpt || ''),
       source_ref: item.source?.source_ref,
-      contains_sensitive_data: 0,
-      redaction_notes: 'Input file is expected to be anonymized before import.',
+      contains_sensitive_data: item.contains_sensitive_data || 0,
+      redaction_notes: item.redaction_notes || 'Input file is expected to be anonymized before import.',
       consent_level: item.consent_level,
       visibility: item.visibility || 'researcher',
       metadata_json: JSON.stringify(item.metadata_json || {}),
@@ -607,11 +657,22 @@ export function toTursoSeedSql(bundle) {
       }));
     }
 
+    for (const tag of normalizeTagRows(item.tags || [])) {
+      lines.push(insertSql('chunk_tags', {
+        chunk_id: item.id,
+        tag_id: tag.id,
+        origin: tag.origin || 'imported',
+        confidence: tag.confidence ?? 1,
+        rationale: tag.rationale || null,
+      }));
+    }
+
     const embedding = item.embedding_metadata;
     if (embedding) {
       lines.push(insertSql('embeddings', {
         id: embedding.id,
         chunk_id: item.id,
+        embedding_role: embedding.role || 'retrieval_document',
         embedding_provider: embedding.provider,
         embedding_model: embedding.model,
         embedding_dimensions: embedding.dimensions,
@@ -860,6 +921,43 @@ function themeCategory(theme) {
 
 function participantIdForDisplayCode(participants, displayCode) {
   return participants.find(p => p.display_code === displayCode || p.id === displayCode)?.id || displayCode;
+}
+
+function collectTags(items) {
+  const tags = new Map();
+  for (const item of items) {
+    for (const tag of normalizeTagRows(item.tags || [])) {
+      tags.set(tag.id, tag);
+    }
+  }
+  return tags;
+}
+
+function normalizeTagRows(tags) {
+  if (!Array.isArray(tags)) return [];
+  return tags
+    .map(tag => {
+      if (typeof tag === 'string') {
+        const name = tag.trim();
+        return name ? { type: 'label', name } : null;
+      }
+      if (!tag || typeof tag !== 'object') return null;
+      const type = String(tag.type || tag.tag_type || 'label').trim();
+      const name = String(tag.name || '').trim();
+      if (!type || !name) return null;
+      return {
+        ...tag,
+        id: tag.id || tagId(type, name),
+        type,
+        name,
+        confidence: Number.isFinite(Number(tag.confidence)) ? Number(tag.confidence) : 1,
+      };
+    })
+    .filter(Boolean);
+}
+
+function tagId(type, name) {
+  return `${slugify(type)}:${slugify(name)}`;
 }
 
 function insertSql(table, values) {

@@ -1,6 +1,7 @@
 /** Async domain data loading with progress callbacks and request deduplication. */
 
 import { $domainCache } from '../state/store.js';
+import { domainDataUrl } from './data-path.js';
 import { getDescendants } from './registry.js';
 
 const PROGRESS_THROTTLE_MS = 100;
@@ -52,7 +53,7 @@ export async function load(domainId, callbacks = {}, basePath) {
 }
 
 async function _fetchAndCache(domainId, base, onProgress) {
-  const url = `${base}data/domains/${domainId}.json`;
+  const url = domainDataUrl(`${domainId}.json`, base);
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`Failed to fetch domain ${domainId}: ${res.status} ${res.statusText}`);

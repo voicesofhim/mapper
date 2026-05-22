@@ -220,6 +220,17 @@ dist/
 
 # Project-specific
 CLAUDE.md
+!scripts/lib/
+!scripts/lib/**
+
+# Local/private research corpora and generated previews.
+# These can contain evidence excerpts and should not be committed.
+data/private-domains/
+data/private-exports/
+data/accelerator/local/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
 
 # UMAP model files (too large for git)
 umap_reducer.pkl

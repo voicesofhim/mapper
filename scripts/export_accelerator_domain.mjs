@@ -85,6 +85,7 @@ function normalizeMapItem(row, index, participantIds) {
   const id = row.id || row.chunk_id || `chunk-${String(index + 1).padStart(4, '0')}`;
   const x = numberOr(row.x, row.umap_x, row.umapX);
   const y = numberOr(row.y, row.umap_y, row.umapY);
+  const metadataJson = parseJson(row.metadata_json || row.metadataJson || {}, {});
   if (!Number.isFinite(x) || !Number.isFinite(y)) {
     throw new Error(`Map item ${id} is missing finite precomputed UMAP coordinates.`);
   }
@@ -97,19 +98,21 @@ function normalizeMapItem(row, index, participantIds) {
   return {
     id: String(id),
     participant_id: participantId,
+    dataset_id: row.dataset_id || row.datasetId || metadataJson.dataset_id || '',
     source_type: row.source_type || row.sourceType || 'interview',
     title: row.title || `Evidence ${id}`,
     summary: row.summary || '',
     excerpt: row.excerpt || row.anonymized_text || row.anonymizedText || '',
     anonymized_text: row.anonymized_text || row.anonymizedText || row.excerpt || '',
     themes: Array.isArray(row.themes) ? row.themes : String(row.themes || '').split(',').map(s => s.trim()).filter(Boolean),
+    tags: normalizeTags(row.tags || row.tag_json || row.tagJson || metadataJson.tags || []),
     sentiment: row.sentiment || 'unknown',
     confidence: Number(row.confidence ?? 0.75),
     umap_x: x,
     umap_y: y,
     x,
     y,
-    metadata_json: parseJson(row.metadata_json || row.metadataJson || {}, {}),
+    metadata_json: metadataJson,
     source: parseJson(row.source || row.source_json || row.sourceJson || {}, {}),
     embedding_metadata: parseJson(row.embedding_metadata || row.embeddingMetadata || {}, {}),
     projection: parseJson(row.projection || row.projection_json || row.projectionJson || {}, {}),
@@ -148,6 +151,23 @@ function parseJson(value, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function normalizeTags(value) {
+  const parsed = parseJson(value, []);
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .map(tag => {
+      if (typeof tag === 'string') return { type: 'label', name: tag };
+      if (!tag || typeof tag !== 'object') return null;
+      return {
+        type: String(tag.type || tag.tag_type || 'label'),
+        name: String(tag.name || '').trim(),
+        confidence: Number(tag.confidence ?? 1),
+        origin: tag.origin || 'imported',
+      };
+    })
+    .filter(tag => tag?.name);
 }
 
 function clamp(value) {
@@ -189,6 +209,8 @@ async function loadFromTurso(url, authToken) {
   const chunks = (await db.execute(`
     select
       c.id,
+      c.dataset_id,
+      c.import_batch_id,
       c.participant_id as canonical_participant_id,
       p.display_code as participant_id,
       c.source_id,
@@ -199,6 +221,8 @@ async function loadFromTurso(url, authToken) {
       coalesce(c.excerpt, c.anonymized_text) as excerpt,
       c.sentiment,
       c.confidence,
+      c.external_id,
+      c.content_sha256,
       c.metadata_json,
       c.consent_level,
       c.visibility,
@@ -256,6 +280,10 @@ async function loadFromTurso(url, authToken) {
       source: sourceById.get(chunk.source_id) || { id: chunk.source_id },
       metadata_json: {
         ...parseJson(chunk.metadata_json, {}),
+        dataset_id: chunk.dataset_id,
+        import_batch_id: chunk.import_batch_id,
+        external_id: chunk.external_id,
+        content_sha256: chunk.content_sha256,
         canonical_participant_id: chunk.canonical_participant_id,
         source_id: chunk.source_id,
       },
