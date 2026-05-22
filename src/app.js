@@ -256,10 +256,8 @@ async function boot() {
     }
   }
 
-  // Logo click — context-dependent behavior:
-  // Welcome screen: start mapping (same as "Map my knowledge!" button)
-  // Map screen: return to welcome without clearing progress
-  // Shared view (?t=): reload without token to start user's own session
+  // Logo click is intentionally welcome/shared only. On the map screen,
+  // accidental header taps should never hide the active visualization.
   const logo = headerEl.querySelector('.logo');
   const isSharedView = new URLSearchParams(window.location.search).has('t');
   if (logo) {
@@ -281,35 +279,6 @@ async function boot() {
         // Welcome screen → start mapping (same as start button)
         if (allDomainBundle) {
           $activeDomain.set('all');
-        }
-      } else if (screen === 'map') {
-        // Map screen → return to welcome without clearing progress
-        dismissTutorial();
-        unlockOrientation();
-        renderer.abortTransition();
-        toggleQuizPanel(false);
-        toggleVideoPanel(false);
-        const toggleBtn = document.getElementById('quiz-toggle');
-        if (toggleBtn) toggleBtn.setAttribute('hidden', '');
-        const videoToggleBtn = document.getElementById('video-toggle');
-        if (videoToggleBtn) videoToggleBtn.setAttribute('hidden', '');
-        // Clear visual layers so the welcome screen particle canvas isn't obscured
-        renderer.setHeatmap([], GLOBAL_REGION);
-        renderer.setAnsweredQuestions([]);
-        renderer.setPoints([]);
-        renderer.setVideos([]);
-        const landing = document.getElementById('landing');
-        if (landing) landing.classList.remove('hidden');
-        if (appEl) appEl.dataset.screen = 'welcome';
-        logo.setAttribute('data-tooltip', 'Open observatory');
-        // Reset active domain so re-entering map triggers switchDomain again
-        $activeDomain.set(null);
-        // Re-create particle system for the welcome screen
-        const pCanvas = document.getElementById('particle-canvas');
-        if (pCanvas && allDomainBundle) {
-          particleSystem = new ParticleSystem();
-          const points = subsampleParticlePoints(allDomainBundle.articles);
-          particleSystem.initWithPoints(pCanvas, points);
         }
       }
     });
@@ -1115,9 +1084,12 @@ async function switchDomain(domainId) {
   const appEl = document.getElementById('app');
   if (appEl) appEl.dataset.screen = 'map';
 
-  // Update logo tooltip for map screen
+  // Keep the logo passive on the map screen so stray clicks do not send users home.
   const logo = document.querySelector('.logo');
-  if (logo) logo.setAttribute('data-tooltip', 'Return to welcome screen');
+  if (logo) {
+    logo.setAttribute('data-tooltip', 'Knowledge Mapper');
+    logo.style.cursor = 'default';
+  }
 
   // Force landscape on phone-sized devices
   lockLandscape();
@@ -1904,6 +1876,11 @@ function handleReset() {
   if (landing) landing.classList.remove('hidden');
   const appEl = document.getElementById('app');
   if (appEl) appEl.dataset.screen = 'welcome';
+  const logo = document.querySelector('.logo');
+  if (logo) {
+    logo.setAttribute('data-tooltip', 'Open observatory');
+    logo.style.cursor = 'pointer';
+  }
 
   // Re-create particle system for the welcome screen
   const pCanvas = document.getElementById('particle-canvas');
