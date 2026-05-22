@@ -1,6 +1,26 @@
 # Knowledge Mapper: Accelerator Observatory
 
-Fork-based adaptation of [ContextLab Mapper](https://github.com/ContextLab/mapper) for accelerator participant research. This version keeps Mapper's static domain registry, domain-bundle loader, canvas map renderer, viewport handling, and panel architecture, but replaces the education quiz/video domain with a grounded interview-intelligence experience.
+Fork-based adaptation of [ContextLab Mapper](https://github.com/ContextLab/mapper) for accelerator participant research. This repo now targets [voicesofhim/mapper](https://github.com/voicesofhim/mapper) as the primary project.
+
+The app keeps useful parts of Mapper's original architecture: static domain bundles, domain registry/loading, canvas map rendering, viewport transitions, panel layout, and test scaffolding. The education quiz/Khan Academy experience has been reinterpreted as an accelerator interview intelligence tool: an interactive semantic map of anonymized participant evidence, themes, source signals, and grounded Ask-the-Map responses.
+
+## Current Status
+
+Implemented and pushed to `main`:
+
+- Accelerator research domain model in `data/domains/*.json`.
+- Luminous semantic-observatory canvas styling for evidence nodes.
+- Ask-the-Map panel replacing the original quiz flow.
+- Evidence / Supporting Signals panel replacing lecture/video recommendations.
+- Participant, source type, theme, and color-by map lenses.
+- Future voice-agent map actions through `window.mapperActions` and `mapper:action` events.
+- Canonical Turso/libSQL schema in `scripts/accelerator-schema.sql`.
+- Import pipeline for anonymized interview markdown.
+- Seed domain generated from 3 anonymized fixture interviews.
+- Static Mapper JSON export plus Turso seed SQL.
+- Tests for schema, importer, exporter, no-browser-UMAP, and visual behavior.
+
+Important caveat: the repository still contains some legacy ContextLab Mapper files and tests. They are intentionally preserved where useful, but the primary product direction is now accelerator research.
 
 ## Run Locally
 
@@ -9,7 +29,13 @@ npm install
 npm run dev
 ```
 
-Open [http://127.0.0.1:5173/mapper/](http://127.0.0.1:5173/mapper/).
+Open:
+
+```text
+http://127.0.0.1:5173/mapper/
+```
+
+If Vite chooses another port, use the URL printed by the terminal.
 
 Production build:
 
@@ -18,44 +44,127 @@ npm run build
 npm run preview
 ```
 
-## What Changed
+## Useful Commands
 
-- `data/domains/all.json` is now a synthetic accelerator research bundle.
-- `data/domains/accelerator-demo.json` provides the focused demo domain.
-- `data/domains/accelerator-seed.json` is generated from 3 anonymized seed interview files via the canonical import pipeline.
-- `scripts/accelerator-schema.sql` defines the Turso/libSQL source-of-truth schema.
-- `scripts/import_accelerator_dataset.mjs` imports anonymized interviews, chunks them, generates embeddings, computes UMAP outside the browser, and writes Mapper JSON plus seed SQL.
-- `src/ui/quiz.js` preserves the original panel contract but now renders Ask the Map.
-- `src/ui/video-panel.js` is reinterpreted as Evidence / Supporting Signals.
-- `src/viz/renderer.js` renders luminous evidence nodes, glow halos, selected rings, highlighted pulse states, and faint participant paths.
-- `src/app.js` maps accelerator data into Mapper's existing loader/rendering flow and exposes future voice-agent map actions.
-- The map includes lenses for participant, source type, theme, and color-by modes for source, theme, and profile traits.
+```bash
+# App
+npm run dev
+npm run build
+npm run preview
 
-## Accelerator Data Model
+# Accelerator import/export pipeline
+npm run import:accelerator
 
-Turso/libSQL is the canonical source of truth. Static domain JSON is a compatibility export for Mapper's existing loader. Important frontend fields:
+# Tests
+npm test
+npm run test:accelerator:visual -- --project=chromium
+npm run test:legacy
+```
 
-- `participants[]`: `id`, `display_code`, `role`, `company_stage`, `cohort`, `profile_json`, `consent_level`, `visibility`, and `anonymization_level`.
-- `map_items[]`: evidence chunks with `id`, `participant_id`, `source_type`, `title`, `summary`, `excerpt` / `anonymized_text`, `themes[]`, `sentiment`, `confidence`, `umap_x` / `x`, `umap_y` / `y`, `metadata_json`, `source`, `embedding_metadata`, `projection`, `consent_level`, and `visibility`.
-- `ask_map.questions[]`: grounded sample prompts, answer syntheses, participant codes, highlighted map item IDs, themes, and follow-up questions.
+`npm test` runs the accelerator/unit suite. `npm run test:legacy` preserves original Mapper algorithm tests that may still contain Wikipedia/Khan assumptions.
 
-UMAP coordinates are precomputed. The browser loads and displays them; it does not recompute UMAP.
+## Repository Map
 
-## Canonical Turso Schema
+```text
+.
+├── data/
+│   ├── accelerator/
+│   │   ├── raw/anonymized-interviews/       # Seed anonymized markdown inputs
+│   │   └── exports/
+│   │       ├── accelerator-seed.json        # Generated Mapper-compatible export
+│   │       └── accelerator-seed.sql         # Generated Turso/libSQL seed inserts
+│   ├── domains/
+│   │   ├── all.json                         # Synthetic accelerator demo bundle
+│   │   ├── accelerator-demo.json            # Focused synthetic demo bundle
+│   │   ├── accelerator-seed.json            # Generated seed interview domain
+│   │   └── index.json                       # Static domain registry
+│   └── videos/                              # Legacy Mapper video assets
+├── scripts/
+│   ├── accelerator-schema.sql               # Canonical Turso/libSQL schema
+│   ├── import_accelerator_dataset.mjs       # Markdown -> chunks -> embeddings -> UMAP -> JSON/SQL
+│   └── export_accelerator_domain.mjs        # Turso/static export normalizer
+├── src/
+│   ├── app.js                               # Main wiring, accelerator mode, map actions
+│   ├── domain/loader.js                     # Domain bundle normalization/caching
+│   ├── ui/quiz.js                           # Ask-the-Map UI
+│   ├── ui/video-panel.js                    # Evidence panel
+│   └── viz/renderer.js                      # Canvas renderer and luminous node styling
+├── tests/
+│   ├── accelerator/                         # Schema/import/export contract tests
+│   └── visual/accelerator-observatory.spec.js
+└── AGENT_HANDOFF.md                         # Read this before continuing implementation
+```
 
-Apply or mirror `scripts/accelerator-schema.sql`. It defines:
+## Product Model
 
-- `participants`: participant display code, cohort, company stage, profile inference JSON, consent, visibility, anonymization level.
-- `sources`: interview/social/mentor/program/reflection records, source refs, raw-text policy, consent, metadata.
-- `chunks`: anonymized evidence excerpts and summaries linked to participant/source.
+The app maps accelerator research evidence, not educational content.
+
+Supported source types:
+
+- `interview`
+- `prior_interview`
+- `social`
+- `mentor_note`
+- `program_material`
+- `reflection`
+
+Participants support:
+
+- `id`
+- `display_code`
+- `role`
+- `company_stage`
+- `cohort`
+- `profile_json`
+- `consent_level`
+- `visibility`
+- `anonymization_level`
+
+Map items / chunks support:
+
+- `id`
+- `participant_id`
+- `source_type`
+- `title`
+- `summary`
+- `excerpt` / `anonymized_text`
+- `themes[]`
+- `sentiment`
+- `confidence`
+- `umap_x` / `x`
+- `umap_y` / `y`
+- `metadata_json`
+- `source`
+- `embedding_metadata`
+- `projection`
+- `consent_level`
+- `visibility`
+
+UMAP coordinates are always precomputed by the import/export pipeline. The browser loads and renders coordinates; it does not recompute UMAP.
+
+## Canonical Turso/libSQL Schema
+
+Apply or mirror:
+
+```text
+scripts/accelerator-schema.sql
+```
+
+It defines:
+
+- `participants`: display code, cohort, company stage, inferred profile JSON, consent, visibility.
+- `sources`: source type, source refs, raw-text policy, consent, metadata.
+- `chunks`: anonymized evidence excerpts and summaries.
 - `themes` and `chunk_themes`: normalized theme catalog and per-chunk confidence.
-- `embeddings`: embedding provider/model/dimensions/vector hash and optional vector blob.
+- `embeddings`: provider, model, dimensions, vector BLOB, vector hash, input hash.
 - `umap_coordinates`: precomputed 2D projection coordinates linked to an embedding.
 - `research_questions` and `question_evidence`: grounded Ask-the-Map responses and supporting chunks.
 
-## Import And Export Pipeline
+The frontend should not connect directly to Turso for the current Mapper-compatible build. Turso is the canonical backend; static JSON remains the browser delivery format.
 
-Place 2-3 anonymized interview files in:
+## Import Pipeline
+
+Place anonymized inputs in:
 
 ```text
 data/accelerator/raw/anonymized-interviews/
@@ -70,9 +179,12 @@ display_code: P-001
 role: technical founder
 company_stage: prototype
 cohort: spring-2026
+source_id: source-p-001-interview
 source_type: interview
+source_ref: local-anonymized/p-001.md
 consent_level: anonymized_research
 visibility: researcher
+anonymization_level: strict
 openness: 0.72
 conscientiousness: 0.64
 ambiguityComfort: 0.81
@@ -83,48 +195,81 @@ publicPrivateTension: 0.66
 Anonymized interview excerpt text...
 ```
 
-Run locally without network calls:
+Run:
 
 ```bash
 npm run import:accelerator
 ```
 
-Run with production OpenAI embeddings:
+The importer currently:
 
-```bash
-OPENAI_API_KEY=... npm run import:accelerator -- \
-  --embedding-provider openai \
-  --embedding-model text-embedding-3-small
+1. Parses anonymized markdown.
+2. Creates participant and source records.
+3. Chunks text into evidence items.
+4. Assigns initial themes with deterministic rules.
+5. Generates embeddings.
+6. Computes UMAP coordinates in Node.
+7. Writes static Mapper JSON.
+8. Writes Turso/libSQL seed SQL.
+
+Outputs:
+
+- `data/accelerator/exports/accelerator-seed.json`
+- `data/accelerator/exports/accelerator-seed.sql`
+- `data/domains/accelerator-seed.json`
+
+## Embedding Pipeline Direction
+
+The current checked-in importer has two code paths:
+
+- `local`: deterministic hash embeddings for tests and offline fixture generation.
+- `openai`: provider-backed embedding path added during exploration, but no longer the preferred production direction.
+
+The intended production path is now **local Google EmbeddingGemma**, not OpenAI.
+
+Planned provider:
+
+- Provider name: `embeddinggemma`
+- Model: `google/embeddinggemma-300M` / `google/embeddinggemma-300m`
+- Runtime: local Python sidecar or local CLI, likely using Sentence Transformers.
+- Output: float vectors stored as Turso/libSQL BLOBs in `embeddings.embedding_vector`.
+- Metadata: provider, model id, dimensions, vector hash, input hash.
+- UMAP: computed in Node or Python after embeddings are generated.
+- Frontend JSON: should include only embedding metadata and UMAP coordinates, not vector blobs.
+
+Google describes EmbeddingGemma as a 308M-parameter local/on-device embedding model with 768-dimensional embeddings, flexible output dimensions down to 128 via Matryoshka Representation Learning, and offline operation. See:
+
+- [EmbeddingGemma overview](https://ai.google.dev/gemma/docs/embeddinggemma)
+- [EmbeddingGemma with Sentence Transformers](https://ai.google.dev/gemma/docs/embeddinggemma/inference-embeddinggemma-with-sentence-transformers)
+
+## Ask-The-Map
+
+Ask-the-Map currently uses grounded sample questions from domain JSON:
+
+```json
+{
+  "ask_map": {
+    "questions": [
+      {
+        "id": "ask-seed-autonomy-mentorship",
+        "query": "Where does mentorship help without reducing autonomy?",
+        "answer": {
+          "synthesis": "Inference: ...",
+          "supporting_evidence": ["..."],
+          "participant_codes": ["P-101"],
+          "highlighted_map_item_ids": ["..."],
+          "themes": ["self-direction"],
+          "suggested_follow_up": "..."
+        }
+      }
+    ]
+  }
+}
 ```
 
-Optional:
+It does not pretend to be a full AI answer engine yet. It matches known questions/aliases and highlights evidence IDs. The future backend should search Turso/embeddings, generate a grounded answer, and send map actions back to the frontend.
 
-```bash
-OPENAI_API_KEY=... npm run import:accelerator -- \
-  --embedding-provider openai \
-  --embedding-model text-embedding-3-large \
-  --embedding-dimensions 1536
-```
-
-The importer writes:
-
-- `data/accelerator/exports/accelerator-seed.json`: generated Mapper-compatible export.
-- `data/accelerator/exports/accelerator-seed.sql`: Turso/libSQL seed inserts.
-- `data/domains/accelerator-seed.json`: static domain loaded by the frontend.
-
-The importer keeps UMAP computation outside the browser in both modes. Local mode uses deterministic hash embeddings for safe fixture generation. OpenAI mode sends only anonymized chunk text, summaries, titles, themes, and source type to the Embeddings API, stores the returned float vector as a Turso/libSQL BLOB in `embeddings.embedding_vector`, records vector hashes/metadata, computes UMAP from those vectors in Node, and strips vector blobs out of the static frontend JSON.
-
-Use Turso/libSQL as the canonical store, then export static JSON for Mapper:
-
-1. Query participants, sources, chunks/map items, themes, embeddings metadata, UMAP coordinates, and consent fields.
-2. Join chunk theme labels and source metadata.
-3. Emit `map_items[]` with normalized `x` / `y` aliases for `umap_x` / `umap_y`.
-4. Emit `participants[]` and optional `ask_map.questions[]`.
-5. Write `data/domains/all.json`, one or more focused domain files, and `data/domains/index.json`.
-
-The frontend expects JSON bundles, so the export can be generated in CI or by an admin pipeline without changing the app.
-
-## Future LiveKit Hook
+## Future LiveKit / Voice-Agent Hooks
 
 The app exposes:
 
@@ -136,32 +281,68 @@ window.mapperActions.clearMapLens()
 window.mapperActions.selectParticipant(participantId)
 ```
 
-It also listens for `mapper:action` events. A LiveKit voice agent can transcribe a question, search Turso/embeddings on the backend, then send one of these actions to the frontend to update highlights and evidence.
+It also listens for:
 
-## Privacy Notes
+```js
+window.dispatchEvent(new CustomEvent('mapper:action', {
+  detail: {
+    type: 'highlightMapItems',
+    payload: { itemIds, reason, focus: true }
+  }
+}))
+```
 
-The checked-in seed interviews are anonymized fixtures for pipeline validation, not private raw transcripts. Production exports should prefer anonymized excerpts, preserve `consent_level`, respect `visibility`, distinguish source evidence from synthesized claims, and label personality/profile interpretations as inferences rather than diagnoses.
+Expected future flow:
+
+1. Researcher/participant speaks.
+2. LiveKit agent transcribes/responds.
+3. Backend searches Turso chunks and embedding vectors.
+4. Agent returns answer plus map actions.
+5. Frontend highlights nodes and opens evidence.
+
+## Privacy And Governance
+
+This project handles sensitive human research data. Keep these rules:
+
+- Do not commit raw transcripts.
+- Prefer anonymized excerpts.
+- Preserve `consent_level`, `visibility`, and `anonymization_level`.
+- Keep vector blobs out of frontend JSON.
+- Distinguish source evidence from synthesized claims.
+- Label profile/personality statements as inferences, not diagnoses.
+- Participant-facing mode should be more careful and reflective than researcher mode.
+- `.env`, `.env.*`, `.credentials/`, screenshots, and generated artifacts likely to contain sensitive content are ignored.
+
+Important: an OpenAI API key was pasted into chat during development. It was not written to repo files, and a repo scan did not find it. The key should still be rotated/revoked because chat transcripts are not a safe secret store.
 
 ## Validation
 
-Useful commands:
+Current validation commands:
 
 ```bash
-npm run build
 npm test
-npm run import:accelerator
+npm run build
 npm run test:accelerator:visual -- --project=chromium
-npm run test:legacy
+rm -f /tmp/accelerator-seed.sqlite \
+  && sqlite3 /tmp/accelerator-seed.sqlite < scripts/accelerator-schema.sql \
+  && sqlite3 /tmp/accelerator-seed.sqlite < data/accelerator/exports/accelerator-seed.sql \
+  && sqlite3 /tmp/accelerator-seed.sqlite "select count(*), count(embedding_vector), min(length(embedding_vector)), max(length(embedding_vector)) from embeddings;"
 ```
 
-`npm test` runs the accelerator contract/unit suite. `npm run test:legacy` preserves the original Mapper algorithm tests, which still contain 50-domain Wikipedia/Khan Academy assumptions and video-pipeline performance checks.
+Expected sqlite check for the local seed fixture:
 
-Browser smoke screenshots are saved in `screenshots/`.
+```text
+7|7|384|384
+```
 
-## TODO
+That means 7 embedding rows, 7 stored vector blobs, each 384 bytes in the local 96-dimensional float32 fixture mode.
 
-- Replace the seed fixtures with the first approved anonymized participant interview exports.
-- Add researcher vs participant-facing detail modes.
-- Update or split tests so legacy Mapper tests and accelerator tests can run independently.
-- Connect real backend search and LiveKit agent events.
-- Add richer filters for participant, source type, theme, and profile-trait lensing.
+## Next Priorities
+
+1. Replace or deprecate the OpenAI provider path with an `embeddinggemma` local provider.
+2. Add a Python sidecar or CLI wrapper for `google/embeddinggemma-300M`.
+3. Support mixed-source ingestion through manifests, not just interview markdown.
+4. Replace seed fixtures with the first approved anonymized participant exports.
+5. Add real semantic Ask-the-Map retrieval over Turso chunks/vectors.
+6. Add researcher vs participant-facing mode.
+7. Add CI checks for import/export contract and no-secret scanning.

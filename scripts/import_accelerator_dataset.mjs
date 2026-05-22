@@ -10,8 +10,8 @@
  * - computes UMAP x/y coordinates with umap-js
  * - exports Mapper-compatible JSON and optional Turso/libSQL seed SQL
  *
- * Production runs should use --embedding-provider openai with OPENAI_API_KEY.
- * Local mode remains available for offline tests and fixture generation.
+ * Production runs are expected to use a local EmbeddingGemma provider next.
+ * Local hash mode remains available for offline tests and fixture generation.
  */
 
 import { createHash } from 'node:crypto';
