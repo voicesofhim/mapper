@@ -195,7 +195,27 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
         <div className="ask-voice-card">
           <div className="ask-voice-header">
             <span>VOICE // LOCAL</span>
-            <span>STT BRIDGE</span>
+            <details className="ask-voice-diagnostics">
+              <summary>status / heard / mic</summary>
+              <div className="ask-voice-diagnostics-menu">
+                <div className="ask-voice-status" aria-live="polite">
+                  <span>STATUS</span>
+                  <b>{error || status}</b>
+                </div>
+                <div className="ask-voice-heard" aria-live="polite">
+                  <span>HEARD</span>
+                  <b>{heardText || 'Waiting for speech'}</b>
+                </div>
+                <div className={`ask-voice-mic ask-voice-mic-${micInfo.state || 'idle'}`} aria-live="polite">
+                  <span>MIC</span>
+                  <b>{micInfo.label}</b>
+                  <small>{micInfo.detail}</small>
+                </div>
+                {session ? (
+                  <button type="button" className="ask-voice-disconnect" onClick={disconnectVoice}>Disconnect</button>
+                ) : null}
+              </div>
+            </details>
           </div>
 
           <div className="ask-voice-scope">
@@ -236,13 +256,12 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
           </div>
 
           <div className="ask-voice-mini-transcript" aria-live="polite">
-            <span>LIVE TRANSCRIPT</span>
             <div>
               {liveTranscript.length ? liveTranscript.map((entry) => (
                 <p key={entry.id} data-final={entry.final ? 'true' : 'false'}>
                   {entry.text}
                 </p>
-              )) : <p data-final="false">Waiting for LiveKit speech frames</p>}
+              )) : <p data-final="false">live transcript...</p>}
             </div>
           </div>
 
@@ -256,30 +275,10 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
               onPointerCancel={releasePushToTalk}
               onPointerLeave={releasePushToTalk}
             >
-              <i aria-hidden="true" />
-              Push to Talk
+              <span>Push to Talk</span>
               <small>{session ? 'Hold T or hold button' : 'Click to connect'}</small>
             </button>
           </div>
-          <details className="ask-voice-diagnostics">
-            <summary>status / heard / mic</summary>
-            <div className="ask-voice-status" aria-live="polite">
-              <span>STATUS</span>
-              <b>{error || status}</b>
-            </div>
-            <div className="ask-voice-heard" aria-live="polite">
-              <span>HEARD</span>
-              <b>{heardText || 'Waiting for speech'}</b>
-            </div>
-            <div className={`ask-voice-mic ask-voice-mic-${micInfo.state || 'idle'}`} aria-live="polite">
-              <span>MIC</span>
-              <b>{micInfo.label}</b>
-              <small>{micInfo.detail}</small>
-            </div>
-            {session ? (
-              <button type="button" className="ask-voice-disconnect" onClick={disconnectVoice}>Disconnect</button>
-            ) : null}
-          </details>
         </div>
       ) : null}
     </div>
@@ -683,20 +682,23 @@ function ensureVoiceStyles() {
     .ask-voice-header {
       display: flex;
       justify-content: space-between;
-      gap: 0.75rem;
+      align-items: start;
+      gap: 0.5rem;
       border-bottom: 1px solid rgba(31, 247, 255, 0.18);
       color: var(--color-primary);
       font: 0.62rem/1 var(--font-heading);
       letter-spacing: 0;
       padding: 0 0 0.42rem;
     }
-    .ask-voice-header span:last-child {
-      color: var(--color-text-muted);
+    .ask-voice-header > span {
+      padding-top: 0.1rem;
     }
     .ask-voice-scope {
+      display: grid;
+      place-items: center;
       width: min(100%, 206px);
-      aspect-ratio: 1 / 1;
-      margin-top: 0.5rem;
+      aspect-ratio: 1 / 0.82;
+      margin-top: 0.72rem;
       margin-left: auto;
       margin-right: auto;
       border: 1px solid rgba(31, 247, 255, 0.16);
@@ -729,6 +731,7 @@ function ensureVoiceStyles() {
       background:
         radial-gradient(circle at center, rgba(31, 247, 255, 0.05), transparent 58%),
         transparent;
+      transform: translateY(8%);
     }
     .ask-voice-status,
     .ask-voice-heard {
@@ -752,7 +755,7 @@ function ensureVoiceStyles() {
       font: 0.62rem/1 var(--font-heading);
     }
     .ask-voice-meter span,
-    .ask-voice-mini-transcript > span {
+    .ask-voice-diagnostics summary {
       color: var(--color-primary);
       font-family: var(--font-heading);
       text-transform: uppercase;
@@ -782,7 +785,6 @@ function ensureVoiceStyles() {
     }
     .ask-voice-mini-transcript {
       display: grid;
-      gap: 0.35rem;
       margin-top: 0.5rem;
       padding: 0.45rem;
       border: 1px solid rgba(31, 247, 255, 0.14);
@@ -790,12 +792,12 @@ function ensureVoiceStyles() {
         linear-gradient(rgba(31, 247, 255, 0.035) 1px, transparent 1px),
         rgba(0, 0, 0, 0.16);
       background-size: 100% 16px, auto;
-      min-height: 4.9rem;
+      min-height: 3.8rem;
     }
     .ask-voice-mini-transcript div {
       display: grid;
       gap: 0.3rem;
-      max-height: 4.6rem;
+      max-height: 3.6rem;
       overflow-y: auto;
       scrollbar-width: thin;
     }
@@ -829,28 +831,18 @@ function ensureVoiceStyles() {
     }
     .ask-voice-actions button {
       display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 0.18rem 0.5rem;
-      align-items: center;
+      justify-items: center;
+      gap: 0.22rem;
       border: 1px solid rgba(31, 247, 255, 0.24);
       border-radius: 0 !important;
       min-height: 40px;
       color: var(--color-text);
       background: rgba(31, 247, 255, 0.045);
-      text-align: left;
+      text-align: center;
       touch-action: none;
       user-select: none;
     }
-    .ask-voice-actions button i {
-      grid-row: 1 / span 2;
-      width: 0.58rem;
-      height: 0.58rem;
-      border: 1px solid rgba(31, 247, 255, 0.42);
-      background: rgba(31, 247, 255, 0.08);
-      box-shadow: 0 0 0 rgba(31, 247, 255, 0);
-    }
     .ask-voice-actions button small {
-      grid-column: 2;
       color: var(--color-text-muted);
       font: 0.58rem/1.15 var(--font-body);
       text-transform: none;
@@ -861,23 +853,18 @@ function ensureVoiceStyles() {
       color: var(--color-primary);
       box-shadow: 0 0 16px rgba(31, 247, 255, 0.18), inset 0 0 18px rgba(31, 247, 255, 0.08);
     }
-    .ask-voice-actions button.is-hot i {
-      background: var(--color-primary);
-      box-shadow: 0 0 14px rgba(31, 247, 255, 0.82);
-    }
     .ask-voice-diagnostics {
-      margin-top: 0.35rem;
-      border-top: 1px solid rgba(31, 247, 255, 0.1);
+      position: relative;
+      margin: 0;
       color: var(--color-text-muted);
       font: 0.62rem/1.35 var(--font-body);
     }
     .ask-voice-diagnostics summary {
       cursor: pointer;
-      padding-top: 0.35rem;
-      color: var(--color-primary);
-      font-family: var(--font-heading);
-      text-transform: uppercase;
+      max-width: 8.8rem;
+      text-align: right;
       list-style: none;
+      white-space: nowrap;
     }
     .ask-voice-diagnostics summary::-webkit-details-marker {
       display: none;
@@ -888,6 +875,23 @@ function ensureVoiceStyles() {
     }
     .ask-voice-diagnostics[open] summary::before {
       content: "[-] ";
+    }
+    .ask-voice-diagnostics[open] {
+      z-index: 3;
+    }
+    .ask-voice-diagnostics-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 0.35rem);
+      right: 0;
+      width: min(250px, 76vw);
+      border: 1px solid rgba(31, 247, 255, 0.18);
+      background: rgba(3, 9, 18, 0.94);
+      box-shadow: 0 0 18px rgba(31, 247, 255, 0.08);
+      padding: 0.55rem;
+    }
+    .ask-voice-diagnostics[open] .ask-voice-diagnostics-menu {
+      display: block;
     }
     .ask-voice-disconnect {
       width: 100%;
