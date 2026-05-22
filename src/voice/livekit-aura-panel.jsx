@@ -810,14 +810,17 @@ function ensureVoiceStyles() {
     .ask-voice-mini-transcript {
       display: grid;
       margin-top: 0.5rem;
-      padding: 0.45rem;
+      padding: 0.45rem 0.45rem 0.45rem 0.65rem;
       border: 0;
+      border-left: 2px solid rgba(31, 247, 255, 0.16);
       background: rgba(0, 0, 0, 0.1);
       min-height: 3.8rem;
-      transition: background 0.16s ease;
+      transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
     }
     .ask-voice-mini-transcript.has-text {
       background: rgba(0, 0, 0, 0.18);
+      border-left-color: rgba(31, 247, 255, 0.72);
+      box-shadow: inset 10px 0 18px -18px rgba(31, 247, 255, 0.7);
     }
     .ask-voice-mini-transcript div {
       display: grid;
@@ -832,8 +835,16 @@ function ensureVoiceStyles() {
       font: 0.68rem/1.35 var(--font-body);
       overflow-wrap: anywhere;
     }
+    .ask-voice-mini-transcript p::before {
+      content: "> ";
+      color: rgba(31, 247, 255, 0.5);
+      font-style: normal;
+    }
     .ask-voice-mini-transcript.has-text p {
       color: var(--color-text);
+    }
+    .ask-voice-mini-transcript.has-text p::before {
+      color: var(--color-primary);
     }
     .ask-voice-mini-transcript p[data-final="false"] {
       color: rgba(145, 165, 188, 0.72);
