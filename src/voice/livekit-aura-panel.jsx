@@ -25,6 +25,9 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
   const [status, setStatus] = useState('Local voice idle');
   const [error, setError] = useState('');
   const [heardText, setHeardText] = useState('');
+  const [liveTranscript, setLiveTranscript] = useState([]);
+  const [micLevel, setMicLevel] = useState(0);
+  const micMonitorRef = useRef(null);
   const [micInfo, setMicInfo] = useState({
     label: 'Mic not checked',
     detail: 'Connect local voice to test the active browser input.',
@@ -35,6 +38,18 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
     setMode(nextMode);
     onModeChange?.(nextMode);
   }, [onModeChange]);
+
+  const stopMicMonitor = useCallback(() => {
+    micMonitorRef.current?.();
+    micMonitorRef.current = null;
+    setMicLevel(0);
+  }, []);
+
+  const startMicMonitor = useCallback(async () => {
+    stopMicMonitor();
+    const cleanup = await startMicLevelMonitor(setMicLevel);
+    micMonitorRef.current = cleanup;
+  }, [stopMicMonitor]);
 
   const refreshMicInfo = useCallback(async ({ requestPermission = false } = {}) => {
     try {
@@ -66,11 +81,14 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
     return () => mediaDevices.removeEventListener('devicechange', handleDeviceChange);
   }, [mode, refreshMicInfo]);
 
+  useEffect(() => () => stopMicMonitor(), [stopMicMonitor]);
+
   const connectVoice = useCallback(async () => {
     setError('');
     setStatus('Checking local microphone');
     try {
       const checkedMic = await refreshMicInfo({ requestPermission: true });
+      await startMicMonitor();
       setMicInfo({
         ...checkedMic,
         detail: 'Input test passed. Using browser default input.',
@@ -92,17 +110,20 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
       });
       setStatus('Connecting to local voice agent');
     } catch (err) {
+      stopMicMonitor();
       setError(formatConnectionError(err));
       setStatus('Local voice unavailable');
     }
-  }, [refreshMicInfo]);
+  }, [refreshMicInfo, startMicMonitor, stopMicMonitor]);
 
   const disconnectVoice = useCallback(() => {
     setSession(null);
     setStatus('Local voice idle');
     setError('');
     setHeardText('');
-  }, []);
+    setLiveTranscript([]);
+    stopMicMonitor();
+  }, [stopMicMonitor]);
 
   return (
     <div className="ask-voice-shell" data-mode={mode}>
@@ -152,11 +173,31 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
                   onTranscript={onTranscript}
                   setStatus={setStatus}
                   setHeardText={setHeardText}
+                  setLiveTranscript={setLiveTranscript}
                 />
               </LiveKitRoom>
             ) : (
               <IdleAura />
             )}
+          </div>
+
+          <div className="ask-voice-meter" aria-label="Microphone input level">
+            <span>SIGNAL</span>
+            <div className="ask-voice-meter-track">
+              <i style={{ transform: `scaleX(${Math.max(0.03, micLevel).toFixed(3)})` }} />
+            </div>
+            <b>{Math.round(micLevel * 100)}%</b>
+          </div>
+
+          <div className="ask-voice-mini-transcript" aria-live="polite">
+            <span>LIVE TRANSCRIPT</span>
+            <div>
+              {liveTranscript.length ? liveTranscript.map((entry) => (
+                <p key={entry.id} data-final={entry.final ? 'true' : 'false'}>
+                  {entry.text}
+                </p>
+              )) : <p data-final="false">Waiting for LiveKit speech frames</p>}
+            </div>
           </div>
 
           <div className="ask-voice-status" aria-live="polite">
@@ -198,8 +239,9 @@ function IdleAura() {
   );
 }
 
-function VoiceRoom({ onTranscript, setStatus, setHeardText }) {
+function VoiceRoom({ onTranscript, setStatus, setHeardText, setLiveTranscript }) {
   const lastTranscriptRef = useRef('');
+  const transcriptSeqRef = useRef(0);
   const [voiceState, setVoiceState] = useState('listening');
 
   useEffect(() => {
@@ -212,13 +254,28 @@ function VoiceRoom({ onTranscript, setStatus, setHeardText }) {
       setStatus(formatVoiceStatus(voiceStatus));
       if (voiceStatus.state === 'searching' && voiceStatus.detail) {
         setHeardText?.(voiceStatus.detail);
+        appendMiniTranscript(setLiveTranscript, {
+          id: `status-${transcriptSeqRef.current++}`,
+          text: voiceStatus.detail,
+          final: false,
+        });
       }
       setVoiceState(mapVoiceStatusToAuraState(voiceStatus.state));
       window.dispatchEvent(new CustomEvent('mapper:voice-status', { detail: voiceStatus }));
       return;
     }
 
-    const transcript = readFinalTranscript(message);
+    const packet = readTranscriptPacket(message);
+    if (packet.text) {
+      appendMiniTranscript(setLiveTranscript, {
+        id: packet.id || `transcript-${transcriptSeqRef.current++}`,
+        text: packet.text,
+        final: packet.final,
+      });
+    }
+
+    if (!packet.final) return;
+    const transcript = packet.text;
     if (!transcript || transcript === lastTranscriptRef.current) return;
     lastTranscriptRef.current = transcript;
     setHeardText?.(transcript);
@@ -244,15 +301,18 @@ function VoiceRoom({ onTranscript, setStatus, setHeardText }) {
   );
 }
 
-function readFinalTranscript(message) {
+function readTranscriptPacket(message) {
   const topic = message?.topic || '';
   const decoded = decodePayload(message?.payload);
-  if (!decoded) return '';
+  if (!decoded) return { text: '', final: false, id: '' };
 
   const parsed = parseMaybeJson(decoded);
   const text = extractTranscriptText(parsed);
-  const isFinal = extractFinalState(parsed, topic);
-  return isFinal ? text.trim() : '';
+  return {
+    text: text.trim(),
+    final: extractFinalState(parsed, topic),
+    id: extractTranscriptId(parsed),
+  };
 }
 
 function readVoiceStatus(message) {
@@ -298,6 +358,11 @@ function extractTranscriptText(payload) {
   return payload.text || payload.transcript || payload.query || payload.message || '';
 }
 
+function extractTranscriptId(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return '';
+  return payload.id || payload.segment_id || payload.segmentId || payload.sid || '';
+}
+
 function extractFinalState(payload, topic) {
   if (topic === 'mapper.transcript') return true;
   if (!payload || typeof payload !== 'object') return true;
@@ -307,6 +372,24 @@ function extractFinalState(payload, topic) {
   if ('is_final' in payload) return Boolean(payload.is_final);
   if ('isFinal' in payload) return Boolean(payload.isFinal);
   return topic !== 'lk.transcription';
+}
+
+function appendMiniTranscript(setLiveTranscript, entry) {
+  if (!entry?.text || !setLiveTranscript) return;
+  setLiveTranscript((current) => {
+    const nextEntry = {
+      ...entry,
+      text: entry.text.trim(),
+      final: Boolean(entry.final),
+    };
+    const index = nextEntry.id
+      ? current.findIndex((item) => item.id === nextEntry.id)
+      : -1;
+    const next = index >= 0
+      ? current.map((item, itemIndex) => (itemIndex === index ? nextEntry : item))
+      : [...current, nextEntry];
+    return next.slice(-4);
+  });
 }
 
 function formatAgentState(state) {
@@ -411,6 +494,52 @@ function micDetailForDevices(audioInputs, label) {
   if (!label) return 'Allow mic access to reveal the input name.';
   if (audioInputs.length === 1) return 'Browser default input detected.';
   return `${audioInputs.length} audio inputs available. Browser default shown.`;
+}
+
+async function startMicLevelMonitor(setMicLevel) {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error('Browser microphone access is unavailable.');
+  }
+
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextCtor) {
+    for (const track of stream.getTracks()) track.stop();
+    throw new Error('Browser audio analysis is unavailable.');
+  }
+
+  const audioContext = new AudioContextCtor();
+  const analyser = audioContext.createAnalyser();
+  analyser.fftSize = 512;
+  analyser.smoothingTimeConstant = 0.72;
+  const source = audioContext.createMediaStreamSource(stream);
+  source.connect(analyser);
+  const samples = new Uint8Array(analyser.fftSize);
+  let rafId = 0;
+  let active = true;
+
+  const tick = () => {
+    if (!active) return;
+    analyser.getByteTimeDomainData(samples);
+    let sum = 0;
+    for (const sample of samples) {
+      const centered = (sample - 128) / 128;
+      sum += centered * centered;
+    }
+    const rms = Math.sqrt(sum / samples.length);
+    setMicLevel(Math.min(1, rms * 5));
+    rafId = window.requestAnimationFrame(tick);
+  };
+
+  tick();
+
+  return () => {
+    active = false;
+    if (rafId) window.cancelAnimationFrame(rafId);
+    source.disconnect();
+    for (const track of stream.getTracks()) track.stop();
+    audioContext.close?.();
+  };
 }
 
 function ensureVoiceStyles() {
@@ -535,6 +664,73 @@ function ensureVoiceStyles() {
       gap: 0.55rem;
       align-items: start;
       overflow-wrap: anywhere;
+    }
+    .ask-voice-meter {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) 2.4rem;
+      gap: 0.45rem;
+      align-items: center;
+      margin-top: 0.5rem;
+      color: var(--color-text-muted);
+      font: 0.62rem/1 var(--font-heading);
+    }
+    .ask-voice-meter span,
+    .ask-voice-mini-transcript > span {
+      color: var(--color-primary);
+      font-family: var(--font-heading);
+      text-transform: uppercase;
+    }
+    .ask-voice-meter-track {
+      height: 8px;
+      border: 1px solid rgba(31, 247, 255, 0.18);
+      background:
+        repeating-linear-gradient(90deg, rgba(31, 247, 255, 0.08) 0 1px, transparent 1px 7px),
+        rgba(255, 255, 255, 0.025);
+      overflow: hidden;
+    }
+    .ask-voice-meter-track i {
+      display: block;
+      width: 100%;
+      height: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, rgba(31, 247, 255, 0.25), rgba(31, 247, 255, 0.86));
+      box-shadow: 0 0 10px rgba(31, 247, 255, 0.22);
+      transition: transform 0.08s linear;
+    }
+    .ask-voice-meter b {
+      color: var(--color-text-muted);
+      font-weight: 400;
+      text-align: right;
+      font-family: var(--font-body);
+    }
+    .ask-voice-mini-transcript {
+      display: grid;
+      gap: 0.35rem;
+      margin-top: 0.5rem;
+      padding: 0.45rem;
+      border: 1px solid rgba(31, 247, 255, 0.14);
+      background:
+        linear-gradient(rgba(31, 247, 255, 0.035) 1px, transparent 1px),
+        rgba(0, 0, 0, 0.16);
+      background-size: 100% 16px, auto;
+      min-height: 4.9rem;
+    }
+    .ask-voice-mini-transcript div {
+      display: grid;
+      gap: 0.3rem;
+      max-height: 4.6rem;
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+    .ask-voice-mini-transcript p {
+      margin: 0;
+      color: var(--color-text);
+      font: 0.68rem/1.35 var(--font-body);
+      overflow-wrap: anywhere;
+    }
+    .ask-voice-mini-transcript p[data-final="false"] {
+      color: var(--color-text-muted);
+      font-style: italic;
     }
     .ask-voice-heard {
       margin-top: 0.25rem;
