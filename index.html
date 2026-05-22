@@ -48,14 +48,21 @@
             --color-border: rgba(138,205,255,0.22);
             --color-glow-primary: rgba(138,205,255,0.24);
             --color-glow-secondary: rgba(112,226,164,0.18);
-            --font-heading: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            --font-heading: 'Departure Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            --font-body: 'Departure Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             --header-height: 56px;
             --video-sidebar-width: 380px;
             --quiz-sidebar-width: 380px;
         }
 
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html body *,
+        html body *::before,
+        html body *::after,
+        html body *[class],
+        html body *[id] {
+            border-radius: 0 !important;
+        }
         html { height: 100%; }
         body {
             font-family: var(--font-body);

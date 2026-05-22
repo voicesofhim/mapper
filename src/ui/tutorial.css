@@ -1,5 +1,15 @@
 /* Tutorial Mode — M3 Motion Design Tokens & Styles */
 
+@font-face {
+  font-family: 'Departure Mono';
+  src:
+    url('../assets/fonts/departure-mono/DepartureMono-Regular.woff2') format('woff2'),
+    url('../assets/fonts/departure-mono/DepartureMono-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --ease-emphasized-decel: cubic-bezier(0.05, 0.7, 0.1, 1.0);
   --ease-emphasized-accel: cubic-bezier(0.3, 0.0, 0.8, 0.15);
