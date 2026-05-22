@@ -1,0 +1,6 @@
+# Local-only LiveKit STT bridge runtime.
+# This is intentionally separate from requirements-embeddinggemma.txt so voice
+# dependencies can be installed only on machines that need microphone/STT.
+livekit>=1.0.18
+faster-whisper>=1.1.1
+numpy>=1.26.0

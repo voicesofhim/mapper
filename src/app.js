@@ -1293,15 +1293,18 @@ function selectAndShowNextQuestion() {
 }
 
 let askRequestSeq = 0;
+let activeAskInFlight = false;
 
 async function handleAskMap(queryText, question) {
   const requestId = ++askRequestSeq;
+  activeAskInFlight = true;
   quiz.showAskStatus('Searching local evidence...');
   renderer.setThinking(true);
   let localResponse = null;
   try {
     localResponse = await queryLocalAskMap(queryText);
   } finally {
+    if (requestId === askRequestSeq) activeAskInFlight = false;
     if (requestId === askRequestSeq) renderer.setThinking(false);
   }
   if (requestId !== askRequestSeq) return;
@@ -1345,6 +1348,27 @@ async function handleAskMap(queryText, question) {
   quiz.showAskResponse(response);
   highlightMapItems(itemIds, matched.query || queryText, { focus: true, focusIds: itemIds.slice(0, 3) });
   showEvidencePanel(evidence, { close: true });
+}
+
+function handleVoiceStatus(detail = {}) {
+  const state = String(detail.state || '').toLowerCase();
+  if (!state || !renderer) return;
+
+  if (state === 'transcribing') {
+    quiz.showAskStatus('Transcribing local voice...');
+    renderer.setThinking(true);
+    return;
+  }
+
+  if (state === 'searching' || state === 'thinking') {
+    quiz.showAskStatus('Searching local evidence...');
+    renderer.setThinking(true);
+    return;
+  }
+
+  if (!activeAskInFlight && ['idle', 'listening', 'done', 'error'].includes(state)) {
+    renderer.setThinking(false);
+  }
 }
 
 async function queryLocalAskMap(queryText) {
@@ -2083,6 +2107,10 @@ window.addEventListener('mapper:action', (event) => {
   if (type === 'setMapLens') setMapLens(payload);
   if (type === 'clearMapLens') clearMapLens();
   if (type === 'selectParticipant') selectParticipant(payload.participantId);
+});
+
+window.addEventListener('mapper:voice-status', (event) => {
+  handleVoiceStatus(event.detail || {});
 });
 
 if (document.readyState === 'loading') {

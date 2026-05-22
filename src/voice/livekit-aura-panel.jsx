@@ -2,8 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   LiveKitRoom,
-  RoomAudioRenderer,
-  useAgent,
   useDataChannel,
 } from '@livekit/components-react';
 
@@ -143,16 +141,22 @@ function IdleAura() {
 }
 
 function VoiceRoom({ onTranscript, setStatus }) {
-  const agent = useAgent();
   const lastTranscriptRef = useRef('');
-  const agentState = agent?.state || 'connecting';
-  const audioTrack = agent?.microphoneTrack;
+  const [voiceState, setVoiceState] = useState('listening');
 
   useEffect(() => {
-    setStatus(`Local voice: ${formatAgentState(agentState)}`);
-  }, [agentState, setStatus]);
+    setStatus('Local voice listening');
+  }, [setStatus]);
 
   useDataChannel((message) => {
+    const voiceStatus = readVoiceStatus(message);
+    if (voiceStatus) {
+      setStatus(formatVoiceStatus(voiceStatus));
+      setVoiceState(mapVoiceStatusToAuraState(voiceStatus.state));
+      window.dispatchEvent(new CustomEvent('mapper:voice-status', { detail: voiceStatus }));
+      return;
+    }
+
     const transcript = readFinalTranscript(message);
     if (!transcript || transcript === lastTranscriptRef.current) return;
     lastTranscriptRef.current = transcript;
@@ -163,14 +167,12 @@ function VoiceRoom({ onTranscript, setStatus }) {
     <>
       <AgentAudioVisualizerAura
         className="mapper-livekit-aura"
-        state={agentState}
-        audioTrack={audioTrack}
+        state={voiceState}
         color="#1ff7ff"
         colorShift={0.03}
         themeMode="dark"
-        aria-label={`LiveKit Aura voice visualizer ${agentState}`}
+        aria-label={`LiveKit Aura voice visualizer ${voiceState}`}
       />
-      <RoomAudioRenderer />
     </>
   );
 }
@@ -184,6 +186,21 @@ function readFinalTranscript(message) {
   const text = extractTranscriptText(parsed);
   const isFinal = extractFinalState(parsed, topic);
   return isFinal ? text.trim() : '';
+}
+
+function readVoiceStatus(message) {
+  const topic = message?.topic || '';
+  if (topic !== 'mapper.voice_status') return null;
+  const decoded = decodePayload(message?.payload);
+  if (!decoded) return null;
+  const parsed = parseMaybeJson(decoded);
+  const state = parsed?.state || parsed?.status || parsed?.phase;
+  if (!state) return null;
+  return {
+    state: String(state).toLowerCase(),
+    detail: parsed.detail || parsed.message || parsed.text || '',
+    local_only: parsed.local_only !== false,
+  };
 }
 
 function decodePayload(payload) {
@@ -227,6 +244,21 @@ function extractFinalState(payload, topic) {
 
 function formatAgentState(state) {
   return String(state || 'idle').replace(/-/g, ' ');
+}
+
+function formatVoiceStatus(status) {
+  const state = formatAgentState(status?.state || 'idle');
+  const detail = String(status?.detail || '').trim();
+  if (!detail) return `Local voice ${state}`;
+  if (detail.length > 48) return `Local voice ${state}: ${detail.slice(0, 45)}...`;
+  return `Local voice ${state}: ${detail}`;
+}
+
+function mapVoiceStatusToAuraState(state) {
+  if (state === 'transcribing' || state === 'searching' || state === 'thinking') return 'thinking';
+  if (state === 'error' || state === 'failed') return 'failed';
+  if (state === 'idle' || state === 'done') return 'idle';
+  return 'listening';
 }
 
 function formatTokenEndpointError(status) {

@@ -15,6 +15,9 @@
     "ask:server": "node scripts/ask_map_server.mjs",
     "ask:server:rebuild": "node scripts/ask_map_server.mjs --rebuild-db",
     "setup:embeddinggemma": "bash scripts/setup_embeddinggemma.sh",
+    "setup:voice": "bash scripts/setup_voice_stt.sh",
+    "voice:stt": ".venv-voice/bin/python scripts/livekit_stt_bridge.py",
+    "voice:stt:stdin": ".venv-voice/bin/python scripts/livekit_stt_bridge.py --stdin",
     "bench": "vitest bench",
     "test:visual": "playwright test"
   },

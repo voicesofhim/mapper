@@ -133,7 +133,7 @@ Key file:
 src/app.js
 ```
 
-### Local LiveKit Hooks
+### Local LiveKit / STT Hooks
 
 The frontend exposes:
 
@@ -156,7 +156,9 @@ window.dispatchEvent(new CustomEvent('mapper:action', {
 }))
 ```
 
-The Ask panel also has `Chat` and `VOICE` modes. Voice mode mounts the official LiveKit Agents UI Aura visualizer block from `src/components/agents-ui/agent-audio-visualizer-aura.jsx`; do not replace it with a hand-rolled imitation unless the product direction changes. The local Ask server issues development tokens at:
+The Ask panel also has `Chat` and `VOICE` modes. Voice mode mounts the official LiveKit Agents UI Aura visualizer block from `src/components/agents-ui/agent-audio-visualizer-aura.jsx`; do not replace it with a hand-rolled imitation unless the product direction changes. For the current milestone, voice is STT-only: the local process should transcribe the user's question and let the existing local Ask server do retrieval. There is no voice response/TTS requirement yet.
+
+The local Ask server issues development tokens at:
 
 ```text
 POST http://127.0.0.1:8787/api/livekit-token
@@ -170,21 +172,54 @@ LIVEKIT_API_KEY=devkey
 LIVEKIT_API_SECRET=secret
 ```
 
-The local LiveKit agent/STT process should publish final transcripts on the LiveKit data channel topic `mapper.transcript`:
+The STT bridge is implemented in:
+
+```text
+scripts/livekit_stt_bridge.py
+requirements-voice.txt
+scripts/setup_voice_stt.sh
+```
+
+Run it after starting a local LiveKit server, `npm run ask:server`, and `npm run dev`:
+
+```bash
+npm run setup:voice
+npm run voice:stt
+```
+
+`npm run setup:voice` installs `.venv-voice` and prefetches the default `base.en` faster-whisper model into the local Hugging Face cache. Use `npm run setup:voice -- --model small.en` and `npm run voice:stt -- --model small.en` if the project wants a larger local STT model.
+
+Manual frontend test mode:
+
+```bash
+npm run voice:stt:stdin
+```
+
+That joins the same room and publishes each terminal line as if it were a final spoken transcript.
+
+The local LiveKit STT process publishes final transcripts on the LiveKit data channel topic `mapper.transcript`:
 
 ```json
 { "text": "Which participants need structure before they can execute?", "final": true }
 ```
 
-The frontend routes final transcript text into the existing Ask-the-Map retrieval flow, then highlights nodes and updates evidence exactly like chat. The browser does not implement cloud STT.
+It also publishes status updates on `mapper.voice_status`:
+
+```json
+{ "state": "transcribing", "detail": "browser-participant", "local_only": true }
+{ "state": "searching", "detail": "Which participants need structure?", "local_only": true }
+```
+
+The frontend routes final transcript text into the existing Ask-the-Map retrieval flow, then highlights nodes and updates evidence exactly like chat. Voice status events trigger the graph thinking animation while local transcription/retrieval is happening. The browser does not implement cloud STT.
 
 Expected local-only flow:
 
 1. User speaks.
-2. Local LiveKit agent transcribes/responds.
-3. Local backend searches local Turso/embeddings.
-4. Backend returns grounded answer and map actions.
-5. Frontend highlights nodes and updates evidence.
+2. Browser publishes microphone audio to local LiveKit.
+3. Local STT bridge transcribes locally and publishes `mapper.transcript`.
+4. Frontend sends the transcript to local Ask-the-Map retrieval.
+5. Local backend searches local Turso/embeddings.
+6. Frontend highlights nodes and updates evidence.
 
 ## Data Model
 

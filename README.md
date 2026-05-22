@@ -326,15 +326,41 @@ npm run dev
 
 If the local Ask server is not running, the frontend falls back to the static bundled sample answers. Returned synthesis is intentionally cautious and retrieval-based; it distinguishes source evidence from inference and does not expose raw transcripts.
 
-## Local LiveKit / Voice-Agent Hooks
+## Local LiveKit / Voice STT Hooks
 
 The Ask panel now has `Chat` and `VOICE` modes. Voice mode mounts the official LiveKit Agents UI Aura visualizer block from the shadcn Agents UI registry and connects only to local LiveKit infrastructure.
 
-Run the local Ask/retrieval server and app:
+For the current milestone, the local voice process is **STT only**. It does not speak back and does not generate answers. It listens to local LiveKit room audio, transcribes with local Whisper, publishes the final question text, and the existing local Ask-the-Map retrieval server updates the map and sidecars.
+
+Install local voice dependencies:
+
+```bash
+npm run setup:voice
+```
+
+By default this installs the local LiveKit/STT Python runtime and prefetches the `base.en` faster-whisper model into the local Hugging Face cache. To choose a different local model:
+
+```bash
+npm run setup:voice -- --model small.en
+npm run voice:stt -- --model small.en
+```
+
+Run a local LiveKit server. One simple development option is:
+
+```bash
+docker run --rm \
+  -p 7880:7880 \
+  -p 7881:7881 \
+  -p 7882:7882/udp \
+  livekit/livekit-server --dev --bind 0.0.0.0
+```
+
+Then run the Mapper services in separate terminals:
 
 ```bash
 npm run ask:server
 npm run dev
+npm run voice:stt
 ```
 
 The Ask server exposes a local token endpoint:
@@ -345,13 +371,28 @@ POST http://127.0.0.1:8787/api/livekit-token
 
 Defaults are for local development: `LIVEKIT_URL=ws://127.0.0.1:7880`, `LIVEKIT_API_KEY=devkey`, and `LIVEKIT_API_SECRET=secret`. Override these in your local environment when your local LiveKit server uses different credentials. Do not commit local secrets.
 
-The voice agent/STT process is expected to run locally. When it has a final transcript, publish a LiveKit data-channel message on topic `mapper.transcript`:
+The included bridge lives at `scripts/livekit_stt_bridge.py`. It obtains a local LiveKit token from the Ask server, joins room `mapper-local`, subscribes to browser microphone audio, and publishes final transcripts on topic `mapper.transcript`:
 
 ```json
 { "text": "Where does mentorship help without reducing autonomy?", "final": true }
 ```
 
-The frontend submits that transcript through the same grounded Ask-the-Map retrieval path used by chat. The browser does not call cloud STT and does not send transcripts to external services.
+It also publishes local status events on topic `mapper.voice_status`:
+
+```json
+{ "state": "transcribing", "detail": "browser-participant", "local_only": true }
+{ "state": "searching", "detail": "Which participants need structure?", "local_only": true }
+```
+
+The frontend uses those status events to show voice status and run the map thinking animation while retrieval is in progress. The final transcript is submitted through the same grounded Ask-the-Map path used by chat. The browser does not call cloud STT and does not send transcripts to external services.
+
+Useful local test mode:
+
+```bash
+npm run voice:stt:stdin
+```
+
+This joins the same LiveKit room and publishes each line typed in the terminal as a final transcript, which is useful for testing the frontend voice path before debugging microphone audio or local STT model performance.
 
 The app exposes:
 
@@ -374,13 +415,14 @@ window.dispatchEvent(new CustomEvent('mapper:action', {
 }))
 ```
 
-Expected future flow:
+Current local flow:
 
 1. Researcher/participant speaks.
-2. LiveKit agent transcribes/responds.
-3. Backend searches Turso chunks and embedding vectors.
-4. Agent returns answer plus map actions.
-5. Frontend highlights nodes and opens evidence.
+2. Browser publishes microphone audio into local LiveKit.
+3. Local STT bridge transcribes and publishes `mapper.transcript`.
+4. Frontend submits the transcript to local Ask-the-Map retrieval.
+5. Local Ask server searches local libSQL/Turso chunk vectors.
+6. Frontend highlights nodes, animates the map, and opens evidence.
 
 ## Privacy And Governance
 
