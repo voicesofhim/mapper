@@ -42,6 +42,8 @@ export class Renderer {
     this._highlightedIds = new Set();
     this._highlightRank = new Map();
     this._highlightStartedAt = 0;
+    this._isThinking = false;
+    this._thinkingStartedAt = 0;
     this._selectedPointId = null;
     this._participantPaths = [];
     this._questions = [];
@@ -298,6 +300,14 @@ export class Renderer {
     this._highlightedIds = new Set(normalized);
     this._highlightRank = new Map(normalized.map((id, index) => [id, index]));
     this._highlightStartedAt = normalized.length ? performance.now() : 0;
+    this._scheduleRender();
+  }
+
+  setThinking(active) {
+    const next = !!active;
+    if (this._isThinking === next) return;
+    this._isThinking = next;
+    this._thinkingStartedAt = next ? performance.now() : 0;
     this._scheduleRender();
   }
 
@@ -614,6 +624,7 @@ export class Renderer {
     this._drawVideos(ctx, w, h);
     this._drawVideoTrajectory(ctx, w, h);
     this._drawAnsweredDots(ctx, w, h);
+    this._drawThinkingField(ctx, w, h);
     this._drawHighlightConstellation(ctx, w, h);
 
     ctx.restore();
@@ -635,7 +646,7 @@ export class Renderer {
       ctx.restore();
     }
 
-    if (this._highlightedIds.size > 0) {
+    if (this._highlightedIds.size > 0 || this._isThinking) {
       this._scheduleRender();
     }
   }
@@ -846,6 +857,72 @@ export class Renderer {
       ctx.fillStyle = glow;
       ctx.fill();
     });
+    ctx.restore();
+  }
+
+  _drawThinkingField(ctx, w, h) {
+    if (!this._isThinking || this._points.length === 0) return;
+
+    const elapsed = performance.now() - this._thinkingStartedAt;
+    const points = this._points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    if (!points.length) return;
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    let sumX = 0;
+    let sumY = 0;
+    for (const point of points) {
+      minX = Math.min(minX, point.x);
+      maxX = Math.max(maxX, point.x);
+      minY = Math.min(minY, point.y);
+      maxY = Math.max(maxY, point.y);
+      sumX += point.x;
+      sumY += point.y;
+    }
+
+    const cx = (sumX / points.length) * w;
+    const cy = (sumY / points.length) * h;
+    const span = Math.max((maxX - minX) * w, (maxY - minY) * h, 180);
+    const baseRadius = Math.min(Math.max(span * 0.52, 120), Math.max(w, h) * 0.36) / this._zoom;
+    const phase = elapsed / 1800;
+    const pulse = 0.5 + 0.5 * Math.sin(elapsed / 520);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    for (let i = 0; i < 2; i++) {
+      const radius = baseRadius * (0.78 + i * 0.22 + pulse * 0.025);
+      const start = phase * Math.PI * 2 + i * Math.PI * 0.92;
+      const end = start + Math.PI * (0.42 + i * 0.08);
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, start, end);
+      ctx.strokeStyle = `rgba(205, 235, 255, ${0.09 - i * 0.025})`;
+      ctx.lineWidth = (1.4 - i * 0.25) / this._zoom;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    const rippleRadius = baseRadius * (0.52 + ((elapsed / 2200) % 1) * 0.42);
+    ctx.beginPath();
+    ctx.arc(cx, cy, rippleRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(205, 235, 255, ${0.035 + pulse * 0.02})`;
+    ctx.lineWidth = 1 / this._zoom;
+    ctx.stroke();
+
+    for (let i = 0; i < points.length; i++) {
+      const point = points[i];
+      const shimmer = 0.5 + 0.5 * Math.sin(elapsed / 360 + i * 1.71);
+      if (shimmer < 0.56) continue;
+      const color = point.color || [170, 220, 255, 210];
+      const radius = ((point.radius || 2.2) * (1.1 + shimmer * 0.85)) / this._zoom;
+      ctx.beginPath();
+      ctx.arc(point.x * w, point.y * h, radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.08 + shimmer * 0.08})`;
+      ctx.fill();
+    }
+
     ctx.restore();
   }
 

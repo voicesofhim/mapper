@@ -1173,7 +1173,13 @@ let askRequestSeq = 0;
 async function handleAskMap(queryText, question) {
   const requestId = ++askRequestSeq;
   quiz.showAskStatus('Searching local evidence...');
-  const localResponse = await queryLocalAskMap(queryText);
+  renderer.setThinking(true);
+  let localResponse = null;
+  try {
+    localResponse = await queryLocalAskMap(queryText);
+  } finally {
+    if (requestId === askRequestSeq) renderer.setThinking(false);
+  }
   if (requestId !== askRequestSeq) return;
   if (localResponse?.evidence?.length) {
     const itemIds = localResponse.highlighted_map_item_ids || localResponse.evidence.map(item => item.id);
@@ -1261,7 +1267,7 @@ function highlightMapItems(itemIds, reason = '', options = {}) {
   renderer.highlightMapItems(itemIds || []);
   if (options.focus) {
     const focusIds = options.focusIds || itemIds || [];
-    renderer.focusMapItems(focusIds, { maxZoom: 1.22, minSpan: 0.62, duration: 1450 });
+    renderer.focusMapItems(focusIds, { maxZoom: 1.05, minSpan: 0.7, duration: 1800 });
   }
   window.dispatchEvent(new CustomEvent('mapper:highlight-items', {
     detail: { itemIds, reason, focus: !!options.focus },
