@@ -27,6 +27,11 @@ export class Renderer {
     this._container = null;
     this._canvas = null;
     this._ctx = null;
+    this._glCanvas = null;
+    this._gl = null;
+    this._glPrograms = null;
+    this._glBuffers = null;
+    this._glAnimFrame = null;
     this._dpr = 1;
     this._width = 0;   // CSS pixels
     this._height = 0;  // CSS pixels
@@ -126,8 +131,17 @@ export class Renderer {
     this._canvas.style.display = 'block';
     this._canvas.style.width = '100%';
     this._canvas.style.height = '100%';
+    this._canvas.style.position = 'relative';
+    this._canvas.style.zIndex = '1';
     container.appendChild(this._canvas);
     this._ctx = this._canvas.getContext('2d');
+
+    this._glCanvas = document.createElement('canvas');
+    this._glCanvas.style.cssText =
+      'position:absolute;inset:0;width:100%;height:100%;z-index:2;' +
+      'pointer-events:none;mix-blend-mode:screen;';
+    container.appendChild(this._glCanvas);
+    this._initWebGL();
 
     this._tooltip = document.createElement('div');
     this._tooltip.className = 'map-tooltip';
@@ -553,6 +567,10 @@ export class Renderer {
     }
     if (this._cbMouseMove) window.removeEventListener('mousemove', this._cbMouseMove);
     if (this._cbMouseUp) window.removeEventListener('mouseup', this._cbMouseUp);
+    if (this._glAnimFrame) {
+      cancelAnimationFrame(this._glAnimFrame);
+      this._glAnimFrame = null;
+    }
     if (this._canvas) {
       this._canvas.removeEventListener('mousemove', this._onMouseMove);
       this._canvas.removeEventListener('mousedown', this._onMouseDown);
@@ -566,6 +584,13 @@ export class Renderer {
       this._canvas.remove();
       this._canvas = null;
     }
+    if (this._glCanvas) {
+      this._glCanvas.remove();
+      this._glCanvas = null;
+    }
+    this._gl = null;
+    this._glPrograms = null;
+    this._glBuffers = null;
     if (this._tooltip) {
       this._tooltip.remove();
       this._tooltip = null;
@@ -585,6 +610,11 @@ export class Renderer {
     this._height = rect.height;
     this._canvas.width = rect.width * this._dpr;
     this._canvas.height = rect.height * this._dpr;
+    if (this._glCanvas) {
+      this._glCanvas.width = rect.width * this._dpr;
+      this._glCanvas.height = rect.height * this._dpr;
+      if (this._gl) this._gl.viewport(0, 0, this._glCanvas.width, this._glCanvas.height);
+    }
   }
 
   /**
@@ -646,9 +676,296 @@ export class Renderer {
       ctx.restore();
     }
 
+    this._renderWebGLOverlay(w, h);
+    this._startWebGLAnimation();
+
     if (this._highlightedIds.size > 0 || this._isThinking) {
       this._scheduleRender();
     }
+  }
+
+  _initWebGL() {
+    if (!this._glCanvas) return;
+    const gl = this._glCanvas.getContext('webgl', {
+      alpha: true,
+      antialias: true,
+      premultipliedAlpha: false,
+      preserveDrawingBuffer: false,
+    });
+    if (!gl) return;
+
+    const nodeVertex = `
+      attribute vec2 a_position;
+      attribute vec4 a_color;
+      attribute float a_size;
+      attribute float a_phase;
+      varying vec4 v_color;
+      varying float v_phase;
+      void main() {
+        gl_Position = vec4(a_position, 0.0, 1.0);
+        gl_PointSize = a_size;
+        v_color = a_color;
+        v_phase = a_phase;
+      }
+    `;
+    const nodeFragment = `
+      precision mediump float;
+      uniform float u_time;
+      varying vec4 v_color;
+      varying float v_phase;
+      void main() {
+        vec2 uv = gl_PointCoord - vec2(0.5);
+        float d = length(uv) * 2.0;
+        if (d > 1.0) discard;
+        float pulse = 0.90 + 0.10 * sin(u_time * 1.7 + v_phase);
+        float core = smoothstep(0.24, 0.0, d);
+        float corona = pow(max(0.0, 1.0 - d), 2.6);
+        float rim = smoothstep(0.86, 0.42, d) * smoothstep(0.04, 0.28, d);
+        float alpha = (core * 0.82 + corona * 0.24 + rim * 0.075) * pulse * v_color.a;
+        vec3 color = v_color.rgb * (core * 1.7 + corona * 0.78 + rim * 0.36);
+        gl_FragColor = vec4(color, alpha);
+      }
+    `;
+    const lineVertex = `
+      attribute vec2 a_position;
+      attribute vec4 a_color;
+      varying vec4 v_color;
+      void main() {
+        gl_Position = vec4(a_position, 0.0, 1.0);
+        v_color = a_color;
+      }
+    `;
+    const lineFragment = `
+      precision mediump float;
+      varying vec4 v_color;
+      void main() {
+        gl_FragColor = v_color;
+      }
+    `;
+
+    const nodeProgram = this._createGLProgram(gl, nodeVertex, nodeFragment);
+    const lineProgram = this._createGLProgram(gl, lineVertex, lineFragment);
+    if (!nodeProgram || !lineProgram) return;
+
+    this._gl = gl;
+    this._glPrograms = { node: nodeProgram, line: lineProgram };
+    this._glBuffers = {
+      node: gl.createBuffer(),
+      line: gl.createBuffer(),
+      tracer: gl.createBuffer(),
+      tracerSprite: gl.createBuffer(),
+    };
+    gl.disable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+    gl.clearColor(0, 0, 0, 0);
+  }
+
+  _createGLProgram(gl, vertexSource, fragmentSource) {
+    const vertexShader = this._createGLShader(gl, gl.VERTEX_SHADER, vertexSource);
+    const fragmentShader = this._createGLShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+    if (!vertexShader || !fragmentShader) return null;
+    const program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      console.warn('Mapper WebGL program failed:', gl.getProgramInfoLog(program));
+      return null;
+    }
+    return program;
+  }
+
+  _createGLShader(gl, type, source) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.warn('Mapper WebGL shader failed:', gl.getShaderInfoLog(shader));
+      gl.deleteShader(shader);
+      return null;
+    }
+    return shader;
+  }
+
+  _startWebGLAnimation() {
+    if (!this._gl || this._glAnimFrame || (!this._points.length && !this._participantPaths.length)) return;
+    const tick = () => {
+      this._glAnimFrame = null;
+      if (!this._gl || !this._width || !this._height) return;
+      this._renderWebGLOverlay(this._width, this._height);
+      if (this._points.length || this._participantPaths.length) {
+        this._glAnimFrame = requestAnimationFrame(tick);
+      }
+    };
+    this._glAnimFrame = requestAnimationFrame(tick);
+  }
+
+  _renderWebGLOverlay(w, h) {
+    const gl = this._gl;
+    if (!gl || !this._glPrograms || !this._glBuffers || !this._glCanvas) return;
+
+    gl.viewport(0, 0, this._glCanvas.width, this._glCanvas.height);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+
+    const time = performance.now() / 1000;
+    this._drawWebGLEdges(gl, w, h, time);
+    this._drawWebGLNodes(gl, w, h, time);
+  }
+
+  _screenToClip(x, y, w, h) {
+    return [
+      (x / w) * 2 - 1,
+      1 - (y / h) * 2,
+    ];
+  }
+
+  _worldToScreen(point, w, h) {
+    return {
+      x: this._panX + point.x * this._zoom * w,
+      y: this._panY + point.y * this._zoom * h,
+    };
+  }
+
+  _drawWebGLNodes(gl, w, h, time) {
+    if (!this._points.length) return;
+
+    const data = [];
+    const defaultColor = [170, 235, 255, 220];
+    const hoveredId = this._hoveredPoint?.id;
+    const hasHighlightLens = this._highlightedIds.size > 0;
+
+    for (let i = 0; i < this._points.length; i++) {
+      const p = this._points[i];
+      if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+      const screen = this._worldToScreen(p, w, h);
+      const margin = 90;
+      if (screen.x < -margin || screen.x > w + margin || screen.y < -margin || screen.y > h + margin) continue;
+
+      const color = p.color || defaultColor;
+      const id = String(p.id);
+      const isHovered = hoveredId && id === String(hoveredId);
+      const isHighlighted = this._highlightedIds.has(id);
+      const isSelected = this._selectedPointId && id === this._selectedPointId;
+      const muted = hasHighlightLens && !isHighlighted && !isSelected && !isHovered;
+      const alpha = muted ? 0.09 : isSelected ? 0.92 : isHighlighted ? 0.82 : isHovered ? 0.74 : 0.46;
+      const size = (isSelected ? 40 : isHighlighted ? 36 : isHovered ? 31 : 26) * this._dpr;
+      const [cx, cy] = this._screenToClip(screen.x, screen.y, w, h);
+      data.push(
+        cx, cy,
+        color[0] / 255, color[1] / 255, color[2] / 255, alpha,
+        size,
+        i * 1.618 + time * 0.05
+      );
+    }
+
+    this._drawWebGLSpriteData(gl, this._glBuffers.node, data, time);
+  }
+
+  _drawWebGLSpriteData(gl, buffer, data, time) {
+    if (!data.length) return;
+    const program = this._glPrograms.node;
+    const stride = 8 * 4;
+    gl.useProgram(program);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STREAM_DRAW);
+
+    const positionLoc = gl.getAttribLocation(program, 'a_position');
+    const colorLoc = gl.getAttribLocation(program, 'a_color');
+    const sizeLoc = gl.getAttribLocation(program, 'a_size');
+    const phaseLoc = gl.getAttribLocation(program, 'a_phase');
+    const timeLoc = gl.getUniformLocation(program, 'u_time');
+
+    gl.uniform1f(timeLoc, time);
+    gl.enableVertexAttribArray(positionLoc);
+    gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, stride, 0);
+    gl.enableVertexAttribArray(colorLoc);
+    gl.vertexAttribPointer(colorLoc, 4, gl.FLOAT, false, stride, 2 * 4);
+    gl.enableVertexAttribArray(sizeLoc);
+    gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride, 6 * 4);
+    gl.enableVertexAttribArray(phaseLoc);
+    gl.vertexAttribPointer(phaseLoc, 1, gl.FLOAT, false, stride, 7 * 4);
+    gl.drawArrays(gl.POINTS, 0, data.length / 8);
+  }
+
+  _drawWebGLEdges(gl, w, h, time) {
+    if (!this._participantPaths || !this._participantPaths.length) return;
+
+    const lineData = [];
+    const tracerData = [];
+    const tracerSprites = [];
+    const hasHighlightLens = this._highlightedIds.size > 0;
+    const pushLine = (target, a, b, color, alpha) => {
+      const [ax, ay] = this._screenToClip(a.x, a.y, w, h);
+      const [bx, by] = this._screenToClip(b.x, b.y, w, h);
+      target.push(
+        ax, ay, color[0] / 255, color[1] / 255, color[2] / 255, alpha,
+        bx, by, color[0] / 255, color[1] / 255, color[2] / 255, alpha
+      );
+    };
+
+    for (let pathIndex = 0; pathIndex < this._participantPaths.length; pathIndex++) {
+      const path = this._participantPaths[pathIndex];
+      const pts = path.points || [];
+      if (pts.length < 2) continue;
+      const color = path.color || [160, 220, 255];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const a = this._worldToScreen(pts[i], w, h);
+        const b = this._worldToScreen(pts[i + 1], w, h);
+        pushLine(lineData, a, b, color, hasHighlightLens ? 0.035 : 0.075);
+
+        const phase = (time * 0.115 + pathIndex * 0.271 + i * 0.149) % 1;
+        const length = 0.18;
+        if (phase < 1 - length) {
+          const t0 = phase;
+          const t1 = phase + length;
+          const ta = {
+            x: a.x + (b.x - a.x) * t0,
+            y: a.y + (b.y - a.y) * t0,
+          };
+          const tb = {
+            x: a.x + (b.x - a.x) * t1,
+            y: a.y + (b.y - a.y) * t1,
+          };
+          pushLine(tracerData, ta, tb, color, hasHighlightLens ? 0.11 : 0.16);
+          const beadT = Math.min(1, t1);
+          const bead = {
+            x: a.x + (b.x - a.x) * beadT,
+            y: a.y + (b.y - a.y) * beadT,
+          };
+          const [cx, cy] = this._screenToClip(bead.x, bead.y, w, h);
+          tracerSprites.push(
+            cx, cy,
+            color[0] / 255, color[1] / 255, color[2] / 255,
+            hasHighlightLens ? 0.18 : 0.26,
+            (18 + Math.sin(time * 2.4 + pathIndex + i) * 2.5) * this._dpr,
+            time * 0.4 + pathIndex + i
+          );
+        }
+      }
+    }
+
+    const program = this._glPrograms.line;
+    const drawLines = (buffer, data, width) => {
+      if (!data.length) return;
+      gl.useProgram(program);
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STREAM_DRAW);
+      const stride = 6 * 4;
+      const positionLoc = gl.getAttribLocation(program, 'a_position');
+      const colorLoc = gl.getAttribLocation(program, 'a_color');
+      gl.enableVertexAttribArray(positionLoc);
+      gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, stride, 0);
+      gl.enableVertexAttribArray(colorLoc);
+      gl.vertexAttribPointer(colorLoc, 4, gl.FLOAT, false, stride, 2 * 4);
+      gl.lineWidth(width);
+      gl.drawArrays(gl.LINES, 0, data.length / 6);
+    };
+
+    drawLines(this._glBuffers.line, lineData, 1);
+    drawLines(this._glBuffers.tracer, tracerData, 1);
+    this._drawWebGLSpriteData(gl, this._glBuffers.tracerSprite, tracerSprites, time);
   }
 
   _drawObservatoryBackdrop(ctx, w, h) {
@@ -919,7 +1236,7 @@ export class Renderer {
       for (let i = 1; i < pts.length; i++) {
         ctx.lineTo(pts[i].x * w, pts[i].y * h);
       }
-      const alpha = this._highlightedIds.size > 0 ? 0.055 : 0.18;
+      const alpha = this._highlightedIds.size > 0 ? 0.03 : 0.075;
       ctx.strokeStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${alpha})`;
       ctx.lineWidth = (this._highlightedIds.size > 0 ? 0.95 : 1.25) / this._zoom;
       ctx.lineCap = 'round';
