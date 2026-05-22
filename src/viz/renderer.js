@@ -610,11 +610,11 @@ export class Renderer {
     ctx.scale(this._zoom, this._zoom);
 
     this._drawParticipantPaths(ctx, w, h);
-    this._drawHighlightConstellation(ctx, w, h);
     this._drawPoints(ctx, w, h);
     this._drawVideos(ctx, w, h);
     this._drawVideoTrajectory(ctx, w, h);
     this._drawAnsweredDots(ctx, w, h);
+    this._drawHighlightConstellation(ctx, w, h);
 
     ctx.restore();
 
@@ -768,15 +768,15 @@ export class Renderer {
       const isSelected = this._selectedPointId && String(p.id) === this._selectedPointId;
       const rank = this._highlightRank.get(String(p.id)) ?? 0;
       const baseAlpha = (color[3] ?? 190) / 255;
-      const mutedAlpha = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? baseAlpha * 0.1 : baseAlpha;
-      const alpha = isSelected ? 0.96 : isHighlighted ? 0.92 : isHovered ? 0.82 : mutedAlpha;
-      const highlightScale = Math.max(1.22, 1.58 - rank * 0.12);
-      const radius = baseR * (isSelected ? 1.68 : isHighlighted ? highlightScale + pulse * 0.18 : isHovered ? 1.36 : hasHighlightLens ? 0.86 : 1);
+      const mutedAlpha = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? baseAlpha * 0.04 : baseAlpha;
+      const alpha = isSelected ? 0.98 : isHighlighted ? 1 : isHovered ? 0.86 : mutedAlpha;
+      const highlightScale = Math.max(1.45, 2.35 - rank * 0.16);
+      const radius = baseR * (isSelected ? 1.9 : isHighlighted ? highlightScale + pulse * 0.24 : isHovered ? 1.38 : hasHighlightLens ? 0.72 : 1);
 
       const halo = ctx.createRadialGradient(px, py, 0, px, py, radius * 7.5);
-      const haloScale = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? 0.52 : 1;
-      halo.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.18 * alpha * haloScale})`);
-      halo.addColorStop(0.45, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.06 * alpha * haloScale})`);
+      const haloScale = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? 0.26 : isHighlighted ? 1.45 : 1;
+      halo.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.22 * alpha * haloScale})`);
+      halo.addColorStop(0.45, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.075 * alpha * haloScale})`);
       halo.addColorStop(1, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0)`);
       ctx.beginPath();
       ctx.arc(px, py, radius * 7.5, 0, Math.PI * 2);
@@ -792,9 +792,9 @@ export class Renderer {
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
         ctx.beginPath();
-        ctx.arc(px, py, radius * (isSelected ? 3.1 : 2.7 + highlightBreath * 0.28), 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${isSelected ? 0.78 : 0.34 + pulse * 0.12})`;
-        ctx.lineWidth = (isSelected ? 1.25 : 0.9) / this._zoom;
+        ctx.arc(px, py, radius * (isSelected ? 3.1 : 3.35 + highlightBreath * 0.34), 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${isSelected ? 0.82 : 0.58 + pulse * 0.16})`;
+        ctx.lineWidth = (isSelected ? 1.35 : 1.25) / this._zoom;
         ctx.stroke();
         ctx.restore();
 
@@ -802,9 +802,9 @@ export class Renderer {
           ctx.save();
           ctx.globalCompositeOperation = 'screen';
           ctx.beginPath();
-          ctx.arc(px, py, radius * (5.2 + highlightBreath * 1.2), 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 + highlightBreath * 0.08})`;
-          ctx.lineWidth = 1 / this._zoom;
+          ctx.arc(px, py, radius * (6.2 + highlightBreath * 1.4), 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.18 + highlightBreath * 0.1})`;
+          ctx.lineWidth = 1.15 / this._zoom;
           ctx.stroke();
           ctx.restore();
         }
@@ -826,16 +826,17 @@ export class Renderer {
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    if (highlighted.length > 1) {
+    const trailPoints = highlighted.slice(0, 3);
+    if (trailPoints.length > 1) {
       ctx.beginPath();
-      highlighted.forEach((point, index) => {
+      trailPoints.forEach((point, index) => {
         const x = point.x * w;
         const y = point.y * h;
         if (index === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       });
-      ctx.strokeStyle = `rgba(180, 220, 255, ${0.18 + pulse * 0.1})`;
-      ctx.lineWidth = (2.2 * intro) / this._zoom;
+      ctx.strokeStyle = `rgba(205, 232, 255, ${0.16 + pulse * 0.08})`;
+      ctx.lineWidth = (1.7 * intro) / this._zoom;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.stroke();
@@ -846,21 +847,26 @@ export class Renderer {
       const y = point.y * h;
       const color = point.color || [170, 220, 255, 230];
       const rankedScale = Math.max(0.72, 1 - index * 0.12);
-      const ring = (18 + pulse * 7) * rankedScale * intro / this._zoom;
-      const glow = ctx.createRadialGradient(x, y, 0, x, y, ring * 1.8);
-      glow.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.26)`);
-      glow.addColorStop(0.45, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.09)`);
+      const ring = (26 + pulse * 9) * rankedScale * intro / this._zoom;
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, ring * 2.05);
+      glow.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.32)`);
+      glow.addColorStop(0.42, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.105)`);
       glow.addColorStop(1, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0)`);
       ctx.beginPath();
-      ctx.arc(x, y, ring * 1.8, 0, Math.PI * 2);
+      ctx.arc(x, y, ring * 2.05, 0, Math.PI * 2);
       ctx.fillStyle = glow;
       ctx.fill();
 
       ctx.beginPath();
       ctx.arc(x, y, ring, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(230, 246, 255, ${0.42 + pulse * 0.18})`;
-      ctx.lineWidth = 1.2 / this._zoom;
+      ctx.strokeStyle = `rgba(235, 248, 255, ${0.5 + pulse * 0.16})`;
+      ctx.lineWidth = 1.45 / this._zoom;
       ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(3.5 / this._zoom, ring * 0.12), 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(246, 252, 255, ${0.86 + pulse * 0.08})`;
+      ctx.fill();
     });
     ctx.restore();
   }
@@ -879,8 +885,9 @@ export class Renderer {
       for (let i = 1; i < pts.length; i++) {
         ctx.lineTo(pts[i].x * w, pts[i].y * h);
       }
-      ctx.strokeStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0.18)`;
-      ctx.lineWidth = 1.25 / this._zoom;
+      const alpha = this._highlightedIds.size > 0 ? 0.055 : 0.18;
+      ctx.strokeStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${alpha})`;
+      ctx.lineWidth = (this._highlightedIds.size > 0 ? 0.95 : 1.25) / this._zoom;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.stroke();

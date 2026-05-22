@@ -16,1087 +16,1242 @@
   },
   "participants": [
     {
-      "id": "p01",
-      "display_code": "P-01",
+      "id": "p-seed-01",
+      "display_code": "P-101",
       "role": "technical founder",
-      "company_stage": "pre-seed",
-      "cohort": "spring-demo",
+      "company_stage": "prototype",
+      "cohort": "accelerator-seed",
       "profile_json": {
         "openness": 0.82,
         "conscientiousness": 0.58,
-        "ambiguityComfort": 0.79,
-        "trustInMentorship": 0.42,
-        "publicPrivateTension": 0.74
-      }
+        "ambiguityComfort": 0.76,
+        "trustInMentorship": 0.43,
+        "publicPrivateTension": 0.69
+      },
+      "consent_level": "anonymized_research",
+      "visibility": "researcher",
+      "anonymization_level": "strict"
     },
     {
-      "id": "p02",
-      "display_code": "P-02",
+      "id": "p-seed-02",
+      "display_code": "P-102",
       "role": "operator founder",
-      "company_stage": "seed",
-      "cohort": "spring-demo",
+      "company_stage": "customer discovery",
+      "cohort": "accelerator-seed",
       "profile_json": {
-        "openness": 0.63,
+        "openness": 0.54,
         "conscientiousness": 0.86,
-        "ambiguityComfort": 0.48,
-        "trustInMentorship": 0.71,
-        "publicPrivateTension": 0.36
-      }
+        "ambiguityComfort": 0.38,
+        "trustInMentorship": 0.72,
+        "publicPrivateTension": 0.41
+      },
+      "consent_level": "anonymized_research",
+      "visibility": "researcher",
+      "anonymization_level": "strict"
     },
     {
-      "id": "p03",
-      "display_code": "P-03",
+      "id": "p-seed-03",
+      "display_code": "P-103",
       "role": "solo founder",
-      "company_stage": "idea-stage",
-      "cohort": "spring-demo",
+      "company_stage": "idea validation",
+      "cohort": "accelerator-seed",
       "profile_json": {
-        "openness": 0.77,
-        "conscientiousness": 0.51,
-        "ambiguityComfort": 0.68,
-        "trustInMentorship": 0.35,
-        "publicPrivateTension": 0.81
-      }
-    },
-    {
-      "id": "p04",
-      "display_code": "P-04",
-      "role": "commercial founder",
-      "company_stage": "pilot",
-      "cohort": "spring-demo",
-      "profile_json": {
-        "openness": 0.52,
-        "conscientiousness": 0.74,
-        "ambiguityComfort": 0.41,
-        "trustInMentorship": 0.83,
-        "publicPrivateTension": 0.44
-      }
+        "openness": 0.88,
+        "conscientiousness": 0.49,
+        "ambiguityComfort": 0.84,
+        "trustInMentorship": 0.36,
+        "publicPrivateTension": 0.74
+      },
+      "consent_level": "anonymized_research",
+      "visibility": "researcher",
+      "anonymization_level": "strict"
     }
   ],
   "map_items": [
     {
-      "id": "mi-001",
-      "participant_id": "P-01",
+      "id": "source-p-seed-01-interview-chunk-01",
+      "participant_id": "P-101",
       "source_type": "interview",
-      "title": "Self-directed search before mentor input",
-      "summary": "P-01 prefers to explore independently before accepting mentor direction.",
-      "excerpt": "I want a mentor nearby, but only after I have wrestled with the problem enough to know what I am asking.",
-      "anonymized_text": "I want a mentor nearby, but only after I have wrestled with the problem enough to know what I am asking.",
+      "title": "Self-direction",
+      "summary": "I usually need to protect the question for a while before I show it to anyone.",
+      "excerpt": "I usually need to protect the question for a while before I show it to anyone.\n\nIf a mentor comes in too early, I start optimizing for their language instead of learning what I actually believe.\n\nThe useful mentors are the ones who ask me what I have already tried and then help me turn that into a cleaner experiment.\n\nPublicly I sound more certain than I feel.",
+      "anonymized_text": "I usually need to protect the question for a while before I show it to anyone.\n\nIf a mentor comes in too early, I start optimizing for their language instead of learning what I actually believe.\n\nThe useful mentors are the ones who ask me what I have already tried and then help me turn that into a cleaner experiment.\n\nPublicly I sound more certain than I feel.",
       "themes": [
         "self-direction",
         "mentor ambivalence",
-        "learning style"
-      ],
-      "sentiment": "mixed-positive",
-      "confidence": 0.86,
-      "umap_x": 0.24,
-      "umap_y": 0.34,
-      "x": 0.24,
-      "y": 0.34,
-      "metadata_json": {
-        "sequence": 1,
-        "interview_round": "current",
-        "inference_note": "Shows desire for autonomy before guidance."
-      },
-      "source": {
-        "id": "src-int-p01-01",
-        "label": "Interview 1, anonymized excerpt",
-        "offset": "00:18:22"
-      },
-      "consent_level": "research-anonymized"
-    },
-    {
-      "id": "mi-002",
-      "participant_id": "P-01",
-      "source_type": "mentor_note",
-      "title": "Mentor sees selective receptivity",
-      "summary": "Mentor note suggests P-01 acts on advice once it is framed as an experiment.",
-      "excerpt": "They resist direct prescriptions, but respond well when advice is framed as a testable constraint.",
-      "anonymized_text": "They resist direct prescriptions, but respond well when advice is framed as a testable constraint.",
-      "themes": [
-        "mentor ambivalence",
-        "experimentation",
-        "autonomy"
-      ],
-      "sentiment": "neutral",
-      "confidence": 0.78,
-      "umap_x": 0.29,
-      "umap_y": 0.38,
-      "x": 0.29,
-      "y": 0.38,
-      "metadata_json": {
-        "sequence": 2,
-        "note_type": "mentor observation"
-      },
-      "source": {
-        "id": "src-mentor-p01-01",
-        "label": "Mentor note, synthetic"
-      },
-      "consent_level": "internal-research"
-    },
-    {
-      "id": "mi-003",
-      "participant_id": "P-01",
-      "source_type": "social",
-      "title": "Public certainty about founder identity",
-      "summary": "Public post presents decisiveness that contrasts with private uncertainty.",
-      "excerpt": "Building in public has forced clarity: we know exactly which user pain we are solving this quarter.",
-      "anonymized_text": "Building in public has forced clarity: we know exactly which user pain we are solving this quarter.",
-      "themes": [
-        "public-private tension",
-        "identity",
-        "narrative clarity"
+        "trust in mentorship",
+        "public-private tension"
       ],
       "sentiment": "positive",
-      "confidence": 0.72,
-      "umap_x": 0.72,
-      "umap_y": 0.29,
-      "x": 0.72,
-      "y": 0.29,
-      "metadata_json": {
-        "sequence": 3,
-        "public_channel": "professional social"
-      },
-      "source": {
-        "id": "src-social-p01-01",
-        "label": "Public profile post, synthetic"
-      },
-      "consent_level": "public"
-    },
-    {
-      "id": "mi-004",
-      "participant_id": "P-01",
-      "source_type": "reflection",
-      "title": "Private uncertainty under confident updates",
-      "summary": "Reflection notes a gap between public certainty and internal ambiguity.",
-      "excerpt": "The updates sound clean, but privately I still feel like the company changes shape every week.",
-      "anonymized_text": "The updates sound clean, but privately I still feel like the company changes shape every week.",
-      "themes": [
-        "public-private tension",
-        "ambiguity",
-        "founder identity"
-      ],
-      "sentiment": "mixed",
-      "confidence": 0.88,
-      "umap_x": 0.76,
-      "umap_y": 0.35,
-      "x": 0.76,
-      "y": 0.35,
-      "metadata_json": {
-        "sequence": 4,
-        "reflection_prompt": "identity and uncertainty"
-      },
-      "source": {
-        "id": "src-reflect-p01-01",
-        "label": "Reflection, anonymized"
-      },
-      "consent_level": "research-anonymized"
-    },
-    {
-      "id": "mi-005",
-      "participant_id": "P-02",
-      "source_type": "interview",
-      "title": "Needs structure before execution",
-      "summary": "P-02 describes needing clear milestones before moving quickly.",
-      "excerpt": "Once the week has a concrete target, I can execute hard. Without that, I spend too much time arranging the work.",
-      "anonymized_text": "Once the week has a concrete target, I can execute hard. Without that, I spend too much time arranging the work.",
-      "themes": [
-        "structure need",
-        "execution",
-        "planning"
-      ],
-      "sentiment": "neutral-positive",
-      "confidence": 0.9,
-      "umap_x": 0.49,
-      "umap_y": 0.68,
-      "x": 0.49,
-      "y": 0.68,
+      "confidence": 0.87,
+      "umap_x": 0.310529,
+      "umap_y": 0.92,
+      "x": 0.310529,
+      "y": 0.92,
       "metadata_json": {
         "sequence": 1,
-        "interview_round": "current"
+        "source_file": "p-seed-01.md",
+        "parser": "import_accelerator_dataset.mjs",
+        "canonical_participant_id": "p-seed-01",
+        "source_id": "source-p-seed-01-interview"
       },
       "source": {
-        "id": "src-int-p02-01",
-        "label": "Interview 1, anonymized excerpt",
-        "offset": "00:41:05"
+        "id": "source-p-seed-01-interview",
+        "participant_id": "p-seed-01",
+        "source_type": "interview",
+        "title": "P-101 anonymized interview",
+        "label": "P-101 · interview",
+        "source_ref": "local-anonymized-seed/p-seed-01.md",
+        "source_uri_hash": "e1918eca9a60d002f0fc2d16c8f197c83ed88d2da73afbd6fdd39ff4a707015f",
+        "collected_at": "",
+        "raw_text_ref": "",
+        "raw_text_allowed": 0,
+        "consent_level": "anonymized_research",
+        "visibility": "researcher",
+        "metadata_json": {
+          "input_file": "p-seed-01.md",
+          "anonymized_before_import": true
+        }
       },
-      "consent_level": "research-anonymized"
+      "embedding_metadata": {
+        "id": "source-p-seed-01-interview-chunk-01-embedding",
+        "provider": "embeddinggemma",
+        "model": "google/embeddinggemma-300M",
+        "dimensions": 768,
+        "vector_sha256": "e4fd5b35ec8b098140cd0cce11bb1743829f884e61108704c256ab9dc616b2d4",
+        "input_sha256": "d66dd2e7ef1a729790d82d6259a9cb4151906cc22e4f2df586cbc4b008225c99"
+      },
+      "projection": {
+        "id": "source-p-seed-01-interview-chunk-01-umap",
+        "method": "umap",
+        "version": "umap-embeddinggemma-google-embeddinggemma-300m-v1",
+        "params_json": {
+          "n_neighbors": 6,
+          "min_dist": 0.12,
+          "spread": 1.1,
+          "seed": 42
+        }
+      },
+      "consent_level": "anonymized_research",
+      "visibility": "researcher"
     },
     {
-      "id": "mi-006",
-      "participant_id": "P-02",
-      "source_type": "program_material",
-      "title": "Sprint template improves follow-through",
-      "summary": "Program material gives P-02 a repeatable weekly structure.",
-      "excerpt": "Weekly sprint board: one customer-learning goal, one build milestone, one decision log entry.",
-      "anonymized_text": "Weekly sprint board: one customer-learning goal, one build milestone, one decision log entry.",
+      "id": "source-p-seed-01-interview-chunk-02",
+      "participant_id": "P-101",
+      "source_type": "interview",
+      "title": "Self-direction",
+      "summary": "The updates make the company look crisp because that is what customers and investors expect, but privately I am still deciding which part of the problem deserves a company.",
+      "excerpt": "The updates make the company look crisp because that is what customers and investors expect, but privately I am still deciding which part of the problem deserves a company.\n\nThat gap is uncomfortable, and I do not always know when confidence becomes performance.\n\nThe program is most useful when it gives me a cadence without taking away the autonomy.",
+      "anonymized_text": "The updates make the company look crisp because that is what customers and investors expect, but privately I am still deciding which part of the problem deserves a company.\n\nThat gap is uncomfortable, and I do not always know when confidence becomes performance.\n\nThe program is most useful when it gives me a cadence without taking away the autonomy.",
+      "themes": [
+        "self-direction",
+        "trust in mentorship",
+        "public-private tension",
+        "customer discovery"
+      ],
+      "sentiment": "positive",
+      "confidence": 0.87,
+      "umap_x": 0.434609,
+      "umap_y": 0.522527,
+      "x": 0.434609,
+      "y": 0.522527,
+      "metadata_json": {
+        "sequence": 2,
+        "source_file": "p-seed-01.md",
+        "parser": "import_accelerator_dataset.mjs",
+        "canonical_participant_id": "p-seed-01",
+        "source_id": "source-p-seed-01-interview"
+      },
+      "source": {
+        "id": "source-p-seed-01-interview",
+        "participant_id": "p-seed-01",
+        "source_type": "interview",
+        "title": "P-101 anonymized interview",
+        "label": "P-101 · interview",
+        "source_ref": "local-anonymized-seed/p-seed-01.md",
+        "source_uri_hash": "e1918eca9a60d002f0fc2d16c8f197c83ed88d2da73afbd6fdd39ff4a707015f",
+        "collected_at": "",
+        "raw_text_ref": "",
+        "raw_text_allowed": 0,
+        "consent_level": "anonymized_research",
+        "visibility": "researcher",
+        "metadata_json": {
+          "input_file": "p-seed-01.md",
+          "anonymized_before_import": true
+        }
+      },
+      "embedding_metadata": {
+        "id": "source-p-seed-01-interview-chunk-02-embedding",
+        "provider": "embeddinggemma",
+        "model": "google/embeddinggemma-300M",
+        "dimensions": 768,
+        "vector_sha256": "b1a5a1e7e27aa8f2b3d46255f05e5ceda6ca5acfe618fea187e6834d7f9f97af",
+        "input_sha256": "3e21729cc679403c558026e329302eadf82317562652eca3ac8ed6f4ba2cf524"
+      },
+      "projection": {
+        "id": "source-p-seed-01-interview-chunk-02-umap",
+        "method": "umap",
+        "version": "umap-embeddinggemma-google-embeddinggemma-300m-v1",
+        "params_json": {
+          "n_neighbors": 6,
+          "min_dist": 0.12,
+          "spread": 1.1,
+          "seed": 42
+        }
+      },
+      "consent_level": "anonymized_research",
+      "visibility": "researcher"
+    },
+    {
+      "id": "source-p-seed-01-interview-chunk-03",
+      "participant_id": "P-101",
+      "source_type": "interview",
+      "title": "Structure Need",
+      "summary": "A weekly checkpoint helps because it forces me to name the experiment, but I still want the space to decide what the experiment means.",
+      "excerpt": "A weekly checkpoint helps because it forces me to name the experiment, but I still want the space to decide what the experiment means.",
+      "anonymized_text": "A weekly checkpoint helps because it forces me to name the experiment, but I still want the space to decide what the experiment means.",
       "themes": [
         "structure need",
-        "program design",
+        "learning style"
+      ],
+      "sentiment": "positive",
+      "confidence": 0.77,
+      "umap_x": 0.405319,
+      "umap_y": 0.08,
+      "x": 0.405319,
+      "y": 0.08,
+      "metadata_json": {
+        "sequence": 3,
+        "source_file": "p-seed-01.md",
+        "parser": "import_accelerator_dataset.mjs",
+        "canonical_participant_id": "p-seed-01",
+        "source_id": "source-p-seed-01-interview"
+      },
+      "source": {
+        "id": "source-p-seed-01-interview",
+        "participant_id": "p-seed-01",
+        "source_type": "interview",
+        "title": "P-101 anonymized interview",
+        "label": "P-101 · interview",
+        "source_ref": "local-anonymized-seed/p-seed-01.md",
+        "source_uri_hash": "e1918eca9a60d002f0fc2d16c8f197c83ed88d2da73afbd6fdd39ff4a707015f",
+        "collected_at": "",
+        "raw_text_ref": "",
+        "raw_text_allowed": 0,
+        "consent_level": "anonymized_research",
+        "visibility": "researcher",
+        "metadata_json": {
+          "input_file": "p-seed-01.md",
+          "anonymized_before_import": true
+        }
+      },
+      "embedding_metadata": {
+        "id": "source-p-seed-01-interview-chunk-03-embedding",
+        "provider": "embeddinggemma",
+        "model": "google/embeddinggemma-300M",
+        "dimensions": 768,
+        "vector_sha256": "b3164538ee99250ffb851452a30418dbfc8f647379c5c90f5879d45da2b7b249",
+        "input_sha256": "d5347581248fd41d7de8cf14c640dbb52c2311edc307b6915ba2607420508826"
+      },
+      "projection": {
+        "id": "source-p-seed-01-interview-chunk-03-umap",
+        "method": "umap",
+        "version": "umap-embeddinggemma-google-embeddinggemma-300m-v1",
+        "params_json": {
+          "n_neighbors": 6,
+          "min_dist": 0.12,
+          "spread": 1.1,
+          "seed": 42
+        }
+      },
+      "consent_level": "anonymized_research",
+      "visibility": "researcher"
+    },
+    {
+      "id": "source-p-seed-02-interview-chunk-01",
+      "participant_id": "P-102",
+      "source_type": "interview",
+      "title": "Mentor Ambivalence",
+      "summary": "I can execute quickly once the sequence is clear, but before that I keep making the plan better instead of testing it.",
+      "excerpt": "I can execute quickly once the sequence is clear, but before that I keep making the plan better instead of testing it.\n\nThe biggest shift was having a weekly milestone that told me exactly what customer discovery meant this week, not in theory.\n\nMentor advice works for me when it becomes a structure.\n\nA broad suggestion like talk to more buyers does not change my behavior.",
+      "anonymized_text": "I can execute quickly once the sequence is clear, but before that I keep making the plan better instead of testing it.\n\nThe biggest shift was having a weekly milestone that told me exactly what customer discovery meant this week, not in theory.\n\nMentor advice works for me when it becomes a structure.\n\nA broad suggestion like talk to more buyers does not change my behavior.",
+      "themes": [
+        "mentor ambivalence",
+        "trust in mentorship",
+        "structure need",
         "execution"
       ],
       "sentiment": "positive",
-      "confidence": 0.82,
-      "umap_x": 0.54,
-      "umap_y": 0.72,
-      "x": 0.54,
-      "y": 0.72,
+      "confidence": 0.88,
+      "umap_x": 0.92,
+      "umap_y": 0.557878,
+      "x": 0.92,
+      "y": 0.557878,
       "metadata_json": {
-        "sequence": 2,
-        "artifact": "program sprint template"
+        "sequence": 1,
+        "source_file": "p-seed-02.md",
+        "parser": "import_accelerator_dataset.mjs",
+        "canonical_participant_id": "p-seed-02",
+        "source_id": "source-p-seed-02-interview"
       },
       "source": {
-        "id": "src-program-01",
-        "label": "Program material, synthetic"
+        "id": "source-p-seed-02-interview",
+        "participant_id": "p-seed-02",
+        "source_type": "interview",
+        "title": "P-102 anonymized interview",
+        "label": "P-102 · interview",
+        "source_ref": "local-anonymized-seed/p-seed-02.md",
+        "source_uri_hash": "0e39a43c3f663e67b7b6aa5b377747f495d3363768af11f5140564af40e9b912",
+        "collected_at": "",
+        "raw_text_ref": "",
+        "raw_text_allowed": 0,
+        "consent_level": "anonymized_research",
+        "visibility": "researcher",
+        "metadata_json": {
+          "input_file": "p-seed-02.md",
+          "anonymized_before_import": true
+        }
       },
-      "consent_level": "program"
+      "embedding_metadata": {
+        "id": "source-p-seed-02-interview-chunk-01-embedding",
+        "provider": "embeddinggemma",
+        "model": "google/embeddinggemma-300M",
+        "dimensions": 768,
+        "vector_sha256": "6890e9701369098871f1fafe398cfb664fa7573fa800d26bbf18656daebecd55",
+        "input_sha256": "2fa47e1d3b7f31423fa5feb44aef5e0ccbd164215b5ce4bcd744f19e2e25452f"
+      },
+      "projection": {
+        "id": "source-p-seed-02-interview-chunk-01-umap",
+        "method": "umap",
+        "version": "umap-embeddinggemma-google-embeddinggemma-300m-v1",
+        "params_json": {
+          "n_neighbors": 6,
+          "min_dist": 0.12,
+          "spread": 1.1,
+          "seed": 42
+        }
+      },
+      "consent_level": "anonymized_research",
+      "visibility": "researcher"
     },
     {
-      "id": "mi-007",
-      "participant_id": "P-02",
-      "source_type": "prior_interview",
-      "title": "Earlier pattern of over-preparing",
-      "summary": "Prior interview shows P-02 delayed outreach until the plan felt complete.",
-      "excerpt": "I kept tuning the outreach list because sending the first ten messages felt like committing to the wrong version.",
-      "anonymized_text": "I kept tuning the outreach list because sending the first ten messages felt like committing to the wrong version.",
+      "id": "source-p-seed-02-interview-chunk-02",
+      "participant_id": "P-102",
+      "source_type": "interview",
+      "title": "Structure Need",
+      "summary": "A specific sprint with five outreach messages, two interviews, and a Friday review makes me move.",
+      "excerpt": "A specific sprint with five outreach messages, two interviews, and a Friday review makes me move.\n\nI do worry that structure can hide whether I actually understand the customer.\n\nI can complete the tasks and still avoid the hard question.\n\nThe program helps when the template includes a reflection step, because then execution and learning stay connected.",
+      "anonymized_text": "A specific sprint with five outreach messages, two interviews, and a Friday review makes me move.\n\nI do worry that structure can hide whether I actually understand the customer.\n\nI can complete the tasks and still avoid the hard question.\n\nThe program helps when the template includes a reflection step, because then execution and learning stay connected.",
       "themes": [
         "structure need",
-        "decision latency",
-        "customer discovery"
-      ],
-      "sentiment": "mixed",
-      "confidence": 0.8,
-      "umap_x": 0.46,
-      "umap_y": 0.74,
-      "x": 0.46,
-      "y": 0.74,
-      "metadata_json": {
-        "sequence": 3,
-        "interview_round": "prior"
-      },
-      "source": {
-        "id": "src-prior-p02-01",
-        "label": "Prior interview, anonymized"
-      },
-      "consent_level": "research-anonymized"
-    },
-    {
-      "id": "mi-008",
-      "participant_id": "P-03",
-      "source_type": "interview",
-      "title": "High ambiguity tolerance with mentor skepticism",
-      "summary": "P-03 is comfortable with uncertainty but cautious about external advice.",
-      "excerpt": "Ambiguity does not bother me. What bothers me is advice that arrives before someone understands the weird parts.",
-      "anonymized_text": "Ambiguity does not bother me. What bothers me is advice that arrives before someone understands the weird parts.",
-      "themes": [
-        "ambiguity comfort",
-        "mentor ambivalence",
-        "self-direction"
+        "execution",
+        "customer discovery",
+        "learning style"
       ],
       "sentiment": "mixed",
       "confidence": 0.87,
-      "umap_x": 0.22,
-      "umap_y": 0.22,
-      "x": 0.22,
-      "y": 0.22,
+      "umap_x": 0.748386,
+      "umap_y": 0.230329,
+      "x": 0.748386,
+      "y": 0.230329,
       "metadata_json": {
-        "sequence": 1,
-        "interview_round": "current"
+        "sequence": 2,
+        "source_file": "p-seed-02.md",
+        "parser": "import_accelerator_dataset.mjs",
+        "canonical_participant_id": "p-seed-02",
+        "source_id": "source-p-seed-02-interview"
       },
       "source": {
-        "id": "src-int-p03-01",
-        "label": "Interview 1, anonymized excerpt",
-        "offset": "00:12:48"
+        "id": "source-p-seed-02-interview",
+        "participant_id": "p-seed-02",
+        "source_type": "interview",
+        "title": "P-102 anonymized interview",
+        "label": "P-102 · interview",
+        "source_ref": "local-anonymized-seed/p-seed-02.md",
+        "source_uri_hash": "0e39a43c3f663e67b7b6aa5b377747f495d3363768af11f5140564af40e9b912",
+        "collected_at": "",
+        "raw_text_ref": "",
+        "raw_text_allowed": 0,
+        "consent_level": "anonymized_research",
+        "visibility": "researcher",
+        "metadata_json": {
+          "input_file": "p-seed-02.md",
+          "anonymized_before_import": true
+        }
       },
-      "consent_level": "research-anonymized"
+      "embedding_metadata": {
+        "id": "source-p-seed-02-interview-chunk-02-embedding",
+        "provider": "embeddinggemma",
+        "model": "google/embeddinggemma-300M",
+        "dimensions": 768,
+        "vector_sha256": "36f29004ecb91bf9d74a9dcb55cfb1c8a7c84a4c90c35d2fb21e2c2751c18190",
+        "input_sha256": "626e4f969f67da3a74e523a15567d1879c9f05b9a19538fe053dddb55594702d"
+      },
+      "projection": {
+        "id": "source-p-seed-02-interview-chunk-02-umap",
+        "method": "umap",
+        "version": "umap-embeddinggemma-google-embeddinggemma-300m-v1",
+        "params_json": {
+          "n_neighbors": 6,
+          "min_dist": 0.12,
+          "spread": 1.1,
+          "seed": 42
+        }
+      },
+      "consent_level": "anonymized_research",
+      "visibility": "researcher"
     },
     {
-      "id": "mi-009",
-      "participant_id": "P-03",
-      "source_type": "reflection",
-      "title": "Reflective independence",
-      "summary": "P-03 frames independence as a way to protect the early idea from premature narrowing.",
-      "excerpt": "I am not rejecting help; I am protecting the question long enough to see what it wants to become.",
-      "anonymized_text": "I am not rejecting help; I am protecting the question long enough to see what it wants to become.",
+      "id": "source-p-seed-03-interview-chunk-01",
+      "participant_id": "P-103",
+      "source_type": "interview",
+      "title": "Mentor Ambivalence",
+      "summary": "Ambiguity does not bother me at the beginning.",
+      "excerpt": "Ambiguity does not bother me at the beginning.\n\nI like staying with the messy version of the idea because it keeps more possibilities alive.\n\nThe risk is that I can defend exploration for too long and call it strategy when I am avoiding a market test.\n\nI am careful with mentor feedback because a confident person can collapse the idea too fast.\n\nThe advice I trust starts with context.",
+      "anonymized_text": "Ambiguity does not bother me at the beginning.\n\nI like staying with the messy version of the idea because it keeps more possibilities alive.\n\nThe risk is that I can defend exploration for too long and call it strategy when I am avoiding a market test.\n\nI am careful with mentor feedback because a confident person can collapse the idea too fast.\n\nThe advice I trust starts with context.",
       "themes": [
-        "self-direction",
+        "mentor ambivalence",
+        "trust in mentorship",
         "ambiguity comfort",
-        "founder identity"
+        "customer discovery"
+      ],
+      "sentiment": "positive",
+      "confidence": 0.88,
+      "umap_x": 0.709921,
+      "umap_y": 0.888501,
+      "x": 0.709921,
+      "y": 0.888501,
+      "metadata_json": {
+        "sequence": 1,
+        "source_file": "p-seed-03.md",
+        "parser": "import_accelerator_dataset.mjs",
+        "canonical_participant_id": "p-seed-03",
+        "source_id": "source-p-seed-03-interview"
+      },
+      "source": {
+        "id": "source-p-seed-03-interview",
+        "participant_id": "p-seed-03",
+        "source_type": "interview",
+        "title": "P-103 anonymized interview",
+        "label": "P-103 · interview",
+        "source_ref": "local-anonymized-seed/p-seed-03.md",
+        "source_uri_hash": "b4a41e81849b4ed4ceccd34ff68712f7b151d8825824df3156ff6e9203e4f069",
+        "collected_at": "",
+        "raw_text_ref": "",
+        "raw_text_allowed": 0,
+        "consent_level": "anonymized_research",
+        "visibility": "researcher",
+        "metadata_json": {
+          "input_file": "p-seed-03.md",
+          "anonymized_before_import": true
+        }
+      },
+      "embedding_metadata": {
+        "id": "source-p-seed-03-interview-chunk-01-embedding",
+        "provider": "embeddinggemma",
+        "model": "google/embeddinggemma-300M",
+        "dimensions": 768,
+        "vector_sha256": "7e2d82642df30bda3ccfa4feda14b0c3c70b4cc21cf5e428bcb08cecd0406076",
+        "input_sha256": "c01b4442c2970378121fad1de5d3fa5ddc57fc7edc3718995d8bbf60e07afac7"
+      },
+      "projection": {
+        "id": "source-p-seed-03-interview-chunk-01-umap",
+        "method": "umap",
+        "version": "umap-embeddinggemma-google-embeddinggemma-300m-v1",
+        "params_json": {
+          "n_neighbors": 6,
+          "min_dist": 0.12,
+          "spread": 1.1,
+          "seed": 42
+        }
+      },
+      "consent_level": "anonymized_research",
+      "visibility": "researcher"
+    },
+    {
+      "id": "source-p-seed-03-interview-chunk-02",
+      "participant_id": "P-103",
+      "source_type": "interview",
+      "title": "Public-private Tension",
+      "summary": "If someone understands why I am keeping the question open, then I can hear the push to make it testable.",
+      "excerpt": "If someone understands why I am keeping the question open, then I can hear the push to make it testable.\n\nThe public story is much sharper than the private reality.\n\nOnline I describe a clear founder identity because people respond to clarity.\n\nIn the actual work, I am still comparing three versions of the customer and trying to learn which one pulls me forward.",
+      "anonymized_text": "If someone understands why I am keeping the question open, then I can hear the push to make it testable.\n\nThe public story is much sharper than the private reality.\n\nOnline I describe a clear founder identity because people respond to clarity.\n\nIn the actual work, I am still comparing three versions of the customer and trying to learn which one pulls me forward.",
+      "themes": [
+        "public-private tension",
+        "customer discovery",
+        "learning style"
       ],
       "sentiment": "positive",
       "confidence": 0.84,
-      "umap_x": 0.18,
-      "umap_y": 0.28,
-      "x": 0.18,
-      "y": 0.28,
+      "umap_x": 0.08,
+      "umap_y": 0.634,
+      "x": 0.08,
+      "y": 0.634,
       "metadata_json": {
         "sequence": 2,
-        "reflection_prompt": "mentor relationship"
+        "source_file": "p-seed-03.md",
+        "parser": "import_accelerator_dataset.mjs",
+        "canonical_participant_id": "p-seed-03",
+        "source_id": "source-p-seed-03-interview"
       },
       "source": {
-        "id": "src-reflect-p03-01",
-        "label": "Reflection, anonymized"
+        "id": "source-p-seed-03-interview",
+        "participant_id": "p-seed-03",
+        "source_type": "interview",
+        "title": "P-103 anonymized interview",
+        "label": "P-103 · interview",
+        "source_ref": "local-anonymized-seed/p-seed-03.md",
+        "source_uri_hash": "b4a41e81849b4ed4ceccd34ff68712f7b151d8825824df3156ff6e9203e4f069",
+        "collected_at": "",
+        "raw_text_ref": "",
+        "raw_text_allowed": 0,
+        "consent_level": "anonymized_research",
+        "visibility": "researcher",
+        "metadata_json": {
+          "input_file": "p-seed-03.md",
+          "anonymized_before_import": true
+        }
       },
-      "consent_level": "research-anonymized"
-    },
-    {
-      "id": "mi-010",
-      "participant_id": "P-03",
-      "source_type": "social",
-      "title": "Public story hides exploratory reality",
-      "summary": "P-03's public positioning is sharper than the private exploratory process.",
-      "excerpt": "We are focused on one wedge: make expert workflows feel lightweight enough to repeat every day.",
-      "anonymized_text": "We are focused on one wedge: make expert workflows feel lightweight enough to repeat every day.",
-      "themes": [
-        "public-private tension",
-        "narrative clarity",
-        "exploration"
-      ],
-      "sentiment": "positive",
-      "confidence": 0.7,
-      "umap_x": 0.69,
-      "umap_y": 0.42,
-      "x": 0.69,
-      "y": 0.42,
-      "metadata_json": {
-        "sequence": 3,
-        "public_channel": "professional social"
+      "embedding_metadata": {
+        "id": "source-p-seed-03-interview-chunk-02-embedding",
+        "provider": "embeddinggemma",
+        "model": "google/embeddinggemma-300M",
+        "dimensions": 768,
+        "vector_sha256": "a4a4c7ef84d03917cd0dc3c86fa17fc8fdd580a18b8827da53404162daae4e88",
+        "input_sha256": "2faada90cf75b666fc4c0b58dffa68f5dabd35d937bb7fd3ae95b4257ebaff55"
       },
-      "source": {
-        "id": "src-social-p03-01",
-        "label": "Public profile post, synthetic"
+      "projection": {
+        "id": "source-p-seed-03-interview-chunk-02-umap",
+        "method": "umap",
+        "version": "umap-embeddinggemma-google-embeddinggemma-300m-v1",
+        "params_json": {
+          "n_neighbors": 6,
+          "min_dist": 0.12,
+          "spread": 1.1,
+          "seed": 42
+        }
       },
-      "consent_level": "public"
-    },
-    {
-      "id": "mi-011",
-      "participant_id": "P-04",
-      "source_type": "interview",
-      "title": "Mentor trust tied to operating cadence",
-      "summary": "P-04 trusts mentors who create repeatable operating rhythm.",
-      "excerpt": "The best mentor does not give me inspiration. They make the next operating loop obvious.",
-      "anonymized_text": "The best mentor does not give me inspiration. They make the next operating loop obvious.",
-      "themes": [
-        "trust in mentorship",
-        "structure need",
-        "execution"
-      ],
-      "sentiment": "positive",
-      "confidence": 0.85,
-      "umap_x": 0.58,
-      "umap_y": 0.62,
-      "x": 0.58,
-      "y": 0.62,
-      "metadata_json": {
-        "sequence": 1,
-        "interview_round": "current"
-      },
-      "source": {
-        "id": "src-int-p04-01",
-        "label": "Interview 1, anonymized excerpt",
-        "offset": "00:27:14"
-      },
-      "consent_level": "research-anonymized"
-    },
-    {
-      "id": "mi-012",
-      "participant_id": "P-04",
-      "source_type": "mentor_note",
-      "title": "Converts feedback into tasks",
-      "summary": "Mentor note shows P-04 rapidly operationalizes advice.",
-      "excerpt": "They translated feedback into a three-step sales test within the same session.",
-      "anonymized_text": "They translated feedback into a three-step sales test within the same session.",
-      "themes": [
-        "trust in mentorship",
-        "execution",
-        "sales learning"
-      ],
-      "sentiment": "positive",
-      "confidence": 0.83,
-      "umap_x": 0.63,
-      "umap_y": 0.67,
-      "x": 0.63,
-      "y": 0.67,
-      "metadata_json": {
-        "sequence": 2,
-        "note_type": "mentor observation"
-      },
-      "source": {
-        "id": "src-mentor-p04-01",
-        "label": "Mentor note, synthetic"
-      },
-      "consent_level": "internal-research"
+      "consent_level": "anonymized_research",
+      "visibility": "researcher"
     }
   ],
   "articles": [
     {
-      "id": "mi-001",
-      "participant_id": "P-01",
+      "id": "source-p-seed-01-interview-chunk-01",
+      "participant_id": "P-101",
       "source_type": "interview",
-      "title": "Self-directed search before mentor input",
-      "summary": "P-01 prefers to explore independently before accepting mentor direction.",
-      "excerpt": "I want a mentor nearby, but only after I have wrestled with the problem enough to know what I am asking.",
-      "anonymized_text": "I want a mentor nearby, but only after I have wrestled with the problem enough to know what I am asking.",
+      "title": "Self-direction",
+      "summary": "I usually need to protect the question for a while before I show it to anyone.",
+      "excerpt": "I usually need to protect the question for a while before I show it to anyone.\n\nIf a mentor comes in too early, I start optimizing for their language instead of learning what I actually believe.\n\nThe useful mentors are the ones who ask me what I have already tried and then help me turn that into a cleaner experiment.\n\nPublicly I sound more certain than I feel.",
+      "anonymized_text": "I usually need to protect the question for a while before I show it to anyone.\n\nIf a mentor comes in too early, I start optimizing for their language instead of learning what I actually believe.\n\nThe useful mentors are the ones who ask me what I have already tried and then help me turn that into a cleaner experiment.\n\nPublicly I sound more certain than I feel.",
       "themes": [
         "self-direction",
         "mentor ambivalence",
-        "learning style"
-      ],
-      "sentiment": "mixed-positive",
-      "confidence": 0.86,
-      "umap_x": 0.24,
-      "umap_y": 0.34,
-      "x": 0.24,
-      "y": 0.34,
-      "metadata_json": {
-        "sequence": 1,
-        "interview_round": "current",
-        "inference_note": "Shows desire for autonomy before guidance."
-      },
-      "source": {
-        "id": "src-int-p01-01",
-        "label": "Interview 1, anonymized excerpt",
-        "offset": "00:18:22"
-      },
-      "consent_level": "research-anonymized"
-    },
-    {
-      "id": "mi-002",
-      "participant_id": "P-01",
-      "source_type": "mentor_note",
-      "title": "Mentor sees selective receptivity",
-      "summary": "Mentor note suggests P-01 acts on advice once it is framed as an experiment.",
-      "excerpt": "They resist direct prescriptions, but respond well when advice is framed as a testable constraint.",
-      "anonymized_text": "They resist direct prescriptions, but respond well when advice is framed as a testable constraint.",
-      "themes": [
-        "mentor ambivalence",
-        "experimentation",
-        "autonomy"
-      ],
-      "sentiment": "neutral",
-      "confidence": 0.78,
-      "umap_x": 0.29,
-      "umap_y": 0.38,
-      "x": 0.29,
-      "y": 0.38,
-      "metadata_json": {
-        "sequence": 2,
-        "note_type": "mentor observation"
-      },
-      "source": {
-        "id": "src-mentor-p01-01",
-        "label": "Mentor note, synthetic"
-      },
-      "consent_level": "internal-research"
-    },
-    {
-      "id": "mi-003",
-      "participant_id": "P-01",
-      "source_type": "social",
-      "title": "Public certainty about founder identity",
-      "summary": "Public post presents decisiveness that contrasts with private uncertainty.",
-      "excerpt": "Building in public has forced clarity: we know exactly which user pain we are solving this quarter.",
-      "anonymized_text": "Building in public has forced clarity: we know exactly which user pain we are solving this quarter.",
-      "themes": [
-        "public-private tension",
-        "identity",
-        "narrative clarity"
+        "trust in mentorship",
+        "public-private tension"
       ],
       "sentiment": "positive",
-      "confidence": 0.72,
-      "umap_x": 0.72,
-      "umap_y": 0.29,
-      "x": 0.72,
-      "y": 0.29,
-      "metadata_json": {
-        "sequence": 3,
-        "public_channel": "professional social"
-      },
-      "source": {
-        "id": "src-social-p01-01",
-        "label": "Public profile post, synthetic"
-      },
-      "consent_level": "public"
-    },
-    {
-      "id": "mi-004",
-      "participant_id": "P-01",
-      "source_type": "reflection",
-      "title": "Private uncertainty under confident updates",
-      "summary": "Reflection notes a gap between public certainty and internal ambiguity.",
-      "excerpt": "The updates sound clean, but privately I still feel like the company changes shape every week.",
-      "anonymized_text": "The updates sound clean, but privately I still feel like the company changes shape every week.",
-      "themes": [
-        "public-private tension",
-        "ambiguity",
-        "founder identity"
-      ],
-      "sentiment": "mixed",
-      "confidence": 0.88,
-      "umap_x": 0.76,
-      "umap_y": 0.35,
-      "x": 0.76,
-      "y": 0.35,
-      "metadata_json": {
-        "sequence": 4,
-        "reflection_prompt": "identity and uncertainty"
-      },
-      "source": {
-        "id": "src-reflect-p01-01",
-        "label": "Reflection, anonymized"
-      },
-      "consent_level": "research-anonymized"
-    },
-    {
-      "id": "mi-005",
-      "participant_id": "P-02",
-      "source_type": "interview",
-      "title": "Needs structure before execution",
-      "summary": "P-02 describes needing clear milestones before moving quickly.",
-      "excerpt": "Once the week has a concrete target, I can execute hard. Without that, I spend too much time arranging the work.",
-      "anonymized_text": "Once the week has a concrete target, I can execute hard. Without that, I spend too much time arranging the work.",
-      "themes": [
-        "structure need",
-        "execution",
-        "planning"
-      ],
-      "sentiment": "neutral-positive",
-      "confidence": 0.9,
-      "umap_x": 0.49,
-      "umap_y": 0.68,
-      "x": 0.49,
-      "y": 0.68,
+      "confidence": 0.87,
+      "umap_x": 0.310529,
+      "umap_y": 0.92,
+      "x": 0.310529,
+      "y": 0.92,
       "metadata_json": {
         "sequence": 1,
-        "interview_round": "current"
+        "source_file": "p-seed-01.md",
+        "parser": "import_accelerator_dataset.mjs",
+        "canonical_participant_id": "p-seed-01",
+        "source_id": "source-p-seed-01-interview"
       },
       "source": {
-        "id": "src-int-p02-01",
-        "label": "Interview 1, anonymized excerpt",
-        "offset": "00:41:05"
+        "id": "source-p-seed-01-interview",
+        "participant_id": "p-seed-01",
+        "source_type": "interview",
+        "title": "P-101 anonymized interview",
+        "label": "P-101 · interview",
+        "source_ref": "local-anonymized-seed/p-seed-01.md",
+        "source_uri_hash": "e1918eca9a60d002f0fc2d16c8f197c83ed88d2da73afbd6fdd39ff4a707015f",
+        "collected_at": "",
+        "raw_text_ref": "",
+        "raw_text_allowed": 0,
+        "consent_level": "anonymized_research",
+        "visibility": "researcher",
+        "metadata_json": {
+          "input_file": "p-seed-01.md",
+          "anonymized_before_import": true
+        }
       },
-      "consent_level": "research-anonymized"
+      "embedding_metadata": {
+        "id": "source-p-seed-01-interview-chunk-01-embedding",
+        "provider": "embeddinggemma",
+        "model": "google/embeddinggemma-300M",
+        "dimensions": 768,
+        "vector_sha256": "e4fd5b35ec8b098140cd0cce11bb1743829f884e61108704c256ab9dc616b2d4",
+        "input_sha256": "d66dd2e7ef1a729790d82d6259a9cb4151906cc22e4f2df586cbc4b008225c99"
+      },
+      "projection": {
+        "id": "source-p-seed-01-interview-chunk-01-umap",
+        "method": "umap",
+        "version": "umap-embeddinggemma-google-embeddinggemma-300m-v1",
+        "params_json": {
+          "n_neighbors": 6,
+          "min_dist": 0.12,
+          "spread": 1.1,
+          "seed": 42
+        }
+      },
+      "consent_level": "anonymized_research",
+      "visibility": "researcher"
     },
     {
-      "id": "mi-006",
-      "participant_id": "P-02",
-      "source_type": "program_material",
-      "title": "Sprint template improves follow-through",
-      "summary": "Program material gives P-02 a repeatable weekly structure.",
-      "excerpt": "Weekly sprint board: one customer-learning goal, one build milestone, one decision log entry.",
-      "anonymized_text": "Weekly sprint board: one customer-learning goal, one build milestone, one decision log entry.",
+      "id": "source-p-seed-01-interview-chunk-02",
+      "participant_id": "P-101",
+      "source_type": "interview",
+      "title": "Self-direction",
+      "summary": "The updates make the company look crisp because that is what customers and investors expect, but privately I am still deciding which part of the problem deserves a company.",
+      "excerpt": "The updates make the company look crisp because that is what customers and investors expect, but privately I am still deciding which part of the problem deserves a company.\n\nThat gap is uncomfortable, and I do not always know when confidence becomes performance.\n\nThe program is most useful when it gives me a cadence without taking away the autonomy.",
+      "anonymized_text": "The updates make the company look crisp because that is what customers and investors expect, but privately I am still deciding which part of the problem deserves a company.\n\nThat gap is uncomfortable, and I do not always know when confidence becomes performance.\n\nThe program is most useful when it gives me a cadence without taking away the autonomy.",
+      "themes": [
+        "self-direction",
+        "trust in mentorship",
+        "public-private tension",
+        "customer discovery"
+      ],
+      "sentiment": "positive",
+      "confidence": 0.87,
+      "umap_x": 0.434609,
+      "umap_y": 0.522527,
+      "x": 0.434609,
+      "y": 0.522527,
+      "metadata_json": {
+        "sequence": 2,
+        "source_file": "p-seed-01.md",
+        "parser": "import_accelerator_dataset.mjs",
+        "canonical_participant_id": "p-seed-01",
+        "source_id": "source-p-seed-01-interview"
+      },
+      "source": {
+        "id": "source-p-seed-01-interview",
+        "participant_id": "p-seed-01",
+        "source_type": "interview",
+        "title": "P-101 anonymized interview",
+        "label": "P-101 · interview",
+        "source_ref": "local-anonymized-seed/p-seed-01.md",
+        "source_uri_hash": "e1918eca9a60d002f0fc2d16c8f197c83ed88d2da73afbd6fdd39ff4a707015f",
+        "collected_at": "",
+        "raw_text_ref": "",
+        "raw_text_allowed": 0,
+        "consent_level": "anonymized_research",
+        "visibility": "researcher",
+        "metadata_json": {
+          "input_file": "p-seed-01.md",
+          "anonymized_before_import": true
+        }
+      },
+      "embedding_metadata": {
+        "id": "source-p-seed-01-interview-chunk-02-embedding",
+        "provider": "embeddinggemma",
+        "model": "google/embeddinggemma-300M",
+        "dimensions": 768,
+        "vector_sha256": "b1a5a1e7e27aa8f2b3d46255f05e5ceda6ca5acfe618fea187e6834d7f9f97af",
+        "input_sha256": "3e21729cc679403c558026e329302eadf82317562652eca3ac8ed6f4ba2cf524"
+      },
+      "projection": {
+        "id": "source-p-seed-01-interview-chunk-02-umap",
+        "method": "umap",
+        "version": "umap-embeddinggemma-google-embeddinggemma-300m-v1",
+        "params_json": {
+          "n_neighbors": 6,
+          "min_dist": 0.12,
+          "spread": 1.1,
+          "seed": 42
+        }
+      },
+      "consent_level": "anonymized_research",
+      "visibility": "researcher"
+    },
+    {
+      "id": "source-p-seed-01-interview-chunk-03",
+      "participant_id": "P-101",
+      "source_type": "interview",
+      "title": "Structure Need",
+      "summary": "A weekly checkpoint helps because it forces me to name the experiment, but I still want the space to decide what the experiment means.",
+      "excerpt": "A weekly checkpoint helps because it forces me to name the experiment, but I still want the space to decide what the experiment means.",
+      "anonymized_text": "A weekly checkpoint helps because it forces me to name the experiment, but I still want the space to decide what the experiment means.",
       "themes": [
         "structure need",
-        "program design",
+        "learning style"
+      ],
+      "sentiment": "positive",
+      "confidence": 0.77,
+      "umap_x": 0.405319,
+      "umap_y": 0.08,
+      "x": 0.405319,
+      "y": 0.08,
+      "metadata_json": {
+        "sequence": 3,
+        "source_file": "p-seed-01.md",
+        "parser": "import_accelerator_dataset.mjs",
+        "canonical_participant_id": "p-seed-01",
+        "source_id": "source-p-seed-01-interview"
+      },
+      "source": {
+        "id": "source-p-seed-01-interview",
+        "participant_id": "p-seed-01",
+        "source_type": "interview",
+        "title": "P-101 anonymized interview",
+        "label": "P-101 · interview",
+        "source_ref": "local-anonymized-seed/p-seed-01.md",
+        "source_uri_hash": "e1918eca9a60d002f0fc2d16c8f197c83ed88d2da73afbd6fdd39ff4a707015f",
+        "collected_at": "",
+        "raw_text_ref": "",
+        "raw_text_allowed": 0,
+        "consent_level": "anonymized_research",
+        "visibility": "researcher",
+        "metadata_json": {
+          "input_file": "p-seed-01.md",
+          "anonymized_before_import": true
+        }
+      },
+      "embedding_metadata": {
+        "id": "source-p-seed-01-interview-chunk-03-embedding",
+        "provider": "embeddinggemma",
+        "model": "google/embeddinggemma-300M",
+        "dimensions": 768,
+        "vector_sha256": "b3164538ee99250ffb851452a30418dbfc8f647379c5c90f5879d45da2b7b249",
+        "input_sha256": "d5347581248fd41d7de8cf14c640dbb52c2311edc307b6915ba2607420508826"
+      },
+      "projection": {
+        "id": "source-p-seed-01-interview-chunk-03-umap",
+        "method": "umap",
+        "version": "umap-embeddinggemma-google-embeddinggemma-300m-v1",
+        "params_json": {
+          "n_neighbors": 6,
+          "min_dist": 0.12,
+          "spread": 1.1,
+          "seed": 42
+        }
+      },
+      "consent_level": "anonymized_research",
+      "visibility": "researcher"
+    },
+    {
+      "id": "source-p-seed-02-interview-chunk-01",
+      "participant_id": "P-102",
+      "source_type": "interview",
+      "title": "Mentor Ambivalence",
+      "summary": "I can execute quickly once the sequence is clear, but before that I keep making the plan better instead of testing it.",
+      "excerpt": "I can execute quickly once the sequence is clear, but before that I keep making the plan better instead of testing it.\n\nThe biggest shift was having a weekly milestone that told me exactly what customer discovery meant this week, not in theory.\n\nMentor advice works for me when it becomes a structure.\n\nA broad suggestion like talk to more buyers does not change my behavior.",
+      "anonymized_text": "I can execute quickly once the sequence is clear, but before that I keep making the plan better instead of testing it.\n\nThe biggest shift was having a weekly milestone that told me exactly what customer discovery meant this week, not in theory.\n\nMentor advice works for me when it becomes a structure.\n\nA broad suggestion like talk to more buyers does not change my behavior.",
+      "themes": [
+        "mentor ambivalence",
+        "trust in mentorship",
+        "structure need",
         "execution"
       ],
       "sentiment": "positive",
-      "confidence": 0.82,
-      "umap_x": 0.54,
-      "umap_y": 0.72,
-      "x": 0.54,
-      "y": 0.72,
+      "confidence": 0.88,
+      "umap_x": 0.92,
+      "umap_y": 0.557878,
+      "x": 0.92,
+      "y": 0.557878,
       "metadata_json": {
-        "sequence": 2,
-        "artifact": "program sprint template"
+        "sequence": 1,
+        "source_file": "p-seed-02.md",
+        "parser": "import_accelerator_dataset.mjs",
+        "canonical_participant_id": "p-seed-02",
+        "source_id": "source-p-seed-02-interview"
       },
       "source": {
-        "id": "src-program-01",
-        "label": "Program material, synthetic"
+        "id": "source-p-seed-02-interview",
+        "participant_id": "p-seed-02",
+        "source_type": "interview",
+        "title": "P-102 anonymized interview",
+        "label": "P-102 · interview",
+        "source_ref": "local-anonymized-seed/p-seed-02.md",
+        "source_uri_hash": "0e39a43c3f663e67b7b6aa5b377747f495d3363768af11f5140564af40e9b912",
+        "collected_at": "",
+        "raw_text_ref": "",
+        "raw_text_allowed": 0,
+        "consent_level": "anonymized_research",
+        "visibility": "researcher",
+        "metadata_json": {
+          "input_file": "p-seed-02.md",
+          "anonymized_before_import": true
+        }
       },
-      "consent_level": "program"
+      "embedding_metadata": {
+        "id": "source-p-seed-02-interview-chunk-01-embedding",
+        "provider": "embeddinggemma",
+        "model": "google/embeddinggemma-300M",
+        "dimensions": 768,
+        "vector_sha256": "6890e9701369098871f1fafe398cfb664fa7573fa800d26bbf18656daebecd55",
+        "input_sha256": "2fa47e1d3b7f31423fa5feb44aef5e0ccbd164215b5ce4bcd744f19e2e25452f"
+      },
+      "projection": {
+        "id": "source-p-seed-02-interview-chunk-01-umap",
+        "method": "umap",
+        "version": "umap-embeddinggemma-google-embeddinggemma-300m-v1",
+        "params_json": {
+          "n_neighbors": 6,
+          "min_dist": 0.12,
+          "spread": 1.1,
+          "seed": 42
+        }
+      },
+      "consent_level": "anonymized_research",
+      "visibility": "researcher"
     },
     {
-      "id": "mi-007",
-      "participant_id": "P-02",
-      "source_type": "prior_interview",
-      "title": "Earlier pattern of over-preparing",
-      "summary": "Prior interview shows P-02 delayed outreach until the plan felt complete.",
-      "excerpt": "I kept tuning the outreach list because sending the first ten messages felt like committing to the wrong version.",
-      "anonymized_text": "I kept tuning the outreach list because sending the first ten messages felt like committing to the wrong version.",
+      "id": "source-p-seed-02-interview-chunk-02",
+      "participant_id": "P-102",
+      "source_type": "interview",
+      "title": "Structure Need",
+      "summary": "A specific sprint with five outreach messages, two interviews, and a Friday review makes me move.",
+      "excerpt": "A specific sprint with five outreach messages, two interviews, and a Friday review makes me move.\n\nI do worry that structure can hide whether I actually understand the customer.\n\nI can complete the tasks and still avoid the hard question.\n\nThe program helps when the template includes a reflection step, because then execution and learning stay connected.",
+      "anonymized_text": "A specific sprint with five outreach messages, two interviews, and a Friday review makes me move.\n\nI do worry that structure can hide whether I actually understand the customer.\n\nI can complete the tasks and still avoid the hard question.\n\nThe program helps when the template includes a reflection step, because then execution and learning stay connected.",
       "themes": [
         "structure need",
-        "decision latency",
-        "customer discovery"
-      ],
-      "sentiment": "mixed",
-      "confidence": 0.8,
-      "umap_x": 0.46,
-      "umap_y": 0.74,
-      "x": 0.46,
-      "y": 0.74,
-      "metadata_json": {
-        "sequence": 3,
-        "interview_round": "prior"
-      },
-      "source": {
-        "id": "src-prior-p02-01",
-        "label": "Prior interview, anonymized"
-      },
-      "consent_level": "research-anonymized"
-    },
-    {
-      "id": "mi-008",
-      "participant_id": "P-03",
-      "source_type": "interview",
-      "title": "High ambiguity tolerance with mentor skepticism",
-      "summary": "P-03 is comfortable with uncertainty but cautious about external advice.",
-      "excerpt": "Ambiguity does not bother me. What bothers me is advice that arrives before someone understands the weird parts.",
-      "anonymized_text": "Ambiguity does not bother me. What bothers me is advice that arrives before someone understands the weird parts.",
-      "themes": [
-        "ambiguity comfort",
-        "mentor ambivalence",
-        "self-direction"
+        "execution",
+        "customer discovery",
+        "learning style"
       ],
       "sentiment": "mixed",
       "confidence": 0.87,
-      "umap_x": 0.22,
-      "umap_y": 0.22,
-      "x": 0.22,
-      "y": 0.22,
+      "umap_x": 0.748386,
+      "umap_y": 0.230329,
+      "x": 0.748386,
+      "y": 0.230329,
       "metadata_json": {
-        "sequence": 1,
-        "interview_round": "current"
+        "sequence": 2,
+        "source_file": "p-seed-02.md",
+        "parser": "import_accelerator_dataset.mjs",
+        "canonical_participant_id": "p-seed-02",
+        "source_id": "source-p-seed-02-interview"
       },
       "source": {
-        "id": "src-int-p03-01",
-        "label": "Interview 1, anonymized excerpt",
-        "offset": "00:12:48"
+        "id": "source-p-seed-02-interview",
+        "participant_id": "p-seed-02",
+        "source_type": "interview",
+        "title": "P-102 anonymized interview",
+        "label": "P-102 · interview",
+        "source_ref": "local-anonymized-seed/p-seed-02.md",
+        "source_uri_hash": "0e39a43c3f663e67b7b6aa5b377747f495d3363768af11f5140564af40e9b912",
+        "collected_at": "",
+        "raw_text_ref": "",
+        "raw_text_allowed": 0,
+        "consent_level": "anonymized_research",
+        "visibility": "researcher",
+        "metadata_json": {
+          "input_file": "p-seed-02.md",
+          "anonymized_before_import": true
+        }
       },
-      "consent_level": "research-anonymized"
+      "embedding_metadata": {
+        "id": "source-p-seed-02-interview-chunk-02-embedding",
+        "provider": "embeddinggemma",
+        "model": "google/embeddinggemma-300M",
+        "dimensions": 768,
+        "vector_sha256": "36f29004ecb91bf9d74a9dcb55cfb1c8a7c84a4c90c35d2fb21e2c2751c18190",
+        "input_sha256": "626e4f969f67da3a74e523a15567d1879c9f05b9a19538fe053dddb55594702d"
+      },
+      "projection": {
+        "id": "source-p-seed-02-interview-chunk-02-umap",
+        "method": "umap",
+        "version": "umap-embeddinggemma-google-embeddinggemma-300m-v1",
+        "params_json": {
+          "n_neighbors": 6,
+          "min_dist": 0.12,
+          "spread": 1.1,
+          "seed": 42
+        }
+      },
+      "consent_level": "anonymized_research",
+      "visibility": "researcher"
     },
     {
-      "id": "mi-009",
-      "participant_id": "P-03",
-      "source_type": "reflection",
-      "title": "Reflective independence",
-      "summary": "P-03 frames independence as a way to protect the early idea from premature narrowing.",
-      "excerpt": "I am not rejecting help; I am protecting the question long enough to see what it wants to become.",
-      "anonymized_text": "I am not rejecting help; I am protecting the question long enough to see what it wants to become.",
+      "id": "source-p-seed-03-interview-chunk-01",
+      "participant_id": "P-103",
+      "source_type": "interview",
+      "title": "Mentor Ambivalence",
+      "summary": "Ambiguity does not bother me at the beginning.",
+      "excerpt": "Ambiguity does not bother me at the beginning.\n\nI like staying with the messy version of the idea because it keeps more possibilities alive.\n\nThe risk is that I can defend exploration for too long and call it strategy when I am avoiding a market test.\n\nI am careful with mentor feedback because a confident person can collapse the idea too fast.\n\nThe advice I trust starts with context.",
+      "anonymized_text": "Ambiguity does not bother me at the beginning.\n\nI like staying with the messy version of the idea because it keeps more possibilities alive.\n\nThe risk is that I can defend exploration for too long and call it strategy when I am avoiding a market test.\n\nI am careful with mentor feedback because a confident person can collapse the idea too fast.\n\nThe advice I trust starts with context.",
       "themes": [
-        "self-direction",
+        "mentor ambivalence",
+        "trust in mentorship",
         "ambiguity comfort",
-        "founder identity"
+        "customer discovery"
+      ],
+      "sentiment": "positive",
+      "confidence": 0.88,
+      "umap_x": 0.709921,
+      "umap_y": 0.888501,
+      "x": 0.709921,
+      "y": 0.888501,
+      "metadata_json": {
+        "sequence": 1,
+        "source_file": "p-seed-03.md",
+        "parser": "import_accelerator_dataset.mjs",
+        "canonical_participant_id": "p-seed-03",
+        "source_id": "source-p-seed-03-interview"
+      },
+      "source": {
+        "id": "source-p-seed-03-interview",
+        "participant_id": "p-seed-03",
+        "source_type": "interview",
+        "title": "P-103 anonymized interview",
+        "label": "P-103 · interview",
+        "source_ref": "local-anonymized-seed/p-seed-03.md",
+        "source_uri_hash": "b4a41e81849b4ed4ceccd34ff68712f7b151d8825824df3156ff6e9203e4f069",
+        "collected_at": "",
+        "raw_text_ref": "",
+        "raw_text_allowed": 0,
+        "consent_level": "anonymized_research",
+        "visibility": "researcher",
+        "metadata_json": {
+          "input_file": "p-seed-03.md",
+          "anonymized_before_import": true
+        }
+      },
+      "embedding_metadata": {
+        "id": "source-p-seed-03-interview-chunk-01-embedding",
+        "provider": "embeddinggemma",
+        "model": "google/embeddinggemma-300M",
+        "dimensions": 768,
+        "vector_sha256": "7e2d82642df30bda3ccfa4feda14b0c3c70b4cc21cf5e428bcb08cecd0406076",
+        "input_sha256": "c01b4442c2970378121fad1de5d3fa5ddc57fc7edc3718995d8bbf60e07afac7"
+      },
+      "projection": {
+        "id": "source-p-seed-03-interview-chunk-01-umap",
+        "method": "umap",
+        "version": "umap-embeddinggemma-google-embeddinggemma-300m-v1",
+        "params_json": {
+          "n_neighbors": 6,
+          "min_dist": 0.12,
+          "spread": 1.1,
+          "seed": 42
+        }
+      },
+      "consent_level": "anonymized_research",
+      "visibility": "researcher"
+    },
+    {
+      "id": "source-p-seed-03-interview-chunk-02",
+      "participant_id": "P-103",
+      "source_type": "interview",
+      "title": "Public-private Tension",
+      "summary": "If someone understands why I am keeping the question open, then I can hear the push to make it testable.",
+      "excerpt": "If someone understands why I am keeping the question open, then I can hear the push to make it testable.\n\nThe public story is much sharper than the private reality.\n\nOnline I describe a clear founder identity because people respond to clarity.\n\nIn the actual work, I am still comparing three versions of the customer and trying to learn which one pulls me forward.",
+      "anonymized_text": "If someone understands why I am keeping the question open, then I can hear the push to make it testable.\n\nThe public story is much sharper than the private reality.\n\nOnline I describe a clear founder identity because people respond to clarity.\n\nIn the actual work, I am still comparing three versions of the customer and trying to learn which one pulls me forward.",
+      "themes": [
+        "public-private tension",
+        "customer discovery",
+        "learning style"
       ],
       "sentiment": "positive",
       "confidence": 0.84,
-      "umap_x": 0.18,
-      "umap_y": 0.28,
-      "x": 0.18,
-      "y": 0.28,
+      "umap_x": 0.08,
+      "umap_y": 0.634,
+      "x": 0.08,
+      "y": 0.634,
       "metadata_json": {
         "sequence": 2,
-        "reflection_prompt": "mentor relationship"
+        "source_file": "p-seed-03.md",
+        "parser": "import_accelerator_dataset.mjs",
+        "canonical_participant_id": "p-seed-03",
+        "source_id": "source-p-seed-03-interview"
       },
       "source": {
-        "id": "src-reflect-p03-01",
-        "label": "Reflection, anonymized"
+        "id": "source-p-seed-03-interview",
+        "participant_id": "p-seed-03",
+        "source_type": "interview",
+        "title": "P-103 anonymized interview",
+        "label": "P-103 · interview",
+        "source_ref": "local-anonymized-seed/p-seed-03.md",
+        "source_uri_hash": "b4a41e81849b4ed4ceccd34ff68712f7b151d8825824df3156ff6e9203e4f069",
+        "collected_at": "",
+        "raw_text_ref": "",
+        "raw_text_allowed": 0,
+        "consent_level": "anonymized_research",
+        "visibility": "researcher",
+        "metadata_json": {
+          "input_file": "p-seed-03.md",
+          "anonymized_before_import": true
+        }
       },
-      "consent_level": "research-anonymized"
-    },
-    {
-      "id": "mi-010",
-      "participant_id": "P-03",
-      "source_type": "social",
-      "title": "Public story hides exploratory reality",
-      "summary": "P-03's public positioning is sharper than the private exploratory process.",
-      "excerpt": "We are focused on one wedge: make expert workflows feel lightweight enough to repeat every day.",
-      "anonymized_text": "We are focused on one wedge: make expert workflows feel lightweight enough to repeat every day.",
-      "themes": [
-        "public-private tension",
-        "narrative clarity",
-        "exploration"
-      ],
-      "sentiment": "positive",
-      "confidence": 0.7,
-      "umap_x": 0.69,
-      "umap_y": 0.42,
-      "x": 0.69,
-      "y": 0.42,
-      "metadata_json": {
-        "sequence": 3,
-        "public_channel": "professional social"
+      "embedding_metadata": {
+        "id": "source-p-seed-03-interview-chunk-02-embedding",
+        "provider": "embeddinggemma",
+        "model": "google/embeddinggemma-300M",
+        "dimensions": 768,
+        "vector_sha256": "a4a4c7ef84d03917cd0dc3c86fa17fc8fdd580a18b8827da53404162daae4e88",
+        "input_sha256": "2faada90cf75b666fc4c0b58dffa68f5dabd35d937bb7fd3ae95b4257ebaff55"
       },
-      "source": {
-        "id": "src-social-p03-01",
-        "label": "Public profile post, synthetic"
+      "projection": {
+        "id": "source-p-seed-03-interview-chunk-02-umap",
+        "method": "umap",
+        "version": "umap-embeddinggemma-google-embeddinggemma-300m-v1",
+        "params_json": {
+          "n_neighbors": 6,
+          "min_dist": 0.12,
+          "spread": 1.1,
+          "seed": 42
+        }
       },
-      "consent_level": "public"
-    },
-    {
-      "id": "mi-011",
-      "participant_id": "P-04",
-      "source_type": "interview",
-      "title": "Mentor trust tied to operating cadence",
-      "summary": "P-04 trusts mentors who create repeatable operating rhythm.",
-      "excerpt": "The best mentor does not give me inspiration. They make the next operating loop obvious.",
-      "anonymized_text": "The best mentor does not give me inspiration. They make the next operating loop obvious.",
-      "themes": [
-        "trust in mentorship",
-        "structure need",
-        "execution"
-      ],
-      "sentiment": "positive",
-      "confidence": 0.85,
-      "umap_x": 0.58,
-      "umap_y": 0.62,
-      "x": 0.58,
-      "y": 0.62,
-      "metadata_json": {
-        "sequence": 1,
-        "interview_round": "current"
-      },
-      "source": {
-        "id": "src-int-p04-01",
-        "label": "Interview 1, anonymized excerpt",
-        "offset": "00:27:14"
-      },
-      "consent_level": "research-anonymized"
-    },
-    {
-      "id": "mi-012",
-      "participant_id": "P-04",
-      "source_type": "mentor_note",
-      "title": "Converts feedback into tasks",
-      "summary": "Mentor note shows P-04 rapidly operationalizes advice.",
-      "excerpt": "They translated feedback into a three-step sales test within the same session.",
-      "anonymized_text": "They translated feedback into a three-step sales test within the same session.",
-      "themes": [
-        "trust in mentorship",
-        "execution",
-        "sales learning"
-      ],
-      "sentiment": "positive",
-      "confidence": 0.83,
-      "umap_x": 0.63,
-      "umap_y": 0.67,
-      "x": 0.63,
-      "y": 0.67,
-      "metadata_json": {
-        "sequence": 2,
-        "note_type": "mentor observation"
-      },
-      "source": {
-        "id": "src-mentor-p04-01",
-        "label": "Mentor note, synthetic"
-      },
-      "consent_level": "internal-research"
+      "consent_level": "anonymized_research",
+      "visibility": "researcher"
     }
   ],
   "labels": [],
   "ask_map": {
     "questions": [
       {
-        "id": "ask-mentor-ambivalence",
-        "query": "Who is self-directed but ambivalent about mentorship?",
-        "question_text": "Who is self-directed but ambivalent about mentorship?",
-        "themes": [
+        "id": "ask-seed-autonomy-mentorship",
+        "query": "Where does mentorship help without reducing autonomy?",
+        "aliases": [
           "self-direction",
-          "mentor ambivalence"
-        ],
-        "aliases": [
-          "self-directed",
-          "ambivalent about mentorship",
-          "mentor ambivalence"
-        ],
-        "x": 0.24,
-        "y": 0.3,
-        "domain_ids": [
-          "all",
-          "accelerator-demo"
-        ],
-        "answer": {
-          "synthesis": "Inference: P-01 and P-03 both show strong self-direction with selective or cautious use of mentorship. P-01 wants to form the question independently before receiving input; P-03 protects ambiguity until advice feels context-aware.",
-          "participant_codes": [
-            "P-01",
-            "P-03"
-          ],
-          "highlighted_map_item_ids": [
-            "mi-001",
-            "mi-002",
-            "mi-008",
-            "mi-009"
-          ],
-          "themes": [
-            "self-direction",
-            "mentor ambivalence",
-            "ambiguity comfort"
-          ],
-          "follow_up": "Which mentor formats preserve autonomy while still increasing execution speed?"
-        }
-      },
-      {
-        "id": "ask-public-private",
-        "query": "Where do public and private founder identities diverge?",
-        "question_text": "Where do public and private founder identities diverge?",
-        "themes": [
-          "public-private tension",
-          "founder identity"
-        ],
-        "aliases": [
-          "public and private",
-          "founder identities",
-          "diverge"
-        ],
-        "x": 0.72,
-        "y": 0.36,
-        "domain_ids": [
-          "all",
-          "accelerator-demo"
-        ],
-        "answer": {
-          "synthesis": "Inference: P-01 and P-03 present crisp public narratives while private reflections preserve uncertainty. The divergence is strongest around external clarity versus internal exploration.",
-          "participant_codes": [
-            "P-01",
-            "P-03"
-          ],
-          "highlighted_map_item_ids": [
-            "mi-003",
-            "mi-004",
-            "mi-010"
-          ],
-          "themes": [
-            "public-private tension",
-            "narrative clarity",
-            "ambiguity"
-          ],
-          "follow_up": "Does public narrative pressure help founders focus, or does it prematurely narrow exploration?"
-        }
-      },
-      {
-        "id": "ask-structure-before-execute",
-        "query": "Which participants need structure before they can execute?",
-        "question_text": "Which participants need structure before they can execute?",
-        "themes": [
-          "structure need",
-          "execution"
-        ],
-        "aliases": [
-          "need structure",
-          "before they can execute",
-          "execution"
-        ],
-        "x": 0.53,
-        "y": 0.68,
-        "domain_ids": [
-          "all",
-          "accelerator-demo"
-        ],
-        "answer": {
-          "synthesis": "Inference: P-02 most clearly needs structure before execution; P-04 also values structured cadence, but uses it as an accelerator rather than a prerequisite.",
-          "participant_codes": [
-            "P-02",
-            "P-04"
-          ],
-          "highlighted_map_item_ids": [
-            "mi-005",
-            "mi-006",
-            "mi-007",
-            "mi-011",
-            "mi-012"
-          ],
-          "themes": [
-            "structure need",
-            "execution",
-            "program design"
-          ],
-          "follow_up": "Which program rituals reduce decision latency without creating dependency?"
-        }
-      },
-      {
-        "id": "ask-mentor-trust",
-        "query": "What kinds of mentorship are trusted?",
-        "question_text": "What kinds of mentorship are trusted?",
-        "themes": [
-          "trust in mentorship",
-          "experimentation"
-        ],
-        "aliases": [
-          "trusted mentorship",
-          "mentor trust",
-          "what kinds of mentorship"
-        ],
-        "x": 0.5,
-        "y": 0.5,
-        "domain_ids": [
-          "all",
-          "accelerator-demo"
-        ],
-        "answer": {
-          "synthesis": "Inference: Trust increases when mentors convert advice into experiments, constraints, or operating loops. Direct prescriptions are less trusted by autonomy-oriented participants.",
-          "participant_codes": [
-            "P-01",
-            "P-04"
-          ],
-          "highlighted_map_item_ids": [
-            "mi-002",
-            "mi-011",
-            "mi-012"
-          ],
-          "themes": [
-            "trust in mentorship",
-            "experimentation",
-            "execution"
-          ],
-          "follow_up": "Can mentor recommendations be represented as map actions tied to evidence clusters?"
-        }
-      }
-    ]
-  },
-  "questions": [
-    {
-      "id": "ask-mentor-ambivalence",
-      "query": "Who is self-directed but ambivalent about mentorship?",
-      "question_text": "Who is self-directed but ambivalent about mentorship?",
-      "themes": [
-        "self-direction",
-        "mentor ambivalence"
-      ],
-      "aliases": [
-        "self-directed",
-        "ambivalent about mentorship",
-        "mentor ambivalence"
-      ],
-      "x": 0.24,
-      "y": 0.3,
-      "domain_ids": [
-        "all",
-        "accelerator-demo"
-      ],
-      "answer": {
-        "synthesis": "Inference: P-01 and P-03 both show strong self-direction with selective or cautious use of mentorship. P-01 wants to form the question independently before receiving input; P-03 protects ambiguity until advice feels context-aware.",
-        "participant_codes": [
-          "P-01",
-          "P-03"
-        ],
-        "highlighted_map_item_ids": [
-          "mi-001",
-          "mi-002",
-          "mi-008",
-          "mi-009"
+          "mentor ambivalence",
+          "trust in mentorship"
         ],
         "themes": [
           "self-direction",
           "mentor ambivalence",
-          "ambiguity comfort"
+          "trust in mentorship"
         ],
-        "follow_up": "Which mentor formats preserve autonomy while still increasing execution speed?"
-      }
-    },
-    {
-      "id": "ask-public-private",
-      "query": "Where do public and private founder identities diverge?",
-      "question_text": "Where do public and private founder identities diverge?",
-      "themes": [
-        "public-private tension",
-        "founder identity"
-      ],
-      "aliases": [
-        "public and private",
-        "founder identities",
-        "diverge"
-      ],
-      "x": 0.72,
-      "y": 0.36,
-      "domain_ids": [
-        "all",
-        "accelerator-demo"
-      ],
-      "answer": {
-        "synthesis": "Inference: P-01 and P-03 present crisp public narratives while private reflections preserve uncertainty. The divergence is strongest around external clarity versus internal exploration.",
-        "participant_codes": [
-          "P-01",
-          "P-03"
-        ],
-        "highlighted_map_item_ids": [
-          "mi-003",
-          "mi-004",
-          "mi-010"
-        ],
-        "themes": [
-          "public-private tension",
-          "narrative clarity",
-          "ambiguity"
-        ],
-        "follow_up": "Does public narrative pressure help founders focus, or does it prematurely narrow exploration?"
-      }
-    },
-    {
-      "id": "ask-structure-before-execute",
-      "query": "Which participants need structure before they can execute?",
-      "question_text": "Which participants need structure before they can execute?",
-      "themes": [
-        "structure need",
-        "execution"
-      ],
-      "aliases": [
-        "need structure",
-        "before they can execute",
-        "execution"
-      ],
-      "x": 0.53,
-      "y": 0.68,
-      "domain_ids": [
-        "all",
-        "accelerator-demo"
-      ],
-      "answer": {
-        "synthesis": "Inference: P-02 most clearly needs structure before execution; P-04 also values structured cadence, but uses it as an accelerator rather than a prerequisite.",
-        "participant_codes": [
-          "P-02",
-          "P-04"
-        ],
-        "highlighted_map_item_ids": [
-          "mi-005",
-          "mi-006",
-          "mi-007",
-          "mi-011",
-          "mi-012"
+        "answer": {
+          "synthesis": "Inference: P-101 and P-102 and P-103 show this pattern in the anonymized seed evidence. The claim is limited to the displayed excerpts and should be checked against fuller researcher notes before use.",
+          "supporting_evidence": [
+            "P-101: I usually need to protect the question for a while before I show it to anyone.",
+            "P-101: The updates make the company look crisp because that is what customers and investors expect, but privately I am still deciding which part of the problem deserves a company.",
+            "P-102: I can execute quickly once the sequence is clear, but before that I keep making the plan better instead of testing it.",
+            "P-103: Ambiguity does not bother me at the beginning."
+          ],
+          "participant_codes": [
+            "P-101",
+            "P-102",
+            "P-103"
+          ],
+          "highlighted_map_item_ids": [
+            "source-p-seed-01-interview-chunk-01",
+            "source-p-seed-01-interview-chunk-02",
+            "source-p-seed-02-interview-chunk-01",
+            "source-p-seed-03-interview-chunk-01"
+          ],
+          "themes": [
+            "self-direction",
+            "mentor ambivalence",
+            "trust in mentorship"
+          ],
+          "suggested_follow_up": "Which mentor formats preserve autonomy while still increasing execution speed?"
+        },
+        "domain_ids": [
+          "all"
+        ]
+      },
+      {
+        "id": "ask-seed-structure-execution",
+        "query": "Which participants need structure before they can execute?",
+        "aliases": [
+          "structure need",
+          "execution",
+          "program design"
         ],
         "themes": [
           "structure need",
           "execution",
           "program design"
         ],
-        "follow_up": "Which program rituals reduce decision latency without creating dependency?"
-      }
-    },
-    {
-      "id": "ask-mentor-trust",
-      "query": "What kinds of mentorship are trusted?",
-      "question_text": "What kinds of mentorship are trusted?",
-      "themes": [
-        "trust in mentorship",
-        "experimentation"
-      ],
-      "aliases": [
-        "trusted mentorship",
-        "mentor trust",
-        "what kinds of mentorship"
-      ],
-      "x": 0.5,
-      "y": 0.5,
-      "domain_ids": [
-        "all",
-        "accelerator-demo"
-      ],
-      "answer": {
-        "synthesis": "Inference: Trust increases when mentors convert advice into experiments, constraints, or operating loops. Direct prescriptions are less trusted by autonomy-oriented participants.",
-        "participant_codes": [
-          "P-01",
-          "P-04"
-        ],
-        "highlighted_map_item_ids": [
-          "mi-002",
-          "mi-011",
-          "mi-012"
+        "answer": {
+          "synthesis": "Inference: P-101 and P-102 show this pattern in the anonymized seed evidence. The claim is limited to the displayed excerpts and should be checked against fuller researcher notes before use.",
+          "supporting_evidence": [
+            "P-101: A weekly checkpoint helps because it forces me to name the experiment, but I still want the space to decide what the experiment means.",
+            "P-102: I can execute quickly once the sequence is clear, but before that I keep making the plan better instead of testing it.",
+            "P-102: A specific sprint with five outreach messages, two interviews, and a Friday review makes me move."
+          ],
+          "participant_codes": [
+            "P-101",
+            "P-102"
+          ],
+          "highlighted_map_item_ids": [
+            "source-p-seed-01-interview-chunk-03",
+            "source-p-seed-02-interview-chunk-01",
+            "source-p-seed-02-interview-chunk-02"
+          ],
+          "themes": [
+            "structure need",
+            "execution",
+            "program design"
+          ],
+          "suggested_follow_up": "What operating cadence appears to unlock execution for each participant?"
+        },
+        "domain_ids": [
+          "all"
+        ]
+      },
+      {
+        "id": "ask-seed-public-private",
+        "query": "Where do public and private founder identities diverge?",
+        "aliases": [
+          "public-private tension",
+          "ambiguity comfort"
         ],
         "themes": [
-          "trust in mentorship",
-          "experimentation",
-          "execution"
+          "public-private tension",
+          "ambiguity comfort"
         ],
-        "follow_up": "Can mentor recommendations be represented as map actions tied to evidence clusters?"
+        "answer": {
+          "synthesis": "Inference: P-101 and P-103 show this pattern in the anonymized seed evidence. The claim is limited to the displayed excerpts and should be checked against fuller researcher notes before use.",
+          "supporting_evidence": [
+            "P-101: I usually need to protect the question for a while before I show it to anyone.",
+            "P-101: The updates make the company look crisp because that is what customers and investors expect, but privately I am still deciding which part of the problem deserves a company.",
+            "P-103: Ambiguity does not bother me at the beginning.",
+            "P-103: If someone understands why I am keeping the question open, then I can hear the push to make it testable."
+          ],
+          "participant_codes": [
+            "P-101",
+            "P-103"
+          ],
+          "highlighted_map_item_ids": [
+            "source-p-seed-01-interview-chunk-01",
+            "source-p-seed-01-interview-chunk-02",
+            "source-p-seed-03-interview-chunk-01",
+            "source-p-seed-03-interview-chunk-02"
+          ],
+          "themes": [
+            "public-private tension",
+            "ambiguity comfort"
+          ],
+          "suggested_follow_up": "Which evidence distinguishes public narrative polish from private uncertainty?"
+        },
+        "domain_ids": [
+          "all"
+        ]
       }
+    ]
+  },
+  "questions": [
+    {
+      "id": "ask-seed-autonomy-mentorship",
+      "query": "Where does mentorship help without reducing autonomy?",
+      "aliases": [
+        "self-direction",
+        "mentor ambivalence",
+        "trust in mentorship"
+      ],
+      "themes": [
+        "self-direction",
+        "mentor ambivalence",
+        "trust in mentorship"
+      ],
+      "answer": {
+        "synthesis": "Inference: P-101 and P-102 and P-103 show this pattern in the anonymized seed evidence. The claim is limited to the displayed excerpts and should be checked against fuller researcher notes before use.",
+        "supporting_evidence": [
+          "P-101: I usually need to protect the question for a while before I show it to anyone.",
+          "P-101: The updates make the company look crisp because that is what customers and investors expect, but privately I am still deciding which part of the problem deserves a company.",
+          "P-102: I can execute quickly once the sequence is clear, but before that I keep making the plan better instead of testing it.",
+          "P-103: Ambiguity does not bother me at the beginning."
+        ],
+        "participant_codes": [
+          "P-101",
+          "P-102",
+          "P-103"
+        ],
+        "highlighted_map_item_ids": [
+          "source-p-seed-01-interview-chunk-01",
+          "source-p-seed-01-interview-chunk-02",
+          "source-p-seed-02-interview-chunk-01",
+          "source-p-seed-03-interview-chunk-01"
+        ],
+        "themes": [
+          "self-direction",
+          "mentor ambivalence",
+          "trust in mentorship"
+        ],
+        "suggested_follow_up": "Which mentor formats preserve autonomy while still increasing execution speed?"
+      },
+      "domain_ids": [
+        "all"
+      ]
+    },
+    {
+      "id": "ask-seed-structure-execution",
+      "query": "Which participants need structure before they can execute?",
+      "aliases": [
+        "structure need",
+        "execution",
+        "program design"
+      ],
+      "themes": [
+        "structure need",
+        "execution",
+        "program design"
+      ],
+      "answer": {
+        "synthesis": "Inference: P-101 and P-102 show this pattern in the anonymized seed evidence. The claim is limited to the displayed excerpts and should be checked against fuller researcher notes before use.",
+        "supporting_evidence": [
+          "P-101: A weekly checkpoint helps because it forces me to name the experiment, but I still want the space to decide what the experiment means.",
+          "P-102: I can execute quickly once the sequence is clear, but before that I keep making the plan better instead of testing it.",
+          "P-102: A specific sprint with five outreach messages, two interviews, and a Friday review makes me move."
+        ],
+        "participant_codes": [
+          "P-101",
+          "P-102"
+        ],
+        "highlighted_map_item_ids": [
+          "source-p-seed-01-interview-chunk-03",
+          "source-p-seed-02-interview-chunk-01",
+          "source-p-seed-02-interview-chunk-02"
+        ],
+        "themes": [
+          "structure need",
+          "execution",
+          "program design"
+        ],
+        "suggested_follow_up": "What operating cadence appears to unlock execution for each participant?"
+      },
+      "domain_ids": [
+        "all"
+      ]
+    },
+    {
+      "id": "ask-seed-public-private",
+      "query": "Where do public and private founder identities diverge?",
+      "aliases": [
+        "public-private tension",
+        "ambiguity comfort"
+      ],
+      "themes": [
+        "public-private tension",
+        "ambiguity comfort"
+      ],
+      "answer": {
+        "synthesis": "Inference: P-101 and P-103 show this pattern in the anonymized seed evidence. The claim is limited to the displayed excerpts and should be checked against fuller researcher notes before use.",
+        "supporting_evidence": [
+          "P-101: I usually need to protect the question for a while before I show it to anyone.",
+          "P-101: The updates make the company look crisp because that is what customers and investors expect, but privately I am still deciding which part of the problem deserves a company.",
+          "P-103: Ambiguity does not bother me at the beginning.",
+          "P-103: If someone understands why I am keeping the question open, then I can hear the push to make it testable."
+        ],
+        "participant_codes": [
+          "P-101",
+          "P-103"
+        ],
+        "highlighted_map_item_ids": [
+          "source-p-seed-01-interview-chunk-01",
+          "source-p-seed-01-interview-chunk-02",
+          "source-p-seed-03-interview-chunk-01",
+          "source-p-seed-03-interview-chunk-02"
+        ],
+        "themes": [
+          "public-private tension",
+          "ambiguity comfort"
+        ],
+        "suggested_follow_up": "Which evidence distinguishes public narrative polish from private uncertainty?"
+      },
+      "domain_ids": [
+        "all"
+      ]
     }
   ]
 }

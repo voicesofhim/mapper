@@ -559,7 +559,7 @@ function articlesToPoints(articles) {
     z: a.z || 0,
     type: a.participant_id ? 'map_item' : 'article',
     color: a.participant_id ? colorForMapItem(a) : [0, 0, 0, 30],
-    radius: a.participant_id ? 2.7 : 1.5,
+    radius: a.participant_id ? 3.4 : 1.5,
     title: a.title,
     url: a.url,
     excerpt: a.excerpt || a.anonymized_text || '',
@@ -1188,8 +1188,8 @@ async function handleAskMap(queryText, question) {
       })),
     };
     quiz.showAskResponse(response);
-    highlightMapItems(itemIds, queryText, { focus: true });
-    showEvidencePanel(evidence.length ? evidence : localResponse.evidence, { open: false });
+    highlightMapItems(itemIds, queryText, { focus: true, focusIds: itemIds.slice(0, 3) });
+    showEvidencePanel(evidence.length ? evidence : localResponse.evidence, { close: true });
     return;
   }
 
@@ -1213,8 +1213,8 @@ async function handleAskMap(queryText, question) {
   };
 
   quiz.showAskResponse(response);
-  highlightMapItems(itemIds, matched.query || queryText, { focus: true });
-  showEvidencePanel(evidence, { open: false });
+  highlightMapItems(itemIds, matched.query || queryText, { focus: true, focusIds: itemIds.slice(0, 3) });
+  showEvidencePanel(evidence, { close: true });
 }
 
 async function queryLocalAskMap(queryText) {
@@ -1260,7 +1260,8 @@ function highlightMapItems(itemIds, reason = '', options = {}) {
   activeLens = { ...activeLens, highlightedIds: itemIds || [] };
   renderer.highlightMapItems(itemIds || []);
   if (options.focus) {
-    renderer.focusMapItems(itemIds || [], { maxZoom: 2.05, minSpan: 0.32, duration: 680 });
+    const focusIds = options.focusIds || itemIds || [];
+    renderer.focusMapItems(focusIds, { maxZoom: 3.1, minSpan: 0.18, duration: 720 });
   }
   window.dispatchEvent(new CustomEvent('mapper:highlight-items', {
     detail: { itemIds, reason, focus: !!options.focus },
@@ -1271,7 +1272,11 @@ function showEvidencePanel(items, options = {}) {
   const evidence = (items && items.length ? items : getFilteredMapItems());
   videoPanel.setEvidence(evidenceToMarkers(evidence));
   if (items && items.length) videoPanel.updateViewport(GLOBAL_REGION);
-  if (options.open !== false) toggleVideoPanel(true);
+  if (options.close) {
+    toggleVideoPanel(false);
+  } else if (options.open !== false) {
+    toggleVideoPanel(true);
+  }
 }
 
 function setMapLens({ theme, colorBy, highlightedIds } = {}) {
