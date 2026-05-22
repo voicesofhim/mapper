@@ -25,17 +25,57 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
   const [status, setStatus] = useState('Local voice idle');
   const [error, setError] = useState('');
   const [heardText, setHeardText] = useState('');
+  const [micInfo, setMicInfo] = useState({
+    label: 'Mic not checked',
+    detail: 'Connect local voice to test the active browser input.',
+    state: 'idle',
+  });
 
   const setAskMode = useCallback((nextMode) => {
     setMode(nextMode);
     onModeChange?.(nextMode);
   }, [onModeChange]);
 
+  const refreshMicInfo = useCallback(async ({ requestPermission = false } = {}) => {
+    try {
+      const nextMicInfo = await getMicrophoneInfo({ requestPermission });
+      setMicInfo(nextMicInfo);
+      return nextMicInfo;
+    } catch (err) {
+      const detail = formatConnectionError(err);
+      setMicInfo({
+        label: 'No microphone detected',
+        detail,
+        state: 'error',
+      });
+      throw err;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mode !== 'voice') return undefined;
+    refreshMicInfo({ requestPermission: false }).catch(() => {});
+
+    const mediaDevices = navigator.mediaDevices;
+    if (!mediaDevices?.addEventListener) return undefined;
+
+    const handleDeviceChange = () => {
+      refreshMicInfo({ requestPermission: false }).catch(() => {});
+    };
+    mediaDevices.addEventListener('devicechange', handleDeviceChange);
+    return () => mediaDevices.removeEventListener('devicechange', handleDeviceChange);
+  }, [mode, refreshMicInfo]);
+
   const connectVoice = useCallback(async () => {
     setError('');
     setStatus('Checking local microphone');
     try {
-      await assertMicrophoneAvailable();
+      const checkedMic = await refreshMicInfo({ requestPermission: true });
+      setMicInfo({
+        ...checkedMic,
+        detail: 'Input test passed. Using browser default input.',
+        state: 'ready',
+      });
       setStatus('Preparing local LiveKit room');
       const endpoint = import.meta.env.VITE_LIVEKIT_TOKEN_ENDPOINT || DEFAULT_TOKEN_ENDPOINT;
       const response = await fetch(endpoint, {
@@ -55,7 +95,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
       setError(formatConnectionError(err));
       setStatus('Local voice unavailable');
     }
-  }, []);
+  }, [refreshMicInfo]);
 
   const disconnectVoice = useCallback(() => {
     setSession(null);
@@ -133,6 +173,11 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
             ) : (
               <button type="button" onClick={connectVoice}>Connect local</button>
             )}
+          </div>
+          <div className={`ask-voice-mic ask-voice-mic-${micInfo.state || 'idle'}`} aria-live="polite">
+            <span>MIC</span>
+            <b>{micInfo.label}</b>
+            <small>{micInfo.detail}</small>
           </div>
         </div>
       ) : null}
@@ -307,16 +352,65 @@ function formatConnectionError(err) {
   return message || 'Could not connect to local LiveKit';
 }
 
-async function assertMicrophoneAvailable() {
-  if (!navigator.mediaDevices?.getUserMedia) {
+async function getMicrophoneInfo({ requestPermission = false } = {}) {
+  if (!navigator.mediaDevices) {
     throw new Error('Browser microphone access is unavailable.');
   }
+
+  let stream = null;
+  let track = null;
+  let settings = {};
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    for (const track of stream.getTracks()) track.stop();
+    if (requestPermission) {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      track = stream.getAudioTracks()[0] || null;
+      if (!track) throw new Error('No microphone audio track returned.');
+      settings = track.getSettings?.() || {};
+    }
+
+    const devices = navigator.mediaDevices.enumerateDevices
+      ? await navigator.mediaDevices.enumerateDevices()
+      : [];
+    const audioInputs = devices.filter((device) => device.kind === 'audioinput');
+    if (!audioInputs.length && !track) {
+      throw new Error('No microphone found. Check input device, then reconnect.');
+    }
+
+    const selectedDevice = audioInputs.find((device) => (
+      settings.deviceId && device.deviceId === settings.deviceId
+    )) || audioInputs.find((device) => device.deviceId === 'default') || audioInputs[0];
+
+    const label = cleanMicLabel(track?.label || selectedDevice?.label);
+    const visibleLabel = label || (audioInputs.length ? 'Microphone available' : 'Microphone name hidden');
+    const detail = requestPermission
+      ? 'Input test passed.'
+      : micDetailForDevices(audioInputs, label);
+
+    return {
+      label: visibleLabel,
+      detail,
+      state: requestPermission ? 'ready' : 'idle',
+    };
   } catch (err) {
     throw new Error(formatConnectionError(err));
+  } finally {
+    if (stream) {
+      for (const mediaTrack of stream.getTracks()) mediaTrack.stop();
+    }
   }
+}
+
+function cleanMicLabel(label) {
+  return String(label || '')
+    .replace(/\s+\([0-9a-f-]{8,}\)$/i, '')
+    .trim();
+}
+
+function micDetailForDevices(audioInputs, label) {
+  if (!audioInputs.length) return 'No audio inputs reported by browser.';
+  if (!label) return 'Allow mic access to reveal the input name.';
+  if (audioInputs.length === 1) return 'Browser default input detected.';
+  return `${audioInputs.length} audio inputs available. Browser default shown.`;
 }
 
 function ensureVoiceStyles() {
@@ -466,6 +560,38 @@ function ensureVoiceStyles() {
       min-height: 32px;
       color: var(--color-text);
       background: rgba(31, 247, 255, 0.045);
+    }
+    .ask-voice-mic {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.25rem 0.55rem;
+      margin-top: 0.45rem;
+      padding-top: 0.45rem;
+      border-top: 1px solid rgba(31, 247, 255, 0.12);
+      color: var(--color-text-muted);
+      font: 0.62rem/1.3 var(--font-body);
+      overflow-wrap: anywhere;
+    }
+    .ask-voice-mic span {
+      color: var(--color-primary);
+      font-family: var(--font-heading);
+      text-transform: uppercase;
+    }
+    .ask-voice-mic b {
+      color: var(--color-text);
+      font-weight: 600;
+    }
+    .ask-voice-mic small {
+      grid-column: 2;
+      color: var(--color-text-muted);
+      font: inherit;
+    }
+    .ask-voice-mic-error b,
+    .ask-voice-mic-error small {
+      color: #ffb85c;
+    }
+    .ask-voice-mic-ready b {
+      color: var(--color-primary);
     }
     @media (max-width: 720px) {
       .ask-voice-shell {
