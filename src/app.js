@@ -44,7 +44,7 @@ import { maybeCollect, isCollectionEnabled, setCollectionEnabled } from './colle
 const GLOBAL_REGION = { x_min: 0, x_max: 1, y_min: 0, y_max: 1 };
 const GLOBAL_GRID_SIZE = 50;
 const SOURCE_COLORS = {
-  interview: [205, 235, 255, 230],
+  interview: [169, 255, 255, 220],
   prior_interview: [154, 163, 255, 220],
   social: [255, 184, 92, 220],
   mentor_note: [112, 226, 164, 220],
@@ -52,7 +52,7 @@ const SOURCE_COLORS = {
   reflection: [194, 132, 252, 220],
 };
 const SOURCE_COLOR_CSS = {
-  interview: '#cdeaff',
+  interview: '#a9ffff',
   prior_interview: '#9aa3ff',
   social: '#ffb85c',
   mentor_note: '#70e2a4',
@@ -676,7 +676,7 @@ function initMapLensControls(bundle) {
         gap: 0.45rem;
         max-width: min(760px, calc(100% - 28px));
         padding: 0.45rem;
-        border: 1px solid rgba(138,205,255,0.16);
+        border: 1px solid var(--color-border);
         border-radius: 8px;
         background: rgba(7, 13, 24, 0.78);
         backdrop-filter: blur(12px);

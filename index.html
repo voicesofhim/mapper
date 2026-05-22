@@ -36,8 +36,10 @@
             --color-bg: #050912;
             --color-surface: #0b1220;
             --color-surface-raised: #121c2e;
-            --color-primary: #8acdff;
-            --color-primary-light: #cdeaff;
+            --color-primary: #1ff7ff;
+            --color-primary-light: #a9ffff;
+            --color-primary-fill: rgba(31,247,255,0.10);
+            --color-primary-fill-strong: rgba(31,247,255,0.18);
             --color-secondary: #70e2a4;
             --color-tertiary: #10b981;
             --color-accent: #d97706;
@@ -45,8 +47,8 @@
             --color-text-muted: #91a5bc;
             --color-correct: #059669;
             --color-incorrect: #dc2626;
-            --color-border: rgba(138,205,255,0.22);
-            --color-glow-primary: rgba(138,205,255,0.24);
+            --color-border: rgba(31,247,255,0.18);
+            --color-glow-primary: rgba(31,247,255,0.14);
             --color-glow-secondary: rgba(112,226,164,0.18);
             --font-heading: 'Departure Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             --font-body: 'Departure Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -83,9 +85,10 @@
             position: absolute;
             top: -100px;
             left: 0;
-            background: var(--color-primary);
-            color: #fff;
+            background: var(--color-primary-fill-strong);
+            color: var(--color-primary-light);
             padding: 0.5rem 1rem;
+            border: 1px solid var(--color-primary);
             z-index: 9999;
             text-decoration: none;
             font-weight: bold;
@@ -316,22 +319,22 @@
             font-family: var(--font-heading);
             font-size: 1.1rem;
             font-weight: 700;
-            color: #fff;
-            background: var(--color-primary);
-            border: none;
+            color: var(--color-primary-light);
+            background: var(--color-primary-fill);
+            border: 1.5px solid var(--color-primary);
             border-radius: 8px;
             cursor: pointer;
             transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
-            box-shadow: 0 4px 12px rgba(0, 105, 62, 0.3);
+            box-shadow: 0 0 14px var(--color-glow-primary);
         }
         .landing-start-btn:hover {
-            background: var(--color-primary-light);
-            box-shadow: 0 6px 20px rgba(0, 105, 62, 0.4);
+            background: var(--color-primary-fill-strong);
+            box-shadow: 0 0 20px var(--color-glow-primary);
             transform: translateY(-1px);
         }
         .landing-start-btn:active {
             transform: translateY(0);
-            box-shadow: 0 2px 8px rgba(0, 105, 62, 0.3);
+            box-shadow: 0 0 8px var(--color-glow-primary);
         }
         .custom-select {
             position: relative;
@@ -390,7 +393,7 @@
         .custom-select-options::-webkit-scrollbar { width: 5px; }
         .custom-select-options::-webkit-scrollbar-track { background: transparent; }
         .custom-select-options::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
-        .custom-select-options::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
+        .custom-select-options::-webkit-scrollbar-thumb:hover { background: var(--color-primary-fill-strong); }
         .custom-select-option {
             font-family: var(--font-body);
             font-size: 0.85rem;
@@ -482,13 +485,13 @@
         }
         .resize-handle:hover,
         .resize-handle.active {
-            background: var(--color-primary);
+            background: var(--color-primary-fill-strong);
             box-shadow: 0 0 8px var(--color-glow-primary);
         }
         #quiz-panel::-webkit-scrollbar { width: 5px; }
         #quiz-panel::-webkit-scrollbar-track { background: transparent; }
         #quiz-panel::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
-        #quiz-panel::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
+        #quiz-panel::-webkit-scrollbar-thumb:hover { background: var(--color-primary-fill-strong); }
 
         #minimap-container {
             position: absolute;
@@ -620,7 +623,7 @@
         .loading-fill {
             height: 100%;
             width: 0%;
-            background: var(--color-primary);
+            background: var(--color-primary-fill-strong);
             border-radius: 3px;
             transition: width 0.2s ease;
         }

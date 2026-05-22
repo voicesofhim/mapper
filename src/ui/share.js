@@ -271,7 +271,7 @@ export function showShareDialog() {
           <button type="button" class="share-action-btn" data-action="instagram" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem; background: #e4405f; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: opacity 0.2s ease, transform 0.2s ease;">
             <i class="fa-brands fa-instagram"></i> Instagram
           </button>
-          <button type="button" class="share-action-btn" data-action="copy" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem; background: var(--color-primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: opacity 0.2s ease, transform 0.2s ease;">
+          <button type="button" class="share-action-btn" data-action="copy" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem; background: var(--color-primary-fill-strong); color: var(--color-primary-light); border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: opacity 0.2s ease, transform 0.2s ease;">
             <i class="fa-solid fa-copy"></i> Copy
           </button>
         </div>
@@ -363,7 +363,7 @@ export function showShareDialog() {
         <button class="share-action-btn" data-action="instagram" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem; background: #e4405f; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: opacity 0.2s ease, transform 0.2s ease;">
           <i class="fa-brands fa-instagram"></i> Instagram
         </button>
-        <button class="share-action-btn" data-action="copy" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem; background: var(--color-primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: opacity 0.2s ease, transform 0.2s ease;">
+        <button class="share-action-btn" data-action="copy" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem; background: var(--color-primary-fill-strong); color: var(--color-primary-light); border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: opacity 0.2s ease, transform 0.2s ease;">
           <i class="fa-solid fa-copy"></i> Copy
         </button>
       </div>

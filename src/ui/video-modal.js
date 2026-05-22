@@ -764,8 +764,8 @@ const MODAL_CSS = `
     color: var(--color-primary);
   }
   .speed-btn.active {
-    background: var(--color-primary);
-    color: #fff;
+    background: var(--color-primary-fill-strong);
+    color: var(--color-primary-light);
     border-color: var(--color-primary);
   }
   .speed-btn:disabled,

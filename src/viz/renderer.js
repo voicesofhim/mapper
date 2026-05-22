@@ -835,7 +835,7 @@ export class Renderer {
         if (index === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       });
-      ctx.strokeStyle = `rgba(205, 232, 255, ${0.16 + pulse * 0.08})`;
+      ctx.strokeStyle = `rgba(31, 247, 255, ${0.12 + pulse * 0.06})`;
       ctx.lineWidth = (1.7 * intro) / this._zoom;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';

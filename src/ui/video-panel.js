@@ -197,7 +197,7 @@ function renderList() {
     const item = document.createElement('div');
     item.className = 'video-panel-item';
     item.setAttribute('role', 'listitem');
-    item.style.setProperty('--source-color', v.colorCss || v.color || '#8acdff');
+    item.style.setProperty('--source-color', v.colorCss || v.color || '#1ff7ff');
     if (watchedSet.has(v.videoId)) item.classList.add('watched');
 
     item.addEventListener('mouseenter', () => {
@@ -281,7 +281,7 @@ const PANEL_CSS = `
   #video-panel::-webkit-scrollbar { width: 5px; }
   #video-panel::-webkit-scrollbar-track { background: transparent; }
   #video-panel::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
-  #video-panel::-webkit-scrollbar-thumb:hover { background: var(--color-primary); }
+  #video-panel::-webkit-scrollbar-thumb:hover { background: var(--color-primary-fill-strong); }
 
   .video-panel-header {
     margin-bottom: 0.75rem;
@@ -323,8 +323,8 @@ const PANEL_CSS = `
     color: var(--color-primary);
   }
   .video-panel-marker-toggle.active {
-    background: var(--color-primary);
-    color: #fff;
+    background: var(--color-primary-fill-strong);
+    color: var(--color-primary-light);
     border-color: var(--color-primary);
   }
 
@@ -444,7 +444,7 @@ const PANEL_CSS = `
   }
   .video-resize-handle:hover,
   .video-resize-handle.active {
-    background: var(--color-primary);
+    background: var(--color-primary-fill-strong);
     box-shadow: 0 0 8px var(--color-glow-primary);
   }
 

@@ -47,15 +47,15 @@ export function init(container) {
         font: 0.86rem/1.45 var(--font-body);
       }
       .ask-map-input:focus {
-        border-color: var(--color-secondary);
-        box-shadow: 0 0 0 3px rgba(138, 205, 255, 0.12);
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px var(--color-primary-fill);
         outline: none;
       }
       .ask-map-submit,
       .ask-map-chip {
         border: 1px solid var(--color-border);
         border-radius: 8px;
-        background: rgba(138, 205, 255, 0.08);
+        background: var(--color-primary-fill);
         color: var(--color-text);
         cursor: pointer;
         transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
@@ -67,8 +67,9 @@ export function init(container) {
       }
       .ask-map-submit:hover,
       .ask-map-chip:hover {
-        border-color: var(--color-secondary);
-        box-shadow: 0 0 14px rgba(138, 205, 255, 0.14);
+        border-color: var(--color-primary);
+        background: var(--color-primary-fill-strong);
+        box-shadow: 0 0 14px var(--color-glow-primary);
       }
       .ask-map-samples {
         display: grid;
@@ -292,7 +293,7 @@ export function showAskResponse(response) {
     for (const item of response.evidence.slice(0, 4)) {
       const ev = document.createElement('div');
       ev.className = 'ask-map-evidence-item';
-      ev.style.setProperty('--source-color', item.color || '#8acdff');
+      ev.style.setProperty('--source-color', item.color || '#1ff7ff');
       ev.textContent = `${item.participant_id || item.participant_code || 'participant'}: ${item.summary || item.excerpt || item.id}`;
       list.appendChild(ev);
     }

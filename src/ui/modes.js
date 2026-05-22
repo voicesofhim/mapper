@@ -62,14 +62,14 @@ export function init(container) {
       }
       .mode-btn.active,
       .mode-btn.active:hover {
-        background: var(--color-primary);
-        color: #ffffff;
+        background: var(--color-primary-fill-strong);
+        color: var(--color-primary-light);
         border-color: var(--color-primary);
         box-shadow: 0 0 12px var(--color-glow-primary);
       }
       .mode-btn--fired {
-        background: var(--color-primary);
-        color: #ffffff;
+        background: var(--color-primary-fill-strong);
+        color: var(--color-primary-light);
         border-color: var(--color-primary);
         box-shadow: 0 0 12px var(--color-glow-primary);
         animation: mode-pulse 0.4s ease;
@@ -131,7 +131,7 @@ export function init(container) {
         flex-shrink: 0;
       }
       .auto-advance-track.on {
-        background: var(--color-primary);
+        background: var(--color-primary-fill-strong);
         border-color: var(--color-primary);
       }
       .auto-advance-thumb {
