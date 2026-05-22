@@ -718,12 +718,12 @@ export class Renderer {
         vec2 uv = gl_PointCoord - vec2(0.5);
         float d = length(uv) * 2.0;
         if (d > 1.0) discard;
-        float pulse = 0.90 + 0.10 * sin(u_time * 1.7 + v_phase);
+        float pulse = 0.92 + 0.08 * sin(u_time * 0.72 + v_phase);
         float angle = atan(uv.y, uv.x);
         float core = smoothstep(0.18, 0.0, d);
         float corona = pow(max(0.0, 1.0 - d), 2.15);
         float rim = smoothstep(0.78, 0.46, d) * smoothstep(0.08, 0.30, d);
-        float rays = pow(abs(cos(angle * 4.0 + u_time * 0.55 + v_phase)), 18.0);
+        float rays = pow(abs(cos(angle * 4.0 + u_time * 0.22 + v_phase)), 18.0);
         rays *= smoothstep(0.18, 0.54, d) * smoothstep(1.0, 0.38, d);
         float alpha = (core * 0.95 + corona * 0.34 + rim * 0.12 + rays * 0.22) * pulse * v_color.a;
         vec3 hotCore = mix(v_color.rgb, vec3(0.92, 1.0, 1.0), core * 0.62);
@@ -853,7 +853,7 @@ export class Renderer {
       const isHighlighted = this._highlightedIds.has(id);
       const isSelected = this._selectedPointId && id === this._selectedPointId;
       const muted = hasHighlightLens && !isHighlighted && !isSelected && !isHovered;
-      const alpha = muted ? 0.07 : isSelected ? 0.96 : isHighlighted ? 0.9 : isHovered ? 0.82 : 0.62;
+      const alpha = muted ? 0.24 : isSelected ? 0.96 : isHighlighted ? 0.9 : isHovered ? 0.82 : 0.62;
       const size = (isSelected ? 54 : isHighlighted ? 48 : isHovered ? 40 : 34) * this._dpr;
       const [cx, cy] = this._screenToClip(screen.x, screen.y, w, h);
       data.push(
@@ -918,9 +918,9 @@ export class Renderer {
         const b = this._worldToScreen(pts[i + 1], w, h);
         pushLine(lineData, a, b, color, hasHighlightLens ? 0.045 : 0.105);
 
-        const phase = (time * 0.145 + pathIndex * 0.271 + i * 0.149) % 1;
-        const length = 0.24;
-        const signalPasses = [phase, (phase + 0.48) % 1];
+        const phase = (time * 0.065 + pathIndex * 0.271 + i * 0.149) % 1;
+        const length = 0.18;
+        const signalPasses = [phase];
         for (let pass = 0; pass < signalPasses.length; pass++) {
           const signalPhase = signalPasses[pass];
           if (signalPhase > 1 - length) continue;
@@ -1072,9 +1072,9 @@ export class Renderer {
 
     const defaultColor = [170, 220, 255, 210];
     const hoveredId = this._hoveredPoint?.id;
-    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 620);
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 1400);
     const hasHighlightLens = this._highlightedIds.size > 0;
-    const hoverBreath = 0.5 + 0.5 * Math.sin(performance.now() / 360);
+    const hoverBreath = 0.5 + 0.5 * Math.sin(performance.now() / 1100);
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -1088,15 +1088,16 @@ export class Renderer {
       const isSelected = this._selectedPointId && String(p.id) === this._selectedPointId;
       const rank = this._highlightRank.get(String(p.id)) ?? 0;
       const baseAlpha = (color[3] ?? 190) / 255;
-      const mutedAlpha = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? baseAlpha * 0.04 : baseAlpha;
+      const mutedAlpha = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? baseAlpha * 0.22 : baseAlpha;
       const alpha = isSelected ? 0.98 : isHighlighted ? 1 : isHovered ? 0.86 : mutedAlpha;
       const highlightScale = Math.max(1.45, 2.35 - rank * 0.16);
       const radius = baseR * (isSelected ? 1.9 : isHighlighted ? highlightScale + pulse * 0.24 : isHovered ? 1.38 : hasHighlightLens ? 0.72 : 1);
 
       const halo = ctx.createRadialGradient(px, py, 0, px, py, radius * 5.2);
-      const haloScale = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? 0.18 : isHighlighted ? 0.72 : 0.38;
-      halo.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.14 * alpha * haloScale})`);
-      halo.addColorStop(0.45, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.035 * alpha * haloScale})`);
+      const haloScale = isSelected ? 1.18 : isHighlighted ? 0.96 : isHovered ? 0.78 : hasHighlightLens ? 0.52 : 0.48;
+      const haloAlpha = Math.max(hasHighlightLens ? 0.055 : 0.07, 0.14 * alpha * haloScale);
+      halo.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${haloAlpha})`);
+      halo.addColorStop(0.45, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${Math.max(0.018, haloAlpha * 0.26)})`);
       halo.addColorStop(1, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0)`);
       ctx.beginPath();
       ctx.arc(px, py, radius * 5.2, 0, Math.PI * 2);
@@ -1131,7 +1132,7 @@ export class Renderer {
 
     const elapsed = this._highlightStartedAt ? performance.now() - this._highlightStartedAt : 9999;
     const intro = Math.min(1, elapsed / 650);
-    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 480);
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 1350);
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -1183,7 +1184,7 @@ export class Renderer {
     const maxSignals = Math.max(2, Math.min(4, Math.ceil(points.length * 0.42)));
     for (let i = 0; i < points.length; i++) {
       const point = points[i];
-      const signalPhase = ((elapsed / 2100) + i * 0.37) % 1;
+      const signalPhase = ((elapsed / 3600) + i * 0.37) % 1;
       if (signalPhase > 0.58 || signalCount >= maxSignals) continue;
 
       signalCount += 1;
@@ -1261,9 +1262,9 @@ export class Renderer {
       for (let i = 0; i < pts.length - 1; i++) {
         const a = { x: pts[i].x * w, y: pts[i].y * h };
         const b = { x: pts[i + 1].x * w, y: pts[i + 1].y * h };
-        const phase = (now * 0.16 + pathIndex * 0.29 + i * 0.17) % 1;
-        const passes = [phase, (phase + 0.52) % 1];
-        const signalLength = 0.18;
+        const phase = (now * 0.07 + pathIndex * 0.29 + i * 0.17) % 1;
+        const passes = [phase];
+        const signalLength = 0.16;
 
         for (let pass = 0; pass < passes.length; pass++) {
           const t0 = passes[pass];
