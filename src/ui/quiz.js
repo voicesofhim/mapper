@@ -307,6 +307,14 @@ export function showAskResponse(response) {
   }
 }
 
+export function showAskStatus(message) {
+  if (!ui.answer) return;
+  ui.answer.textContent = '';
+  const status = document.createElement('p');
+  status.textContent = message;
+  ui.answer.appendChild(status);
+}
+
 export function isValidQuestion(question) {
   if (!question) return { valid: false, reason: 'question is missing' };
   const text = question.query || question.question_text;

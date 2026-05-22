@@ -12,6 +12,8 @@
     "test:all": "vitest run",
     "test:accelerator:visual": "playwright test tests/visual/accelerator-observatory.spec.js",
     "import:accelerator": "node scripts/import_accelerator_dataset.mjs",
+    "ask:server": "node scripts/ask_map_server.mjs",
+    "ask:server:rebuild": "node scripts/ask_map_server.mjs --rebuild-db",
     "setup:embeddinggemma": "bash scripts/setup_embeddinggemma.sh",
     "bench": "vitest bench",
     "test:visual": "playwright test"

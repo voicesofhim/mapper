@@ -1,6 +1,6 @@
 # Data Pipeline Scripts
 
-> Legacy ContextLab pipeline note: this document describes the original Wikipedia/Khan-style data scripts that still live in the repo for reference. The accelerator project should use `scripts/import_accelerator_dataset.mjs`, `scripts/embed_embeddinggemma.py`, `scripts/setup_embeddinggemma.sh`, `requirements-embeddinggemma.txt`, and local Turso/libSQL as documented in the root `README.md` and `AGENT_HANDOFF.md`. Do not treat the OpenAI prerequisite below as part of the accelerator embedding path; accelerator embeddings should use local Google EmbeddingGemma.
+> Legacy ContextLab pipeline note: this document describes the original Wikipedia/Khan-style data scripts that still live in the repo for reference. The accelerator project should use `scripts/import_accelerator_dataset.mjs`, `scripts/embed_embeddinggemma.py`, `scripts/embed_embeddinggemma_worker.py`, `scripts/setup_embeddinggemma.sh`, `scripts/ask_map_server.mjs`, `requirements-embeddinggemma.txt`, and local Turso/libSQL as documented in the root `README.md` and `AGENT_HANDOFF.md`. Do not treat the OpenAI prerequisite below as part of the accelerator embedding path; accelerator embeddings should use local Google EmbeddingGemma.
 
 These scripts generate the data that powers the Knowledge Mapper frontend. They process 250K Wikipedia articles through embedding, dimensionality reduction, domain assignment, question generation, and coordinate projection to produce the per-domain JSON bundles consumed by the web app.
 

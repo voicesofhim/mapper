@@ -59,6 +59,7 @@ const SOURCE_COLOR_CSS = {
   program_material: '#f5de94',
   reflection: '#c284fc',
 };
+const LOCAL_ASK_ENDPOINT = 'http://127.0.0.1:8787/api/ask-map';
 
 // Uniform length scale for all observations — no per-domain variation.
 const UNIFORM_LENGTH_SCALE = 0.18;
@@ -1167,7 +1168,31 @@ function selectAndShowNextQuestion() {
   quiz.showQuestion(question);
 }
 
-function handleAskMap(queryText, question) {
+let askRequestSeq = 0;
+
+async function handleAskMap(queryText, question) {
+  const requestId = ++askRequestSeq;
+  quiz.showAskStatus('Searching local evidence...');
+  const localResponse = await queryLocalAskMap(queryText);
+  if (requestId !== askRequestSeq) return;
+  if (localResponse?.evidence?.length) {
+    const itemIds = localResponse.highlighted_map_item_ids || localResponse.evidence.map(item => item.id);
+    const evidence = itemIds
+      .map(id => findMapItem(id))
+      .filter(Boolean);
+    const response = {
+      ...localResponse,
+      evidence: (localResponse.evidence || []).map(item => ({
+        ...item,
+        color: SOURCE_COLOR_CSS[item.source_type] || SOURCE_COLOR_CSS.interview,
+      })),
+    };
+    quiz.showAskResponse(response);
+    highlightMapItems(itemIds, queryText, { focus: true });
+    showEvidencePanel(evidence.length ? evidence : localResponse.evidence);
+    return;
+  }
+
   const questions = currentDomainBundle.ask_map?.questions || currentDomainBundle.questions || [];
   const matched = questions.find(q => q.id === question.id) || matchAskQuestion(queryText, questions);
   if (!matched?.answer) {
@@ -1190,6 +1215,35 @@ function handleAskMap(queryText, question) {
   quiz.showAskResponse(response);
   highlightMapItems(itemIds, matched.query || queryText, { focus: true });
   showEvidencePanel(evidence);
+}
+
+async function queryLocalAskMap(queryText) {
+  if (!queryText || !isAcceleratorBundle()) return null;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(LOCAL_ASK_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: queryText,
+        topK: 5,
+        filters: {
+          participantId: activeLens.participantId,
+          sourceType: activeLens.sourceType,
+          theme: activeLens.theme,
+        },
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`Local Ask server returned ${response.status}`);
+    return await response.json();
+  } catch (err) {
+    console.info('[ask-map] Local retrieval unavailable; falling back to bundled sample answers.', err);
+    return null;
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 function matchAskQuestion(queryText, questions) {

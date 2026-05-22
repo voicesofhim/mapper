@@ -55,6 +55,7 @@ npm run preview
 
 # Accelerator import/export pipeline
 npm run import:accelerator
+npm run ask:server
 
 # Tests
 npm test
@@ -308,7 +309,22 @@ Ask-the-Map currently uses grounded sample questions from domain JSON:
 }
 ```
 
-It does not pretend to be a full AI answer engine yet. It matches known questions/aliases and highlights evidence IDs. The future backend should search Turso/embeddings, generate a grounded answer, and send map actions back to the frontend.
+For open-ended local retrieval, run the local Ask server alongside Vite:
+
+```bash
+npm run ask:server
+```
+
+The server binds to `127.0.0.1:8787`, creates or refreshes an ignored local libSQL database at `data/accelerator/local/accelerator-seed.sqlite`, loads a persistent local EmbeddingGemma worker, embeds typed questions with the `Retrieval-query` prompt, searches stored chunk vectors by cosine similarity, and returns evidence IDs for frontend highlighting. UMAP is not used for answer ranking; it remains a visualization layout only.
+
+Run both pieces in two terminals:
+
+```bash
+npm run ask:server
+npm run dev
+```
+
+If the local Ask server is not running, the frontend falls back to the static bundled sample answers. Returned synthesis is intentionally cautious and retrieval-based; it distinguishes source evidence from inference and does not expose raw transcripts.
 
 ## Future LiveKit / Voice-Agent Hooks
 

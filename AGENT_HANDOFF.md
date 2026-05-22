@@ -87,9 +87,13 @@ Key file:
 src/ui/quiz.js
 ```
 
-Important limitation:
+Open-ended local retrieval is available through a local-only server:
 
-Ask-the-Map is currently grounded in static sample `ask_map.questions[]`. It is not yet a dynamic semantic RAG answer engine.
+```bash
+npm run ask:server
+```
+
+The frontend calls `http://127.0.0.1:8787/api/ask-map` when available. The server keeps a persistent local EmbeddingGemma worker warm, embeds the question with `Retrieval-query`, searches local libSQL/Turso vector BLOBs by cosine similarity, and returns evidence chunks plus map item IDs. If the server is unavailable, the frontend falls back to static sample answers.
 
 ### Evidence Panel
 
@@ -333,7 +337,9 @@ Implemented files:
 ```text
 scripts/import_accelerator_dataset.mjs
 scripts/embed_embeddinggemma.py
+scripts/embed_embeddinggemma_worker.py
 scripts/setup_embeddinggemma.sh
+scripts/ask_map_server.mjs
 requirements-embeddinggemma.txt
 tests/accelerator/importer.test.js
 ```
@@ -347,6 +353,18 @@ How it works:
 5. It encodes anonymized chunk text with `prompt_name="Retrieval-document"` by default.
 6. It returns `{ id, embedding }` JSON to Node.
 7. Node stores vectors as float arrays and BLOB hex, computes UMAP, writes local Turso seed SQL, and strips vector blobs from frontend JSON.
+
+Open-ended Ask flow:
+
+1. Run `npm run ask:server`.
+2. Server creates/loads `data/accelerator/local/accelerator-seed.sqlite` from schema + seed SQL.
+3. Browser sends typed question to `POST /api/ask-map`.
+4. Server embeds question locally with a persistent EmbeddingGemma worker using `Retrieval-query`.
+5. Server cosine-ranks stored 768-dimensional chunk vectors.
+6. Server returns cautious synthesis, evidence, participant codes, themes, and highlighted map item IDs.
+7. Browser highlights the existing UMAP nodes and opens the Evidence panel.
+
+UMAP is not used for retrieval. It is only the map layout.
 
 Still useful future options:
 
@@ -499,7 +517,7 @@ Expected for current local fixture:
 - The OpenAI provider code exists but is not the desired production path.
 - The EmbeddingGemma sidecar is implemented, but the real model run still depends on local Python dependencies, Gemma license access, and local Hugging Face auth.
 - The importer currently has only basic deterministic theme inference.
-- Ask-the-Map is static/sample-question based, not live semantic retrieval.
+- Ask-the-Map has local live retrieval when `npm run ask:server` is running; static sample answers remain as fallback.
 - Real participant data has not been imported.
 - No Turso cloud instance is configured in repo; this is intentional because Turso/libSQL is local-only for now.
 - No LiveKit integration is implemented yet; when added, it should be local-only for this phase.
@@ -543,10 +561,9 @@ No key was found in repo files.
    - Generate map and inspect node clusters.
 
 4. **Upgrade Ask-the-Map retrieval**
-   - Query Turso chunks by theme/source/participant.
-   - Search local EmbeddingGemma vectors.
-   - Generate grounded answer from retrieved evidence.
-   - Return highlighted map item IDs.
+   - Add better local synthesis once there is an approved local model policy.
+   - Add approximate nearest-neighbor indexing once the chunk count is large.
+   - Add stronger visibility tests for participant-facing mode.
 
 5. **Researcher vs participant mode**
    - Researcher mode: detailed evidence and notes.

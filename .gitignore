@@ -349,3 +349,6 @@ data/videos/.working/audit-v2/
 
 # Local model downloads
 models/
+
+# Local libSQL/Turso working databases
+data/accelerator/local/

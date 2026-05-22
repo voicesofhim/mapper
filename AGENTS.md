@@ -61,6 +61,7 @@ tests/visual/accelerator-observatory.spec.js
 npm install
 npm run dev
 npm run import:accelerator
+npm run ask:server
 npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-model google/embeddinggemma-300M
 npm test
 npm run build
@@ -87,6 +88,7 @@ Keep this local-first:
 - Store vectors in local Turso/libSQL `embeddings.embedding_vector`.
 - Compute UMAP outside the browser.
 - Export static Mapper JSON without vector blobs.
+- Serve open-ended Ask-the-Map retrieval through `npm run ask:server`, which binds locally and searches local libSQL vector BLOBs by cosine similarity.
 - Keep future LiveKit agent/backend local-only until the project explicitly changes that requirement.
 
 Relevant Google docs:
