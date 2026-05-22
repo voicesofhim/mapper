@@ -93,6 +93,7 @@ let activeLens = {
   sourceType: 'all',
   theme: 'all',
   colorBy: 'source_type',
+  showPaths: false,
   highlightedIds: [],
 };
 let lensControls = null;
@@ -643,10 +644,14 @@ function applyLensToMap() {
   if (!isAcceleratorBundle() || !renderer) return;
   const filtered = getFilteredMapItems();
   renderer.setPoints(articlesToPoints(filtered));
-  renderer.setParticipantPaths(participantPathsFromItems(filtered));
+  setParticipantPathsForItems(filtered);
   videoPanel.setEvidence(evidenceToMarkers(filtered));
   renderer.highlightMapItems(activeLens.highlightedIds || []);
   window.dispatchEvent(new CustomEvent('mapper:lens-change', { detail: { ...activeLens, count: filtered.length } }));
+}
+
+function setParticipantPathsForItems(items) {
+  renderer.setParticipantPaths(activeLens.showPaths ? participantPathsFromItems(items) : []);
 }
 
 function evidenceToMarkers(items) {
@@ -690,6 +695,7 @@ function initMapLensControls(bundle) {
         position: relative;
       }
       .map-lens-trigger,
+      .map-lens-toggle,
       .map-lens-clear {
         min-height: 34px;
         border: 1px solid var(--color-border);
@@ -713,6 +719,17 @@ function initMapLensControls(bundle) {
         padding: 0 0.7rem;
         cursor: pointer;
         font-weight: 700;
+      }
+      .map-lens-toggle {
+        padding: 0 0.68rem;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .map-lens-toggle[aria-pressed="true"] {
+        border-color: var(--color-primary);
+        color: var(--color-primary);
+        background: rgba(31, 247, 255, 0.1);
+        box-shadow: 0 0 8px rgba(31, 247, 255, 0.18);
       }
       .map-lens-arrow {
         color: var(--color-text-muted);
@@ -761,6 +778,7 @@ function initMapLensControls(bundle) {
         color: var(--color-primary);
       }
       .map-lens-clear:hover,
+      .map-lens-toggle:hover,
       .map-lens-trigger:hover,
       .map-lens-trigger:focus {
         border-color: var(--color-primary);
@@ -785,6 +803,9 @@ function initMapLensControls(bundle) {
         .map-lens-clear {
           flex: 1 1 100%;
         }
+        .map-lens-toggle {
+          flex: 1 1 calc(50% - 0.25rem);
+        }
       }
     `;
     document.head.appendChild(style);
@@ -799,6 +820,7 @@ function initMapLensControls(bundle) {
     ${lensDropdownMarkup('sourceType', 'Filter by source type')}
     ${lensDropdownMarkup('theme', 'Filter by theme')}
     ${lensDropdownMarkup('colorBy', 'Color by')}
+    <button class="map-lens-toggle" type="button" aria-pressed="false">Paths</button>
     <button class="map-lens-clear" type="button">Clear lens</button>
   `;
   container.appendChild(lensControls);
@@ -835,12 +857,20 @@ function initMapLensControls(bundle) {
       sourceType: 'all',
       theme: 'all',
       colorBy: 'source_type',
+      showPaths: false,
       highlightedIds: [],
     };
     for (const dropdown of lensControls.querySelectorAll('.map-lens-dropdown')) {
       setLensDropdownValue(dropdown, activeLens[dropdown.dataset.lens]);
     }
     clearMapLens();
+    updatePathToggle();
+    applyLensToMap();
+  });
+
+  lensControls.querySelector('.map-lens-toggle')?.addEventListener('click', () => {
+    activeLens = { ...activeLens, showPaths: !activeLens.showPaths };
+    updatePathToggle();
     applyLensToMap();
   });
 }
@@ -917,6 +947,13 @@ function updateMapLensControls(bundle) {
       setLensDropdownValue(dropdown, fallback);
     }
   }
+  updatePathToggle();
+}
+
+function updatePathToggle() {
+  const toggle = lensControls?.querySelector('.map-lens-toggle');
+  if (!toggle) return;
+  toggle.setAttribute('aria-pressed', String(Boolean(activeLens.showPaths)));
 }
 
 function datasetsFromBundle(bundle, items) {
@@ -1178,7 +1215,7 @@ async function switchDomain(domainId) {
     renderer.setPoints(articlesToPoints(allDomainBundle.articles));
     if (isAcceleratorBundle()) {
       updateMapLensControls(currentDomainBundle);
-      renderer.setParticipantPaths(participantPathsFromItems(currentDomainBundle.map_items || currentDomainBundle.articles));
+      setParticipantPathsForItems(currentDomainBundle.map_items || currentDomainBundle.articles);
       videoPanel.setEvidence(evidenceToMarkers(currentDomainBundle.map_items || currentDomainBundle.articles));
       if (lensControls) lensControls.hidden = false;
     }
@@ -1215,12 +1252,13 @@ async function switchDomain(domainId) {
       sourceType: 'all',
       theme: 'all',
       colorBy: activeLens.colorBy || 'source_type',
+      showPaths: false,
       highlightedIds: [],
     };
     updateMapLensControls(currentDomainBundle);
     renderer.setLabels(currentDomainBundle.labels || [], GLOBAL_REGION, GLOBAL_GRID_SIZE);
     renderer.setPoints(articlesToPoints(currentDomainBundle.articles || currentDomainBundle.map_items || []));
-    renderer.setParticipantPaths(participantPathsFromItems(currentDomainBundle.map_items || currentDomainBundle.articles));
+    setParticipantPathsForItems(currentDomainBundle.map_items || currentDomainBundle.articles);
     videoPanel.setEvidence(evidenceToMarkers(currentDomainBundle.map_items || currentDomainBundle.articles));
     renderer.highlightMapItems([]);
     renderer.setSelectedPoint(null);
