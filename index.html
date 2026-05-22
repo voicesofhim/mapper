@@ -348,10 +348,10 @@
             font-family: var(--font-body);
             font-size: 0.85rem;
             padding: 0.4rem 0.75rem;
-            border-radius: 6px;
+            border-radius: 0;
             border: 1.5px solid var(--color-border);
-            background: var(--color-surface-raised);
-            color: var(--color-text);
+            background: rgba(31, 247, 255, 0.045);
+            color: var(--color-text-muted);
             cursor: pointer;
             outline: none;
             transition: border-color 0.2s, box-shadow 0.2s;
@@ -382,7 +382,7 @@
             overflow-y: auto;
             background: var(--color-surface);
             border: 1.5px solid var(--color-border);
-            border-radius: 6px;
+            border-radius: 0;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
             z-index: 200;
             padding: 4px 0;
@@ -398,14 +398,23 @@
             font-family: var(--font-body);
             font-size: 0.85rem;
             padding: 0.5rem 0.75rem;
-            color: var(--color-text);
+            color: var(--color-text-muted);
             cursor: pointer;
             transition: background 0.15s, color 0.15s;
             white-space: nowrap;
         }
+        .custom-select-option::before {
+            content: "[ ]";
+            color: rgba(31, 247, 255, 0.72);
+            margin-right: 0.45rem;
+        }
+        .custom-select-option.selected::before {
+            content: "[x]";
+            color: var(--color-primary);
+        }
         .custom-select-option:hover,
         .custom-select-option.focused {
-            background: var(--color-surface-raised);
+            background: rgba(31, 247, 255, 0.08);
             color: var(--color-primary);
         }
         .custom-select-option--child {

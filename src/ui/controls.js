@@ -65,6 +65,7 @@ function createDropdown(placeholder, items, onChange) {
     const el = document.createElement('div');
     el.className = 'custom-select-option' + (opt.isChild ? ' custom-select-option--child' : '');
     el.setAttribute('role', 'option');
+    el.setAttribute('aria-selected', 'false');
     el.dataset.value = opt.value;
     el.textContent = opt.isChild ? '\u00A0\u00A0\u00A0' + opt.label : opt.label;
     panel.appendChild(el);
@@ -96,6 +97,11 @@ function createDropdown(placeholder, items, onChange) {
     if (!item) return;
     valueSpan.textContent = item.textContent.trim();
     wrapper.dataset.value = item.dataset.value;
+    panel.querySelectorAll('.custom-select-option').forEach(option => {
+      const selected = option === item;
+      option.classList.toggle('selected', selected);
+      option.setAttribute('aria-selected', String(selected));
+    });
     close();
     if (onChange) onChange(item.dataset.value);
   });
@@ -296,6 +302,11 @@ export function setSelectedDomain(domainId) {
   const valueSpan = dropdownEl.querySelector('.custom-select-value');
   if (valueSpan) valueSpan.textContent = option.textContent.trim();
   dropdownEl.dataset.value = domainId;
+  dropdownEl.querySelectorAll('.custom-select-option').forEach(item => {
+    const selected = item.dataset.value === domainId;
+    item.classList.toggle('selected', selected);
+    item.setAttribute('aria-selected', String(selected));
+  });
 }
 
 export function createLandingSelector(container, callback) {

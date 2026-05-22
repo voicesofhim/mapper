@@ -675,35 +675,86 @@ function initMapLensControls(bundle) {
         flex-wrap: wrap;
         gap: 0.45rem;
         max-width: min(760px, calc(100% - 28px));
-        padding: 0.45rem;
-        border: 1px solid var(--color-border);
-        border-radius: 8px;
-        background: rgba(7, 13, 24, 0.78);
-        backdrop-filter: blur(12px);
-        box-shadow: 0 10px 24px rgba(0,0,0,0.22);
       }
       .map-lens-bar[hidden] { display: none !important; }
-      .map-lens-select,
+      .map-lens-dropdown {
+        position: relative;
+      }
+      .map-lens-trigger,
       .map-lens-clear {
         min-height: 34px;
         border: 1px solid var(--color-border);
-        border-radius: 7px;
-        background: rgba(18, 28, 46, 0.96);
-        color: var(--color-text);
+        border-radius: 0;
+        background: rgba(31, 247, 255, 0.045);
+        color: var(--color-text-muted);
         font: 0.75rem var(--font-body);
       }
-      .map-lens-select {
-        max-width: 168px;
-        padding: 0 0.45rem;
+      .map-lens-trigger {
+        width: 100%;
+        min-width: 154px;
+        max-width: 220px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0 0.6rem;
+        cursor: pointer;
       }
       .map-lens-clear {
         padding: 0 0.7rem;
         cursor: pointer;
         font-weight: 700;
       }
+      .map-lens-arrow {
+        color: var(--color-text-muted);
+        font-size: 0.68rem;
+        transition: transform 0.16s ease;
+      }
+      .map-lens-dropdown.open .map-lens-arrow {
+        transform: rotate(180deg);
+      }
+      .map-lens-options {
+        display: none;
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        min-width: 100%;
+        max-height: 260px;
+        overflow-y: auto;
+        background: rgba(3, 9, 18, 0.98);
+        border: 1px solid var(--color-border);
+        box-shadow: 0 10px 24px rgba(0,0,0,0.26);
+        z-index: 40;
+        padding: 0.25rem 0;
+      }
+      .map-lens-dropdown.open .map-lens-options {
+        display: block;
+      }
+      .map-lens-option {
+        padding: 0.48rem 0.65rem;
+        color: var(--color-text-muted);
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .map-lens-option::before {
+        content: "[ ]";
+        color: rgba(31, 247, 255, 0.72);
+        margin-right: 0.45rem;
+      }
+      .map-lens-option.selected::before {
+        content: "[x]";
+        color: var(--color-primary);
+      }
+      .map-lens-option:hover,
+      .map-lens-option.focused {
+        background: rgba(31, 247, 255, 0.08);
+        color: var(--color-primary);
+      }
       .map-lens-clear:hover,
-      .map-lens-select:hover {
+      .map-lens-trigger:hover,
+      .map-lens-trigger:focus {
         border-color: var(--color-primary);
+        box-shadow: 0 0 8px rgba(31, 247, 255, 0.18);
       }
       @media (max-width: 520px) {
         .map-lens-bar {
@@ -711,10 +762,13 @@ function initMapLensControls(bundle) {
           left: 8px;
           right: 8px;
           max-width: none;
-          padding: 0.35rem;
         }
-        .map-lens-select {
+        .map-lens-dropdown {
           flex: 1 1 44%;
+          min-width: 0;
+          max-width: none;
+        }
+        .map-lens-trigger {
           min-width: 0;
           max-width: none;
         }
@@ -730,21 +784,37 @@ function initMapLensControls(bundle) {
   lensControls.className = 'map-lens-bar';
   lensControls.hidden = true;
   lensControls.innerHTML = `
-    <select class="map-lens-select" data-lens="participantId" aria-label="Filter by participant"></select>
-    <select class="map-lens-select" data-lens="sourceType" aria-label="Filter by source type"></select>
-    <select class="map-lens-select" data-lens="theme" aria-label="Filter by theme"></select>
-    <select class="map-lens-select" data-lens="colorBy" aria-label="Color by"></select>
+    ${lensDropdownMarkup('participantId', 'Filter by participant')}
+    ${lensDropdownMarkup('sourceType', 'Filter by source type')}
+    ${lensDropdownMarkup('theme', 'Filter by theme')}
+    ${lensDropdownMarkup('colorBy', 'Color by')}
     <button class="map-lens-clear" type="button">Clear lens</button>
   `;
   container.appendChild(lensControls);
 
   updateMapLensControls(bundle);
 
-  lensControls.addEventListener('change', (event) => {
-    const select = event.target.closest('[data-lens]');
-    if (!select) return;
-    activeLens = { ...activeLens, [select.dataset.lens]: select.value };
+  lensControls.addEventListener('click', (event) => {
+    const trigger = event.target.closest('.map-lens-trigger');
+    if (trigger) {
+      const dropdown = trigger.closest('.map-lens-dropdown');
+      toggleLensDropdown(dropdown);
+      return;
+    }
+
+    const option = event.target.closest('.map-lens-option');
+    if (!option) return;
+    const dropdown = option.closest('.map-lens-dropdown');
+    const lens = dropdown?.dataset.lens;
+    if (!lens) return;
+    activeLens = { ...activeLens, [lens]: option.dataset.value };
+    setLensDropdownValue(dropdown, option.dataset.value);
+    closeLensDropdowns();
     applyLensToMap();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!lensControls?.contains(event.target)) closeLensDropdowns();
   });
 
   lensControls.querySelector('.map-lens-clear')?.addEventListener('click', () => {
@@ -755,12 +825,40 @@ function initMapLensControls(bundle) {
       colorBy: 'source_type',
       highlightedIds: [],
     };
-    for (const select of lensControls.querySelectorAll('[data-lens]')) {
-      select.value = activeLens[select.dataset.lens];
+    for (const dropdown of lensControls.querySelectorAll('.map-lens-dropdown')) {
+      setLensDropdownValue(dropdown, activeLens[dropdown.dataset.lens]);
     }
     clearMapLens();
     applyLensToMap();
   });
+}
+
+function lensDropdownMarkup(lens, ariaLabel) {
+  return `
+    <div class="map-lens-dropdown" data-lens="${lens}">
+      <button class="map-lens-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="${ariaLabel}">
+        <span class="map-lens-value"></span>
+        <span class="map-lens-arrow"><i class="fa-solid fa-chevron-down"></i></span>
+      </button>
+      <div class="map-lens-options" role="listbox"></div>
+    </div>
+  `;
+}
+
+function toggleLensDropdown(dropdown) {
+  if (!dropdown) return;
+  const isOpen = dropdown.classList.contains('open');
+  closeLensDropdowns();
+  dropdown.classList.toggle('open', !isOpen);
+  dropdown.querySelector('.map-lens-trigger')?.setAttribute('aria-expanded', String(!isOpen));
+}
+
+function closeLensDropdowns() {
+  if (!lensControls) return;
+  for (const dropdown of lensControls.querySelectorAll('.map-lens-dropdown.open')) {
+    dropdown.classList.remove('open');
+    dropdown.querySelector('.map-lens-trigger')?.setAttribute('aria-expanded', 'false');
+  }
 }
 
 function updateMapLensControls(bundle) {
@@ -771,19 +869,19 @@ function updateMapLensControls(bundle) {
   const sourceTypes = [...new Set(items.map(i => i.source_type).filter(Boolean))].sort();
   const themes = [...new Set(items.flatMap(i => i.themes || []))].sort();
 
-  populateSelect(lensControls.querySelector('[data-lens="participantId"]'), [
+  populateLensDropdown(lensControls.querySelector('[data-lens="participantId"]'), [
     ['all', 'All participants'],
     ...participants.map(p => [p.display_code, `${p.display_code} · ${p.role}`]),
-  ]);
-  populateSelect(lensControls.querySelector('[data-lens="sourceType"]'), [
+  ], activeLens.participantId);
+  populateLensDropdown(lensControls.querySelector('[data-lens="sourceType"]'), [
     ['all', 'All sources'],
     ...sourceTypes.map(type => [type, type.replace(/_/g, ' ')]),
-  ]);
-  populateSelect(lensControls.querySelector('[data-lens="theme"]'), [
+  ], activeLens.sourceType);
+  populateLensDropdown(lensControls.querySelector('[data-lens="theme"]'), [
     ['all', 'All themes'],
     ...themes.map(theme => [theme, theme]),
-  ]);
-  populateSelect(lensControls.querySelector('[data-lens="colorBy"]'), [
+  ], activeLens.theme);
+  populateLensDropdown(lensControls.querySelector('[data-lens="colorBy"]'), [
     ['source_type', 'Color: source'],
     ['theme', 'Color: theme'],
     ['openness', 'Color: openness'],
@@ -791,27 +889,52 @@ function updateMapLensControls(bundle) {
     ['ambiguityComfort', 'Color: ambiguity comfort'],
     ['trustInMentorship', 'Color: mentorship trust'],
     ['publicPrivateTension', 'Color: public/private tension'],
-  ]);
+  ], activeLens.colorBy);
 
-  for (const select of lensControls.querySelectorAll('[data-lens]')) {
-    if ([...select.options].some(opt => opt.value === activeLens[select.dataset.lens])) {
-      select.value = activeLens[select.dataset.lens];
+  for (const dropdown of lensControls.querySelectorAll('.map-lens-dropdown')) {
+    if (dropdown.querySelector(`.map-lens-option[data-value="${cssEscape(activeLens[dropdown.dataset.lens])}"]`)) {
+      setLensDropdownValue(dropdown, activeLens[dropdown.dataset.lens]);
     } else {
-      select.value = select.dataset.lens === 'colorBy' ? 'source_type' : 'all';
-      activeLens = { ...activeLens, [select.dataset.lens]: select.value };
+      const fallback = dropdown.dataset.lens === 'colorBy' ? 'source_type' : 'all';
+      activeLens = { ...activeLens, [dropdown.dataset.lens]: fallback };
+      setLensDropdownValue(dropdown, fallback);
     }
   }
 }
 
-function populateSelect(select, options) {
-  if (!select) return;
-  select.textContent = '';
+function populateLensDropdown(dropdown, options, selectedValue) {
+  if (!dropdown) return;
+  const panel = dropdown.querySelector('.map-lens-options');
+  if (!panel) return;
+  panel.textContent = '';
   for (const [value, label] of options) {
-    const opt = document.createElement('option');
+    const opt = document.createElement('div');
+    opt.className = 'map-lens-option';
+    opt.setAttribute('role', 'option');
+    opt.setAttribute('aria-selected', 'false');
     opt.value = value;
+    opt.dataset.value = value;
     opt.textContent = label;
-    select.appendChild(opt);
+    panel.appendChild(opt);
   }
+  setLensDropdownValue(dropdown, selectedValue || options[0]?.[0] || 'all');
+}
+
+function setLensDropdownValue(dropdown, value) {
+  if (!dropdown) return;
+  const selected = dropdown.querySelector(`.map-lens-option[data-value="${cssEscape(value)}"]`);
+  const valueEl = dropdown.querySelector('.map-lens-value');
+  if (selected && valueEl) valueEl.textContent = selected.textContent.trim();
+  dropdown.dataset.value = value;
+  dropdown.querySelectorAll('.map-lens-option').forEach(option => {
+    const isSelected = option.dataset.value === value;
+    option.classList.toggle('selected', isSelected);
+    option.setAttribute('aria-selected', String(isSelected));
+  });
+}
+
+function cssEscape(value) {
+  return String(value ?? '').replace(/["\\]/g, '\\$&');
 }
 
 function participantPathsFromItems(items) {
@@ -1293,8 +1416,8 @@ function setMapLens({ theme, colorBy, highlightedIds } = {}) {
     highlightedIds: highlightedIds || activeLens.highlightedIds,
   };
   if (lensControls) {
-    for (const select of lensControls.querySelectorAll('[data-lens]')) {
-      select.value = activeLens[select.dataset.lens];
+    for (const dropdown of lensControls.querySelectorAll('.map-lens-dropdown')) {
+      setLensDropdownValue(dropdown, activeLens[dropdown.dataset.lens]);
     }
   }
   applyLensToMap();
@@ -1310,8 +1433,7 @@ function clearMapLens() {
 function selectParticipant(participantId) {
   activeLens = { ...activeLens, participantId: participantId || 'all' };
   if (lensControls) {
-    const select = lensControls.querySelector('[data-lens="participantId"]');
-    if (select) select.value = activeLens.participantId;
+    setLensDropdownValue(lensControls.querySelector('[data-lens="participantId"]'), activeLens.participantId);
   }
   applyLensToMap();
   const items = getFilteredMapItems();
