@@ -133,7 +133,7 @@ Key file:
 src/app.js
 ```
 
-### Future LiveKit Hooks
+### Local LiveKit Hooks
 
 The frontend exposes:
 
@@ -156,10 +156,32 @@ window.dispatchEvent(new CustomEvent('mapper:action', {
 }))
 ```
 
-These hooks are intended for a future local-only LiveKit voice agent:
+The Ask panel also has `Chat` and `VOICE` modes. Voice mode mounts the official LiveKit Agents UI Aura visualizer block from `src/components/agents-ui/agent-audio-visualizer-aura.jsx`; do not replace it with a hand-rolled imitation unless the product direction changes. The local Ask server issues development tokens at:
+
+```text
+POST http://127.0.0.1:8787/api/livekit-token
+```
+
+Local defaults:
+
+```text
+LIVEKIT_URL=ws://127.0.0.1:7880
+LIVEKIT_API_KEY=devkey
+LIVEKIT_API_SECRET=secret
+```
+
+The local LiveKit agent/STT process should publish final transcripts on the LiveKit data channel topic `mapper.transcript`:
+
+```json
+{ "text": "Which participants need structure before they can execute?", "final": true }
+```
+
+The frontend routes final transcript text into the existing Ask-the-Map retrieval flow, then highlights nodes and updates evidence exactly like chat. The browser does not implement cloud STT.
+
+Expected local-only flow:
 
 1. User speaks.
-2. LiveKit agent transcribes/responds.
+2. Local LiveKit agent transcribes/responds.
 3. Local backend searches local Turso/embeddings.
 4. Backend returns grounded answer and map actions.
 5. Frontend highlights nodes and updates evidence.
@@ -520,7 +542,7 @@ Expected for current local fixture:
 - Ask-the-Map has local live retrieval when `npm run ask:server` is running; static sample answers remain as fallback.
 - Real participant data has not been imported.
 - No Turso cloud instance is configured in repo; this is intentional because Turso/libSQL is local-only for now.
-- No LiveKit integration is implemented yet; when added, it should be local-only for this phase.
+- LiveKit voice UI is integrated locally with the official Agents UI Aura block, but the separate local voice agent/STT service still needs to be implemented.
 - The repo still includes legacy Mapper code and tests.
 - `npm audit` reports existing dependency vulnerabilities; not yet addressed.
 
@@ -570,9 +592,11 @@ No key was found in repo files.
    - Participant mode: careful reflective wording and stricter visibility filtering.
 
 6. **LiveKit bridge**
-   - Add local backend endpoint or websocket for map actions.
+   - Implement the local LiveKit voice agent/STT process.
+   - Publish final transcripts on topic `mapper.transcript`.
+   - Add backend map-action messages if the voice agent should drive more than question submission.
    - Keep LiveKit local-only for this phase.
-   - Have voice agent return `mapper:action` payloads.
+   - Have voice agent return `mapper:action` payloads or call the existing local Ask endpoint.
 
 7. **CI and governance**
    - Add no-secret scan.

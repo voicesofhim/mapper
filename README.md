@@ -326,9 +326,32 @@ npm run dev
 
 If the local Ask server is not running, the frontend falls back to the static bundled sample answers. Returned synthesis is intentionally cautious and retrieval-based; it distinguishes source evidence from inference and does not expose raw transcripts.
 
-## Future LiveKit / Voice-Agent Hooks
+## Local LiveKit / Voice-Agent Hooks
 
-LiveKit is not implemented yet. When it is added, it should be local-only for this phase, with a local agent/backend reading from local Turso/libSQL and emitting frontend map actions.
+The Ask panel now has `Chat` and `VOICE` modes. Voice mode mounts the official LiveKit Agents UI Aura visualizer block from the shadcn Agents UI registry and connects only to local LiveKit infrastructure.
+
+Run the local Ask/retrieval server and app:
+
+```bash
+npm run ask:server
+npm run dev
+```
+
+The Ask server exposes a local token endpoint:
+
+```text
+POST http://127.0.0.1:8787/api/livekit-token
+```
+
+Defaults are for local development: `LIVEKIT_URL=ws://127.0.0.1:7880`, `LIVEKIT_API_KEY=devkey`, and `LIVEKIT_API_SECRET=secret`. Override these in your local environment when your local LiveKit server uses different credentials. Do not commit local secrets.
+
+The voice agent/STT process is expected to run locally. When it has a final transcript, publish a LiveKit data-channel message on topic `mapper.transcript`:
+
+```json
+{ "text": "Where does mentorship help without reducing autonomy?", "final": true }
+```
+
+The frontend submits that transcript through the same grounded Ask-the-Map retrieval path used by chat. The browser does not call cloud STT and does not send transcripts to external services.
 
 The app exposes:
 

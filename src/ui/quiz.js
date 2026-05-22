@@ -1,12 +1,15 @@
 /** Ask-the-Map UI adapted from the original quiz panel contract. */
 
 import { announce } from '../utils/accessibility.js';
+import { mountAskVoiceMode } from '../voice/livekit-aura-panel.jsx';
 
 let askCallback = null;
 let nextCallback = null;
 let currentQuestion = null;
 let ui = {};
 let sampleQuestions = [];
+let activeAskMode = 'chat';
+let unmountVoiceMode = null;
 
 export function init(container) {
   if (!container) return;
@@ -30,6 +33,37 @@ export function init(container) {
         color: var(--color-text-muted);
         font-size: 0.78rem;
         line-height: 1.45;
+      }
+      .ask-map-topline {
+        position: relative;
+        min-height: 6.8rem;
+        padding-right: 9rem;
+      }
+      .ask-map-heading {
+        min-width: 0;
+      }
+      .ask-map-title {
+        white-space: nowrap;
+      }
+      .ask-map-mode-root {
+        position: absolute;
+        top: 0;
+        right: 0;
+      }
+      .quiz-content[data-ask-mode="voice"] .ask-map-topline {
+        min-height: 0;
+        padding-right: 0;
+      }
+      .ask-map-mode-root:has(.ask-voice-shell[data-mode="voice"]) {
+        position: static;
+        margin-top: 0.65rem;
+      }
+      .ask-chat-surface {
+        display: grid;
+        gap: 0.7rem;
+      }
+      .quiz-content[data-ask-mode="voice"] .ask-chat-surface {
+        display: none;
       }
       .ask-map-form {
         display: grid;
@@ -89,7 +123,7 @@ export function init(container) {
       }
       .ask-map-answer h3 {
         font-size: 0.82rem;
-        color: var(--color-secondary);
+        color: var(--color-primary);
         margin: 0;
         font-family: var(--font-heading);
       }
@@ -124,27 +158,46 @@ export function init(container) {
         color: var(--color-text-muted);
       }
       .ask-map-followup {
-        color: var(--color-secondary);
+        color: var(--color-primary);
         font-size: 0.78rem;
         line-height: 1.45;
+      }
+      @media (max-width: 720px) {
+        .ask-map-topline {
+          display: grid;
+          gap: 0.65rem;
+          padding-right: 0;
+        }
+        .ask-map-mode-root {
+          position: static;
+          width: 100%;
+        }
       }
     `;
     document.head.appendChild(style);
   }
 
+  unmountVoiceMode?.();
+  unmountVoiceMode = null;
+
   const toggleBtn = container.querySelector('.quiz-toggle-btn');
   container.innerHTML = `
     <div class="resize-handle"></div>
-    <div class="quiz-content ask-map-content">
-      <div>
-        <div class="ask-map-title">Ask the Map</div>
+    <div class="quiz-content ask-map-content" data-ask-mode="chat">
+      <div class="ask-map-topline">
+        <div class="ask-map-heading">
+          <div class="ask-map-title">Ask the Map</div>
         <div class="ask-map-subtitle">Answers are grounded only in the synthetic evidence bundle. Interpretations are labeled as inferences.</div>
+        </div>
+        <div class="ask-map-mode-root" aria-label="Ask mode"></div>
       </div>
-      <form class="ask-map-form">
-        <textarea class="ask-map-input" aria-label="Research question" placeholder="Ask about participant patterns, tensions, themes, or evidence..."></textarea>
-        <button class="ask-map-submit" type="submit">Ask</button>
-      </form>
-      <div class="ask-map-samples" aria-label="Sample research questions"></div>
+      <div class="ask-chat-surface">
+        <form class="ask-map-form">
+          <textarea class="ask-map-input" aria-label="Research question" placeholder="Ask about participant patterns, tensions, themes, or evidence..."></textarea>
+          <button class="ask-map-submit" type="submit">Ask</button>
+        </form>
+        <div class="ask-map-samples" aria-label="Sample research questions"></div>
+      </div>
       <div class="ask-map-answer" aria-live="polite"></div>
     </div>
   `;
@@ -155,6 +208,7 @@ export function init(container) {
     form: container.querySelector('.ask-map-form'),
     samples: container.querySelector('.ask-map-samples'),
     answer: container.querySelector('.ask-map-answer'),
+    content: container.querySelector('.ask-map-content'),
   };
 
   ui.form?.addEventListener('submit', (e) => {
@@ -164,7 +218,33 @@ export function init(container) {
     submitAsk(query);
   });
 
+  unmountVoiceMode = mountAskVoiceMode(container.querySelector('.ask-map-mode-root'), {
+    onModeChange: setAskMode,
+    onTranscript: (transcript) => {
+      const query = String(transcript || '').trim();
+      if (!query) return;
+      if (ui.input) ui.input.value = query;
+      setAskMode('chat');
+      submitAsk(query);
+    },
+  });
+
+  window.mapperVoiceActions = {
+    submitTranscript(transcript) {
+      const query = String(transcript || '').trim();
+      if (!query) return;
+      if (ui.input) ui.input.value = query;
+      submitAsk(query);
+    },
+    setMode: setAskMode,
+  };
+
   attachDrawerBehavior(container);
+}
+
+function setAskMode(mode) {
+  activeAskMode = mode === 'voice' ? 'voice' : 'chat';
+  if (ui.content) ui.content.dataset.askMode = activeAskMode;
 }
 
 function attachDrawerBehavior(container) {

@@ -16,6 +16,7 @@ import { dirname, join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createClient } from '@libsql/client';
+import { AccessToken } from 'livekit-server-sdk';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -35,6 +36,11 @@ const MAX_QUERY_CHARS = 600;
 const MAX_TOP_K = 8;
 const DEFAULT_TOP_K = 5;
 const LOCAL_ORIGIN_RE = /^http:\/\/(127\.0\.0\.1|localhost):\d+$/;
+const DEFAULT_LIVEKIT_URL = 'ws://127.0.0.1:7880';
+const DEFAULT_LIVEKIT_ROOM = 'mapper-local';
+const DEFAULT_LIVEKIT_IDENTITY_PREFIX = 'mapper-researcher';
+const DEFAULT_LIVEKIT_API_KEY = 'devkey';
+const DEFAULT_LIVEKIT_API_SECRET = 'secret';
 
 export function parseArgs(argv) {
   const args = {};
@@ -348,16 +354,29 @@ export async function createAskMapServer(options = {}) {
   const server = createServer(async (req, res) => {
     try {
       setCorsHeaders(req, res);
+      const requestUrl = new URL(req.url || '/', 'http://127.0.0.1');
       if (req.method === 'OPTIONS') {
         res.writeHead(204);
         res.end();
         return;
       }
-      if (req.method === 'GET' && req.url === '/health') {
+      if (req.method === 'GET' && requestUrl.pathname === '/health') {
         writeJson(res, 200, { ok: true, local_only: true, db_path: dbPath });
         return;
       }
-      if (req.method !== 'POST' || req.url !== '/api/ask-map') {
+      if ((req.method === 'GET' || req.method === 'POST') && requestUrl.pathname === '/api/livekit-token') {
+        const body = req.method === 'POST' ? await readJsonBody(req) : {};
+        const room = sanitizeLiveKitValue(body.room || requestUrl.searchParams.get('room'), DEFAULT_LIVEKIT_ROOM);
+        const identitySeed = body.identity || requestUrl.searchParams.get('identity');
+        const identity = sanitizeLiveKitValue(
+          identitySeed,
+          `${DEFAULT_LIVEKIT_IDENTITY_PREFIX}-${Math.random().toString(36).slice(2, 8)}`
+        );
+        const tokenResponse = await buildLiveKitToken({ room, identity });
+        writeJson(res, 200, tokenResponse);
+        return;
+      }
+      if (req.method !== 'POST' || requestUrl.pathname !== '/api/ask-map') {
         writeJson(res, 404, { error: 'not_found' });
         return;
       }
@@ -383,6 +402,37 @@ export async function createAskMapServer(options = {}) {
   server.on('close', () => context.embedder?.close?.());
 
   return { server, context };
+}
+
+function sanitizeLiveKitValue(value, fallback) {
+  const clean = String(value || fallback || '')
+    .replace(/[^\w.@:-]/g, '-')
+    .slice(0, 96)
+    .replace(/^-+|-+$/g, '');
+  return clean || fallback;
+}
+
+async function buildLiveKitToken(options = {}) {
+  const apiKey = process.env.LIVEKIT_API_KEY || DEFAULT_LIVEKIT_API_KEY;
+  const apiSecret = process.env.LIVEKIT_API_SECRET || DEFAULT_LIVEKIT_API_SECRET;
+  const url = process.env.LIVEKIT_URL || DEFAULT_LIVEKIT_URL;
+  const room = sanitizeLiveKitValue(options.room, DEFAULT_LIVEKIT_ROOM);
+  const identity = sanitizeLiveKitValue(options.identity, `${DEFAULT_LIVEKIT_IDENTITY_PREFIX}-local`);
+  const token = new AccessToken(apiKey, apiSecret, { identity });
+  token.addGrant({
+    room,
+    roomJoin: true,
+    canPublish: true,
+    canSubscribe: true,
+    canPublishData: true,
+  });
+  return {
+    token: await token.toJwt(),
+    url,
+    room,
+    identity,
+    local_only: true,
+  };
 }
 
 function readJsonBody(req) {
