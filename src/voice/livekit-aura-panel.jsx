@@ -86,7 +86,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
       {mode === 'voice' ? (
         <div className="ask-voice-card">
           <div className="ask-voice-header">
-            <span>LIVEKIT // LOCAL</span>
+            <span>VOICE // LOCAL</span>
             <span>STT BRIDGE</span>
           </div>
 
@@ -243,10 +243,11 @@ function ensureVoiceStyles() {
   style.textContent = `
     .ask-voice-shell {
       display: grid;
-      justify-items: end;
+      justify-items: stretch;
       gap: 0.55rem;
     }
     .ask-mode-buttons {
+      justify-self: end;
       display: grid;
       grid-template-columns: repeat(2, minmax(54px, 1fr));
       border: 1px solid rgba(31, 247, 255, 0.28);
@@ -286,6 +287,7 @@ function ensureVoiceStyles() {
       box-shadow: inset 0 0 16px rgba(31, 247, 255, 0.09);
     }
     .ask-voice-card {
+      justify-self: center;
       width: min(100%, 292px);
       border: 1px solid rgba(31, 247, 255, 0.22);
       background:
