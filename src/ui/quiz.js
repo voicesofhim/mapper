@@ -59,17 +59,26 @@ export function init(container) {
       .quiz-content[data-ask-mode="voice"] .ask-map-topline {
         display: grid;
         grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+        flex: 0 0 auto;
         gap: 0.8rem;
         min-height: 0;
+        overflow: visible;
         padding-right: 0;
+      }
+      .quiz-content[data-ask-mode="voice"] .ask-map-heading {
+        grid-column: 1 / -1;
+        grid-row: 1;
       }
       .quiz-content[data-ask-mode="voice"] .ask-map-mode-root {
         position: relative;
         top: auto;
         right: auto;
         grid-column: 1 / -1;
+        grid-row: 2;
         justify-self: stretch;
         width: 100%;
+        min-height: max-content;
         z-index: 1;
       }
       .ask-chat-surface {
@@ -77,6 +86,9 @@ export function init(container) {
         gap: 0.7rem;
       }
       .quiz-content[data-ask-mode="voice"] .ask-chat-surface {
+        display: none;
+      }
+      .ask-map-content:has(.ask-voice-shell[data-mode="voice"]) .ask-chat-surface {
         display: none;
       }
       .ask-map-form {
@@ -240,7 +252,6 @@ export function init(container) {
       const query = String(transcript || '').trim();
       if (!query) return;
       if (ui.input) ui.input.value = query;
-      setAskMode('chat');
       submitAsk(query);
     },
   });
