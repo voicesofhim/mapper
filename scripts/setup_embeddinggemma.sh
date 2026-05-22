@@ -83,6 +83,19 @@ AUTH_STATUS="$("${HF_BIN}" auth whoami 2>&1 || true)"
 if [[ "${AUTH_STATUS}" == *"Not logged in"* || "${AUTH_STATUS}" == *"Invalid user token"* || "${AUTH_STATUS}" == *"Token is invalid"* ]]; then
   echo "[embeddinggemma] Hugging Face login is required to access Gemma-gated weights."
   echo "[embeddinggemma] First accept access for ${MODEL_ID} at https://huggingface.co/google/embeddinggemma-300m if your account has not already done so."
+  if [[ ! -t 0 ]]; then
+    cat >&2 <<LOGIN
+[embeddinggemma] This shell is non-interactive, so the setup script cannot safely prompt for your token.
+
+Run this locally in your terminal, then rerun setup:
+
+  ${HF_BIN} auth login
+  npm run setup:embeddinggemma
+
+Do not paste the token into chat or commit it to the repo.
+LOGIN
+    exit 1
+  fi
   echo "[embeddinggemma] A browser/token prompt may open. Do not commit or paste the token into repo files."
   "${HF_BIN}" auth login
 fi
