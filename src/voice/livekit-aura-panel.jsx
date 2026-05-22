@@ -31,6 +31,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
   const [pushToTalkActive, setPushToTalkActive] = useState(false);
   const micMonitorRef = useRef(null);
   const sessionRef = useRef(null);
+  const transcriptClearTimerRef = useRef(null);
   const [micInfo, setMicInfo] = useState({
     label: 'Mic not checked',
     detail: 'Connect local voice to test the active browser input.',
@@ -47,6 +48,35 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
     micMonitorRef.current = null;
     setMicLevel(0);
   }, []);
+
+  const cancelLiveTranscriptTimer = useCallback(() => {
+    if (transcriptClearTimerRef.current) {
+      window.clearTimeout(transcriptClearTimerRef.current);
+      transcriptClearTimerRef.current = null;
+    }
+  }, []);
+
+  const clearLiveTranscript = useCallback(() => {
+    cancelLiveTranscriptTimer();
+    setLiveTranscript([]);
+  }, [cancelLiveTranscriptTimer]);
+
+  const showLiveTranscript = useCallback((entry, { clearAfterMs = 0 } = {}) => {
+    const text = String(entry?.text || '').trim();
+    if (!text) return;
+    cancelLiveTranscriptTimer();
+    setLiveTranscript([{
+      ...entry,
+      text,
+      final: Boolean(entry.final),
+    }]);
+    if (clearAfterMs > 0) {
+      transcriptClearTimerRef.current = window.setTimeout(() => {
+        transcriptClearTimerRef.current = null;
+        setLiveTranscript([]);
+      }, clearAfterMs);
+    }
+  }, [cancelLiveTranscriptTimer]);
 
   const startMicMonitor = useCallback(async () => {
     stopMicMonitor();
@@ -84,7 +114,10 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
     return () => mediaDevices.removeEventListener('devicechange', handleDeviceChange);
   }, [mode, refreshMicInfo]);
 
-  useEffect(() => () => stopMicMonitor(), [stopMicMonitor]);
+  useEffect(() => () => {
+    stopMicMonitor();
+    cancelLiveTranscriptTimer();
+  }, [cancelLiveTranscriptTimer, stopMicMonitor]);
 
   useEffect(() => {
     sessionRef.current = session;
@@ -152,9 +185,9 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
     setStatus('Local voice idle');
     setError('');
     setHeardText('');
-    setLiveTranscript([]);
+    clearLiveTranscript();
     stopMicMonitor();
-  }, [stopMicMonitor]);
+  }, [clearLiveTranscript, stopMicMonitor]);
 
   const handlePushPointerDown = useCallback((event) => {
     event.preventDefault();
@@ -239,7 +272,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
                   onTranscript={onTranscript}
                   setStatus={setStatus}
                   setHeardText={setHeardText}
-                  setLiveTranscript={setLiveTranscript}
+                  showLiveTranscript={showLiveTranscript}
                   pushToTalkActive={pushToTalkActive}
                 />
               </LiveKitRoom>
@@ -299,7 +332,7 @@ function IdleAura() {
   );
 }
 
-function VoiceRoom({ onTranscript, setStatus, setHeardText, setLiveTranscript, pushToTalkActive }) {
+function VoiceRoom({ onTranscript, setStatus, setHeardText, showLiveTranscript, pushToTalkActive }) {
   const room = useRoomContext();
   const lastTranscriptRef = useRef('');
   const transcriptSeqRef = useRef(0);
@@ -331,11 +364,11 @@ function VoiceRoom({ onTranscript, setStatus, setHeardText, setLiveTranscript, p
       setStatus(formatVoiceStatus(voiceStatus));
       if (voiceStatus.state === 'searching' && voiceStatus.detail) {
         setHeardText?.(voiceStatus.detail);
-        appendMiniTranscript(setLiveTranscript, {
+        showLiveTranscript?.({
           id: `status-${transcriptSeqRef.current++}`,
           text: voiceStatus.detail,
           final: false,
-        });
+        }, { clearAfterMs: 2500 });
       }
       setVoiceState(mapVoiceStatusToAuraState(voiceStatus.state));
       window.dispatchEvent(new CustomEvent('mapper:voice-status', { detail: voiceStatus }));
@@ -344,11 +377,11 @@ function VoiceRoom({ onTranscript, setStatus, setHeardText, setLiveTranscript, p
 
     const packet = readTranscriptPacket(message);
     if (packet.text) {
-      appendMiniTranscript(setLiveTranscript, {
+      showLiveTranscript?.({
         id: packet.id || `transcript-${transcriptSeqRef.current++}`,
         text: packet.text,
         final: packet.final,
-      });
+      }, { clearAfterMs: packet.final ? 3500 : 0 });
     }
 
     if (!packet.final) return;
@@ -449,24 +482,6 @@ function extractFinalState(payload, topic) {
   if ('is_final' in payload) return Boolean(payload.is_final);
   if ('isFinal' in payload) return Boolean(payload.isFinal);
   return topic !== 'lk.transcription';
-}
-
-function appendMiniTranscript(setLiveTranscript, entry) {
-  if (!entry?.text || !setLiveTranscript) return;
-  setLiveTranscript((current) => {
-    const nextEntry = {
-      ...entry,
-      text: entry.text.trim(),
-      final: Boolean(entry.final),
-    };
-    const index = nextEntry.id
-      ? current.findIndex((item) => item.id === nextEntry.id)
-      : -1;
-    const next = index >= 0
-      ? current.map((item, itemIndex) => (itemIndex === index ? nextEntry : item))
-      : [...current, nextEntry];
-    return next.slice(-4);
-  });
 }
 
 function formatAgentState(state) {
