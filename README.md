@@ -253,7 +253,8 @@ Then run the importer with the local provider:
 ```bash
 npm run import:accelerator -- \
   --embedding-provider embeddinggemma \
-  --embedding-model models/embeddinggemma-300m \
+  --embedding-model google/embeddinggemma-300M \
+  --embedding-model-path models/embeddinggemma-300m \
   --embedding-command .venv-embeddinggemma/bin/python \
   --embedding-dimensions 768
 ```

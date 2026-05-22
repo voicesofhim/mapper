@@ -121,6 +121,7 @@ I need structure before execution.
     ], {
       embeddingProvider: 'embeddinggemma',
       embeddingModel: 'google/embeddinggemma-300M',
+      embeddingModelPath: '/tmp/local-embeddinggemma-300m',
       embeddingDimensions: 4,
       embeddingPromptName: 'Retrieval-document',
       embeddingBatchSize: 2,
@@ -136,6 +137,7 @@ I need structure before execution.
     expect(sidecarCalls[0].items).toHaveLength(2);
     expect(sidecarCalls[0].options).toMatchObject({
       model: 'google/embeddinggemma-300M',
+      modelPath: '/tmp/local-embeddinggemma-300m',
       dimensions: 4,
       promptName: 'Retrieval-document',
       batchSize: 2,
@@ -149,6 +151,7 @@ I need structure before execution.
       runtime: 'sentence-transformers',
       prompt_name: 'Retrieval-document',
       local_only: true,
+      model_loaded_from: 'local_model_path',
       input_redaction: 'anonymized_text_only',
     });
     expect(embeddings[0].vector_blob_hex).toBeTruthy();

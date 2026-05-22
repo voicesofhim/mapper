@@ -121,6 +121,7 @@ export async function buildAcceleratorDataset(options = {}) {
   const embeddings = await buildEmbeddingRecords(chunks, {
     embeddingProvider: options.embeddingProvider,
     embeddingModel: options.embeddingModel,
+    embeddingModelPath: options.embeddingModelPath,
     embeddingDimensions: options.embeddingDimensions,
     embeddingPromptName: options.embeddingPromptName,
     embeddingCommand: options.embeddingCommand,
@@ -282,6 +283,7 @@ export function buildEmbeddingRecord(chunk) {
 
 export async function buildEmbeddingGemmaRecords(chunks, options = {}) {
   const model = options.embeddingModel || process.env.EMBEDDINGGEMMA_MODEL || DEFAULT_EMBEDDINGGEMMA_MODEL;
+  const modelPath = options.embeddingModelPath || process.env.EMBEDDINGGEMMA_MODEL_PATH || model;
   const dimensions = numberOr(options.embeddingDimensions, process.env.EMBEDDINGGEMMA_DIMENSIONS);
   const promptName = options.embeddingPromptName || process.env.EMBEDDINGGEMMA_PROMPT_NAME || DEFAULT_EMBEDDINGGEMMA_PROMPT_NAME;
   const vectors = options.embeddingGemmaRunner
@@ -289,8 +291,8 @@ export async function buildEmbeddingGemmaRecords(chunks, options = {}) {
       id: chunk.id,
       text: embeddingTextForChunk(chunk),
       title: chunk.title,
-    })), { model, dimensions, promptName, batchSize: options.embeddingBatchSize })
-    : await runEmbeddingGemmaSidecar(chunks, { ...options, model, dimensions, promptName });
+    })), { model, modelPath, dimensions, promptName, batchSize: options.embeddingBatchSize })
+    : await runEmbeddingGemmaSidecar(chunks, { ...options, model, modelPath, dimensions, promptName });
 
   if (vectors.length !== chunks.length) {
     throw new Error(`EmbeddingGemma returned ${vectors.length} vectors for ${chunks.length} chunks.`);
@@ -304,6 +306,7 @@ export async function buildEmbeddingGemmaRecords(chunks, options = {}) {
       runtime: 'sentence-transformers',
       prompt_name: promptName,
       local_only: true,
+      model_loaded_from: modelPath === model ? 'model_id' : 'local_model_path',
       dimensions_requested: dimensions || null,
       input_redaction: 'anonymized_text_only',
     },
@@ -315,7 +318,7 @@ async function runEmbeddingGemmaSidecar(chunks, options = {}) {
   const script = resolve(options.embeddingScript || process.env.EMBEDDINGGEMMA_SCRIPT || DEFAULT_EMBEDDINGGEMMA_SCRIPT);
   const args = [
     script,
-    '--model', options.model,
+    '--model', options.modelPath || options.model,
     '--prompt-name', options.promptName,
     '--batch-size', String(options.embeddingBatchSize || options.batchSize || process.env.EMBEDDINGGEMMA_BATCH_SIZE || 16),
   ];
@@ -950,6 +953,7 @@ async function main() {
     domainName: args.domainName || 'Accelerator Seed Interviews',
     embeddingProvider: args.embeddingProvider || process.env.ACCELERATOR_EMBEDDING_PROVIDER || 'local',
     embeddingModel: args.embeddingModel || process.env.EMBEDDING_MODEL,
+    embeddingModelPath: args.embeddingModelPath || process.env.EMBEDDING_MODEL_PATH,
     embeddingDimensions: args.embeddingDimensions || process.env.EMBEDDING_DIMENSIONS,
     embeddingPromptName: args.embeddingPromptName,
     embeddingCommand: args.embeddingCommand,

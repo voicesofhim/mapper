@@ -133,7 +133,8 @@ Run the importer with:
 
   npm run import:accelerator -- \\
     --embedding-provider embeddinggemma \\
-    --embedding-model ${MODEL_DIR} \\
+    --embedding-model ${MODEL_ID} \\
+    --embedding-model-path ${MODEL_DIR} \\
     --embedding-command ${VENV_DIR}/bin/python \\
     --embedding-dimensions 768
 DONE

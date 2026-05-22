@@ -79,7 +79,7 @@ Local model setup:
 
 ```bash
 npm run setup:embeddinggemma
-npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-model models/embeddinggemma-300m --embedding-command .venv-embeddinggemma/bin/python
+npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-model google/embeddinggemma-300M --embedding-model-path models/embeddinggemma-300m --embedding-command .venv-embeddinggemma/bin/python
 ```
 
 Keep this local-first:

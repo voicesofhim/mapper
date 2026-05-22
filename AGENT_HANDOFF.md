@@ -289,7 +289,8 @@ Run the importer with the local provider:
 ```bash
 npm run import:accelerator -- \
   --embedding-provider embeddinggemma \
-  --embedding-model models/embeddinggemma-300m \
+  --embedding-model google/embeddinggemma-300M \
+  --embedding-model-path models/embeddinggemma-300m \
   --embedding-command .venv-embeddinggemma/bin/python \
   --embedding-dimensions 768
 ```
@@ -529,7 +530,7 @@ No key was found in repo files.
 1. **Run and verify real local EmbeddingGemma**
    - Accept the Gemma license on Hugging Face if needed.
    - Run `npm run setup:embeddinggemma`.
-   - Run `npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-model models/embeddinggemma-300m --embedding-command .venv-embeddinggemma/bin/python`.
+   - Run `npm run import:accelerator -- --embedding-provider embeddinggemma --embedding-model google/embeddinggemma-300M --embedding-model-path models/embeddinggemma-300m --embedding-command .venv-embeddinggemma/bin/python`.
    - Inspect generated clusters and SQL vector BLOB lengths.
 
 2. **Add mixed-source manifest ingestion**
