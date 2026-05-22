@@ -35,28 +35,42 @@ export function init(container) {
         line-height: 1.45;
       }
       .ask-map-topline {
-        position: relative;
-        min-height: 6.8rem;
-        padding-right: 9rem;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 0.8rem;
+        min-height: 0;
+        padding-right: 0;
       }
       .ask-map-heading {
+        grid-column: 1;
         min-width: 0;
       }
       .ask-map-title {
         white-space: nowrap;
       }
       .ask-map-mode-root {
-        position: absolute;
-        top: 0;
-        right: 0;
+        grid-column: 2;
+        justify-self: end;
+        position: relative;
+        top: auto;
+        right: auto;
       }
       .quiz-content[data-ask-mode="voice"] .ask-map-topline {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.8rem;
         min-height: 0;
         padding-right: 0;
       }
-      .ask-map-mode-root:has(.ask-voice-shell[data-mode="voice"]) {
-        position: static;
-        margin-top: 0.65rem;
+      .quiz-content[data-ask-mode="voice"] .ask-map-mode-root {
+        position: relative;
+        top: auto;
+        right: auto;
+        grid-column: 1 / -1;
+        justify-self: stretch;
+        width: 100%;
+        z-index: 1;
       }
       .ask-chat-surface {
         display: grid;
@@ -120,6 +134,8 @@ export function init(container) {
         padding-top: 0.8rem;
         display: grid;
         gap: 0.7rem;
+        position: relative;
+        z-index: 0;
       }
       .ask-map-answer h3 {
         font-size: 0.82rem;

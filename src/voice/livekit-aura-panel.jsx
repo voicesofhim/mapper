@@ -288,7 +288,7 @@ function ensureVoiceStyles() {
     }
     .ask-voice-card {
       justify-self: center;
-      width: min(100%, 292px);
+      width: min(100%, 276px);
       border: 1px solid rgba(31, 247, 255, 0.22);
       background:
         linear-gradient(rgba(31, 247, 255, 0.035) 1px, transparent 1px),
@@ -311,7 +311,7 @@ function ensureVoiceStyles() {
       color: var(--color-text-muted);
     }
     .ask-voice-scope {
-      width: min(100%, 224px);
+      width: min(100%, 206px);
       aspect-ratio: 1 / 1;
       margin-top: 0.5rem;
       margin-left: auto;
@@ -385,7 +385,7 @@ function ensureVoiceStyles() {
         width: 100%;
       }
       .ask-voice-scope {
-        width: min(100%, 220px);
+        width: min(100%, 200px);
       }
     }
   `;
