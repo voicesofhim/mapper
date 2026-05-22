@@ -40,6 +40,7 @@ export class Renderer {
     this._hoveredVideoId = null;
     this._showVideoMarkers = true;
     this._highlightedIds = new Set();
+    this._highlightRank = new Map();
     this._selectedPointId = null;
     this._participantPaths = [];
     this._questions = [];
@@ -292,7 +293,9 @@ export class Renderer {
   }
 
   highlightMapItems(ids = []) {
-    this._highlightedIds = new Set((ids || []).map(String));
+    const normalized = (ids || []).map(String);
+    this._highlightedIds = new Set(normalized);
+    this._highlightRank = new Map(normalized.map((id, index) => [id, index]));
     this._scheduleRender();
   }
 
@@ -748,6 +751,7 @@ export class Renderer {
     const hoveredId = this._hoveredPoint?.id;
     const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 620);
     const hasHighlightLens = this._highlightedIds.size > 0;
+    const highlightBreath = 0.5 + 0.5 * Math.sin(performance.now() / 360);
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -759,10 +763,12 @@ export class Renderer {
       const isHovered = hoveredId && p.id === hoveredId;
       const isHighlighted = this._highlightedIds.has(String(p.id));
       const isSelected = this._selectedPointId && String(p.id) === this._selectedPointId;
+      const rank = this._highlightRank.get(String(p.id)) ?? 0;
       const baseAlpha = (color[3] ?? 190) / 255;
-      const mutedAlpha = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? baseAlpha * 0.34 : baseAlpha;
-      const alpha = isSelected ? 0.96 : isHighlighted ? 0.84 : isHovered ? 0.82 : mutedAlpha;
-      const radius = baseR * (isSelected ? 1.68 : isHighlighted ? 1.22 + pulse * 0.14 : isHovered ? 1.36 : hasHighlightLens ? 0.92 : 1);
+      const mutedAlpha = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? baseAlpha * 0.16 : baseAlpha;
+      const alpha = isSelected ? 0.96 : isHighlighted ? 0.92 : isHovered ? 0.82 : mutedAlpha;
+      const highlightScale = Math.max(1.22, 1.58 - rank * 0.12);
+      const radius = baseR * (isSelected ? 1.68 : isHighlighted ? highlightScale + pulse * 0.18 : isHovered ? 1.36 : hasHighlightLens ? 0.86 : 1);
 
       const halo = ctx.createRadialGradient(px, py, 0, px, py, radius * 7.5);
       const haloScale = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? 0.52 : 1;
@@ -783,11 +789,22 @@ export class Renderer {
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
         ctx.beginPath();
-        ctx.arc(px, py, radius * (isSelected ? 3.1 : 2.35), 0, Math.PI * 2);
+        ctx.arc(px, py, radius * (isSelected ? 3.1 : 2.7 + highlightBreath * 0.28), 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${isSelected ? 0.78 : 0.34 + pulse * 0.12})`;
         ctx.lineWidth = (isSelected ? 1.25 : 0.9) / this._zoom;
         ctx.stroke();
         ctx.restore();
+
+        if (isHighlighted) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'screen';
+          ctx.beginPath();
+          ctx.arc(px, py, radius * (5.2 + highlightBreath * 1.2), 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 + highlightBreath * 0.08})`;
+          ctx.lineWidth = 1 / this._zoom;
+          ctx.stroke();
+          ctx.restore();
+        }
       }
     }
     ctx.restore();
