@@ -42,7 +42,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ room: DEFAULT_ROOM }),
       });
-      if (!response.ok) throw new Error(`Token endpoint returned ${response.status}`);
+      if (!response.ok) throw new Error(formatTokenEndpointError(response.status));
       const payload = await response.json();
       setSession({
         token: payload.token,
@@ -85,28 +85,36 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
 
       {mode === 'voice' ? (
         <div className="ask-voice-card">
-          {session?.token && session?.url ? (
-            <LiveKitRoom
-              serverUrl={session.url}
-              token={session.token}
-              connect
-              audio
-              video={false}
-              onConnected={() => setStatus(`Local room: ${session.room}`)}
-              onDisconnected={() => setStatus('Local voice disconnected')}
-              onError={(err) => {
-                setError(err?.message || 'LiveKit connection error');
-                setStatus('Local voice unavailable');
-              }}
-            >
-              <VoiceRoom onTranscript={onTranscript} setStatus={setStatus} />
-            </LiveKitRoom>
-          ) : (
-            <IdleAura />
-          )}
+          <div className="ask-voice-header">
+            <span>LIVEKIT // LOCAL</span>
+            <span>STT BRIDGE</span>
+          </div>
+
+          <div className="ask-voice-scope">
+            {session?.token && session?.url ? (
+              <LiveKitRoom
+                serverUrl={session.url}
+                token={session.token}
+                connect
+                audio
+                video={false}
+                onConnected={() => setStatus(`Local room: ${session.room}`)}
+                onDisconnected={() => setStatus('Local voice disconnected')}
+                onError={(err) => {
+                  setError(err?.message || 'LiveKit connection error');
+                  setStatus('Local voice unavailable');
+                }}
+              >
+                <VoiceRoom onTranscript={onTranscript} setStatus={setStatus} />
+              </LiveKitRoom>
+            ) : (
+              <IdleAura />
+            )}
+          </div>
 
           <div className="ask-voice-status" aria-live="polite">
-            {error || status}
+            <span>STATUS</span>
+            <b>{error || status}</b>
           </div>
           <div className="ask-voice-actions">
             {session ? (
@@ -221,6 +229,13 @@ function formatAgentState(state) {
   return String(state || 'idle').replace(/-/g, ' ');
 }
 
+function formatTokenEndpointError(status) {
+  if (status === 404) return 'Token server offline. Start ask:server.';
+  if (status === 400) return 'Token request rejected by local server.';
+  if (status >= 500) return 'Local token server error.';
+  return `Local token server returned ${status}.`;
+}
+
 function ensureVoiceStyles() {
   if (document.getElementById('ask-voice-mode-styles')) return;
   const style = document.createElement('style');
@@ -229,13 +244,13 @@ function ensureVoiceStyles() {
     .ask-voice-shell {
       display: grid;
       justify-items: end;
-      gap: 0.45rem;
+      gap: 0.55rem;
     }
     .ask-mode-buttons {
       display: grid;
       grid-template-columns: repeat(2, minmax(54px, 1fr));
       border: 1px solid rgba(31, 247, 255, 0.28);
-      background: rgba(31, 247, 255, 0.055);
+      background: rgba(3, 12, 22, 0.72);
       min-width: 132px;
     }
     .ask-mode-buttons button,
@@ -250,7 +265,15 @@ function ensureVoiceStyles() {
       min-height: 30px;
       padding: 0.4rem 0.55rem;
       text-transform: uppercase;
-      transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+      transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+    }
+    .ask-mode-buttons button:focus,
+    .ask-mode-buttons button:focus-visible,
+    .ask-voice-actions button:focus,
+    .ask-voice-actions button:focus-visible {
+      outline: 1px solid rgba(31, 247, 255, 0.82) !important;
+      outline-offset: 2px;
+      box-shadow: 0 0 0 1px rgba(31, 247, 255, 0.24), inset 0 0 16px rgba(31, 247, 255, 0.08) !important;
     }
     .ask-mode-buttons button:last-child {
       border-right: 0;
@@ -264,25 +287,71 @@ function ensureVoiceStyles() {
     }
     .ask-voice-card {
       width: min(100%, 292px);
-      border: 1px solid rgba(31, 247, 255, 0.26);
-      background: rgba(3, 9, 18, 0.76);
-      box-shadow: 0 0 26px rgba(31, 247, 255, 0.06);
-      padding: 0.55rem;
+      border: 1px solid rgba(31, 247, 255, 0.22);
+      background:
+        linear-gradient(rgba(31, 247, 255, 0.035) 1px, transparent 1px),
+        rgba(3, 9, 18, 0.58);
+      background-size: 100% 18px, auto;
+      box-shadow: inset 0 0 0 1px rgba(31, 247, 255, 0.035), 0 0 18px rgba(31, 247, 255, 0.04);
+      padding: 0.5rem;
+    }
+    .ask-voice-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      border-bottom: 1px solid rgba(31, 247, 255, 0.18);
+      color: var(--color-primary);
+      font: 0.62rem/1 var(--font-heading);
+      letter-spacing: 0;
+      padding: 0 0 0.42rem;
+    }
+    .ask-voice-header span:last-child {
+      color: var(--color-text-muted);
+    }
+    .ask-voice-scope {
+      margin-top: 0.5rem;
+      border: 1px solid rgba(31, 247, 255, 0.16);
+      background:
+        linear-gradient(90deg, rgba(31, 247, 255, 0.045) 1px, transparent 1px),
+        linear-gradient(rgba(31, 247, 255, 0.035) 1px, transparent 1px),
+        rgba(0, 0, 0, 0.28);
+      background-size: 18px 100%, 100% 18px, auto;
+      overflow: hidden;
+      position: relative;
+    }
+    .ask-voice-scope::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 0 48%, rgba(31, 247, 255, 0.08) 50%, transparent 52% 100%);
+      pointer-events: none;
     }
     .mapper-livekit-aura {
       width: 100%;
-      height: 172px;
+      height: 118px;
       display: block;
       overflow: hidden;
       background:
-        radial-gradient(circle at center, rgba(31, 247, 255, 0.08), transparent 55%),
-        rgba(0, 0, 0, 0.4);
+        radial-gradient(circle at center, rgba(31, 247, 255, 0.05), transparent 58%),
+        transparent;
     }
     .ask-voice-status {
       color: var(--color-text-muted);
       font: 0.66rem/1.35 var(--font-body);
-      margin-top: 0.45rem;
-      min-height: 1.75rem;
+      margin-top: 0.5rem;
+      min-height: 1.65rem;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.55rem;
+      align-items: start;
+      overflow-wrap: anywhere;
+    }
+    .ask-voice-status span {
+      color: var(--color-primary);
+    }
+    .ask-voice-status b {
+      color: var(--color-text-muted);
+      font-weight: 400;
     }
     .ask-voice-actions {
       display: grid;
@@ -290,7 +359,10 @@ function ensureVoiceStyles() {
     }
     .ask-voice-actions button {
       border: 1px solid rgba(31, 247, 255, 0.24);
+      border-radius: 0 !important;
       min-height: 32px;
+      color: var(--color-text);
+      background: rgba(31, 247, 255, 0.045);
     }
     @media (max-width: 720px) {
       .ask-voice-shell {
@@ -301,7 +373,7 @@ function ensureVoiceStyles() {
         width: 100%;
       }
       .mapper-livekit-aura {
-        height: 150px;
+        height: 112px;
       }
     }
   `;
