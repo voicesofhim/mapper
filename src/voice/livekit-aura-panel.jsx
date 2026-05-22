@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import {
   LiveKitRoom,
   useDataChannel,
+  useRoomContext,
 } from '@livekit/components-react';
 
 import { AgentAudioVisualizerAura } from '@/components/agents-ui/agent-audio-visualizer-aura';
@@ -27,6 +28,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
   const [heardText, setHeardText] = useState('');
   const [liveTranscript, setLiveTranscript] = useState([]);
   const [micLevel, setMicLevel] = useState(0);
+  const [pushToTalkActive, setPushToTalkActive] = useState(false);
   const micMonitorRef = useRef(null);
   const [micInfo, setMicInfo] = useState({
     label: 'Mic not checked',
@@ -83,6 +85,33 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
 
   useEffect(() => () => stopMicMonitor(), [stopMicMonitor]);
 
+  useEffect(() => {
+    if (mode !== 'voice' || !session) return undefined;
+
+    const isEditableTarget = (target) => {
+      const element = target instanceof Element ? target : null;
+      return Boolean(element?.closest('input, textarea, select, [contenteditable="true"]'));
+    };
+    const handleKeyDown = (event) => {
+      if (event.repeat || isEditableTarget(event.target)) return;
+      if (event.key?.toLowerCase() !== 't') return;
+      event.preventDefault();
+      setPushToTalkActive(true);
+    };
+    const handleKeyUp = (event) => {
+      if (event.key?.toLowerCase() !== 't') return;
+      event.preventDefault();
+      setPushToTalkActive(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      setPushToTalkActive(false);
+    };
+  }, [mode, session]);
+
   const connectVoice = useCallback(async () => {
     setError('');
     setStatus('Checking local microphone');
@@ -117,6 +146,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
   }, [refreshMicInfo, startMicMonitor, stopMicMonitor]);
 
   const disconnectVoice = useCallback(() => {
+    setPushToTalkActive(false);
     setSession(null);
     setStatus('Local voice idle');
     setError('');
@@ -124,6 +154,21 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
     setLiveTranscript([]);
     stopMicMonitor();
   }, [stopMicMonitor]);
+
+  const handlePushPointerDown = useCallback((event) => {
+    event.preventDefault();
+    if (!session) {
+      connectVoice();
+      return;
+    }
+    setPushToTalkActive(true);
+  }, [connectVoice, session]);
+
+  const releasePushToTalk = useCallback(() => {
+    setPushToTalkActive(false);
+  }, []);
+
+  const displayedMicLevel = session && pushToTalkActive ? micLevel : 0;
 
   return (
     <div className="ask-voice-shell" data-mode={mode}>
@@ -159,7 +204,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
                 serverUrl={session.url}
                 token={session.token}
                 connect
-                audio
+                audio={false}
                 video={false}
                 onConnected={() => setStatus(`Local room: ${session.room}`)}
                 onDisconnected={() => setStatus('Local voice disconnected')}
@@ -174,6 +219,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
                   setStatus={setStatus}
                   setHeardText={setHeardText}
                   setLiveTranscript={setLiveTranscript}
+                  pushToTalkActive={pushToTalkActive}
                 />
               </LiveKitRoom>
             ) : (
@@ -184,9 +230,9 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
           <div className="ask-voice-meter" aria-label="Microphone input level">
             <span>SIGNAL</span>
             <div className="ask-voice-meter-track">
-              <i style={{ transform: `scaleX(${Math.max(0.03, micLevel).toFixed(3)})` }} />
+              <i style={{ transform: `scaleX(${Math.max(0.03, displayedMicLevel).toFixed(3)})` }} />
             </div>
-            <b>{Math.round(micLevel * 100)}%</b>
+            <b>{Math.round(displayedMicLevel * 100)}%</b>
           </div>
 
           <div className="ask-voice-mini-transcript" aria-live="polite">
@@ -200,26 +246,40 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
             </div>
           </div>
 
-          <div className="ask-voice-status" aria-live="polite">
-            <span>STATUS</span>
-            <b>{error || status}</b>
-          </div>
-          <div className="ask-voice-heard" aria-live="polite">
-            <span>HEARD</span>
-            <b>{heardText || 'Waiting for speech'}</b>
-          </div>
           <div className="ask-voice-actions">
+            <button
+              type="button"
+              className={pushToTalkActive ? 'is-hot' : ''}
+              aria-pressed={pushToTalkActive}
+              onPointerDown={handlePushPointerDown}
+              onPointerUp={releasePushToTalk}
+              onPointerCancel={releasePushToTalk}
+              onPointerLeave={releasePushToTalk}
+            >
+              <i aria-hidden="true" />
+              Push to Talk
+              <small>{session ? 'Hold T or hold button' : 'Click to connect'}</small>
+            </button>
+          </div>
+          <details className="ask-voice-diagnostics">
+            <summary>status / heard / mic</summary>
+            <div className="ask-voice-status" aria-live="polite">
+              <span>STATUS</span>
+              <b>{error || status}</b>
+            </div>
+            <div className="ask-voice-heard" aria-live="polite">
+              <span>HEARD</span>
+              <b>{heardText || 'Waiting for speech'}</b>
+            </div>
+            <div className={`ask-voice-mic ask-voice-mic-${micInfo.state || 'idle'}`} aria-live="polite">
+              <span>MIC</span>
+              <b>{micInfo.label}</b>
+              <small>{micInfo.detail}</small>
+            </div>
             {session ? (
-              <button type="button" onClick={disconnectVoice}>Disconnect</button>
-            ) : (
-              <button type="button" onClick={connectVoice}>Connect local</button>
-            )}
-          </div>
-          <div className={`ask-voice-mic ask-voice-mic-${micInfo.state || 'idle'}`} aria-live="polite">
-            <span>MIC</span>
-            <b>{micInfo.label}</b>
-            <small>{micInfo.detail}</small>
-          </div>
+              <button type="button" className="ask-voice-disconnect" onClick={disconnectVoice}>Disconnect</button>
+            ) : null}
+          </details>
         </div>
       ) : null}
     </div>
@@ -239,14 +299,31 @@ function IdleAura() {
   );
 }
 
-function VoiceRoom({ onTranscript, setStatus, setHeardText, setLiveTranscript }) {
+function VoiceRoom({ onTranscript, setStatus, setHeardText, setLiveTranscript, pushToTalkActive }) {
+  const room = useRoomContext();
   const lastTranscriptRef = useRef('');
   const transcriptSeqRef = useRef(0);
   const [voiceState, setVoiceState] = useState('listening');
 
   useEffect(() => {
-    setStatus('Local voice listening');
+    setStatus('Local voice connected. Hold T to talk.');
   }, [setStatus]);
+
+  useEffect(() => {
+    let cancelled = false;
+    room.localParticipant.setMicrophoneEnabled(Boolean(pushToTalkActive))
+      .then(() => {
+        if (cancelled) return;
+        setStatus(pushToTalkActive ? 'Mic open. Listening while T is held.' : 'Mic closed. Hold T to talk.');
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setStatus(formatConnectionError(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pushToTalkActive, room, setStatus]);
 
   useDataChannel((message) => {
     const voiceStatus = readVoiceStatus(message);
@@ -751,11 +828,78 @@ function ensureVoiceStyles() {
       margin-top: 0.45rem;
     }
     .ask-voice-actions button {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.18rem 0.5rem;
+      align-items: center;
       border: 1px solid rgba(31, 247, 255, 0.24);
       border-radius: 0 !important;
-      min-height: 32px;
+      min-height: 40px;
       color: var(--color-text);
       background: rgba(31, 247, 255, 0.045);
+      text-align: left;
+      touch-action: none;
+      user-select: none;
+    }
+    .ask-voice-actions button i {
+      grid-row: 1 / span 2;
+      width: 0.58rem;
+      height: 0.58rem;
+      border: 1px solid rgba(31, 247, 255, 0.42);
+      background: rgba(31, 247, 255, 0.08);
+      box-shadow: 0 0 0 rgba(31, 247, 255, 0);
+    }
+    .ask-voice-actions button small {
+      grid-column: 2;
+      color: var(--color-text-muted);
+      font: 0.58rem/1.15 var(--font-body);
+      text-transform: none;
+    }
+    .ask-voice-actions button.is-hot {
+      border-color: rgba(31, 247, 255, 0.72);
+      background: rgba(31, 247, 255, 0.16);
+      color: var(--color-primary);
+      box-shadow: 0 0 16px rgba(31, 247, 255, 0.18), inset 0 0 18px rgba(31, 247, 255, 0.08);
+    }
+    .ask-voice-actions button.is-hot i {
+      background: var(--color-primary);
+      box-shadow: 0 0 14px rgba(31, 247, 255, 0.82);
+    }
+    .ask-voice-diagnostics {
+      margin-top: 0.35rem;
+      border-top: 1px solid rgba(31, 247, 255, 0.1);
+      color: var(--color-text-muted);
+      font: 0.62rem/1.35 var(--font-body);
+    }
+    .ask-voice-diagnostics summary {
+      cursor: pointer;
+      padding-top: 0.35rem;
+      color: var(--color-primary);
+      font-family: var(--font-heading);
+      text-transform: uppercase;
+      list-style: none;
+    }
+    .ask-voice-diagnostics summary::-webkit-details-marker {
+      display: none;
+    }
+    .ask-voice-diagnostics summary::before {
+      content: "[+] ";
+      color: var(--color-primary);
+    }
+    .ask-voice-diagnostics[open] summary::before {
+      content: "[-] ";
+    }
+    .ask-voice-disconnect {
+      width: 100%;
+      min-height: 28px;
+      margin-top: 0.45rem;
+      border: 1px solid rgba(255, 184, 92, 0.28);
+      border-radius: 0;
+      background: rgba(255, 184, 92, 0.06);
+      color: var(--color-text-muted);
+      font: 0.62rem/1 var(--font-heading);
+      text-transform: uppercase;
+      cursor: pointer;
     }
     .ask-voice-mic {
       display: grid;
