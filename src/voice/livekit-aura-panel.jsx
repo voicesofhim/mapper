@@ -681,9 +681,9 @@ function ensureVoiceStyles() {
     .ask-voice-card {
       justify-self: center;
       width: min(100%, 276px);
-      border: 1px solid rgba(31, 247, 255, 0.22);
+      border: 0;
       background: rgba(3, 9, 18, 0.58);
-      box-shadow: 0 0 18px rgba(31, 247, 255, 0.04);
+      box-shadow: none;
       padding: 0.5rem;
     }
     .ask-voice-header {
@@ -691,11 +691,10 @@ function ensureVoiceStyles() {
       justify-content: space-between;
       align-items: start;
       gap: 0.5rem;
-      border-bottom: 1px solid rgba(31, 247, 255, 0.18);
       color: var(--color-primary);
       font: 0.62rem/1 var(--font-heading);
       letter-spacing: 0;
-      padding: 0 0 0.42rem;
+      padding: 0;
     }
     .ask-voice-header > span {
       padding-top: 0.1rem;
@@ -794,7 +793,7 @@ function ensureVoiceStyles() {
       display: grid;
       margin-top: 0.5rem;
       padding: 0.45rem;
-      border: 1px solid rgba(31, 247, 255, 0.14);
+      border: 0;
       background: rgba(0, 0, 0, 0.16);
       min-height: 3.8rem;
     }
@@ -818,7 +817,7 @@ function ensureVoiceStyles() {
     .ask-voice-heard {
       margin-top: 0.25rem;
       padding-top: 0.35rem;
-      border-top: 1px solid rgba(31, 247, 255, 0.12);
+      border-top: 0;
     }
     .ask-voice-status span,
     .ask-voice-heard span {
@@ -837,7 +836,7 @@ function ensureVoiceStyles() {
       display: grid;
       justify-items: center;
       gap: 0.22rem;
-      border: 1px solid rgba(31, 247, 255, 0.24);
+      border: 0;
       border-radius: 0 !important;
       min-height: 40px;
       color: var(--color-text);
@@ -852,7 +851,6 @@ function ensureVoiceStyles() {
       text-transform: none;
     }
     .ask-voice-actions button.is-hot {
-      border-color: rgba(31, 247, 255, 0.72);
       background: rgba(31, 247, 255, 0.16);
       color: var(--color-primary);
       box-shadow: 0 0 16px rgba(31, 247, 255, 0.18), inset 0 0 18px rgba(31, 247, 255, 0.08);
