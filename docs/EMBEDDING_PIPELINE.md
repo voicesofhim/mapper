@@ -30,6 +30,26 @@ raw source repo/files
   -> static domain JSON for Mapper
 ```
 
+For the next real data sources, use this cleaner target pipeline:
+
+```text
+raw repo data
+  -> normalize participants/sources/chunks
+  -> redact private fields
+  -> derive structured tags/skills/needs
+  -> store tags relationally
+  -> build embedding text from approved fields
+  -> embed locally
+  -> compute UMAP
+  -> export Mapper JSON / Turso seed
+```
+
+Do not create participant skills during embedding. Derive or assign skills,
+needs, offers, and provenance during ingestion, then store them as auditable
+structured metadata before any embedding call is made. Embeddings should consume
+approved text and selected approved metadata; they should not be the only place
+where tags exist.
+
 The canonical schema is `scripts/accelerator-schema.sql`. It now has explicit
 dataset buckets so temporary imports can be removed:
 
@@ -74,13 +94,25 @@ This is still a hybrid embedding. It is good enough for local visualization and
 retrieval testing, but the next production step should split roles:
 
 ```text
-map_document       -> mostly cleaned evidence text, minimal tags
-retrieval_document -> evidence text plus selected source/taxonomy context
-query              -> local query embeddings for Ask-the-Map
+map_document
+  Mostly cleaned evidence text with minimal or no skill tags.
+  Goal: preserve an honest semantic map shape.
+
+retrieval_document
+  Cleaned evidence text plus selected structured tags/source context.
+  Goal: improve Ask-the-Map and cohort-matching retrieval.
+
+query
+  Local query embeddings for Ask-the-Map.
 ```
 
 The schema already has `embeddings.embedding_role` so we can make that split
 without changing the database shape again.
+
+Turso/libSQL tags are the authoritative source for skills, needs, source types,
+datasets, deletion, filtering, provenance, and future faceted UI. Embedding text
+may include a small amount of selected tag context for retrieval, but the
+relational tags must remain the source of truth.
 
 ## Embedding Providers
 
@@ -115,6 +147,24 @@ tags
 themes
   Mapper-visible labels used by the current top filter and map coloring UI.
 ```
+
+For cohort-matching questions such as "Who should I seek guidance from on agent
+coordination?", use structured tags rather than relying only on semantic
+similarity. Example participant/chunk tags:
+
+```text
+participant_skill: agent_coordination
+participant_skill: multi_agent_systems
+participant_skill: workflow_automation
+participant_need: agent_architecture_help
+help_offer: technical_guidance
+```
+
+Those tags should be derived or assigned during ingestion, reviewed as
+structured metadata, and stored in Turso/libSQL through `tags` and `chunk_tags`
+or the next participant-level tag table if we add one. The answer layer should
+combine those tags with retrieved evidence chunks, then cite the evidence behind
+the recommendation.
 
 Every SLAB item has a structured tag:
 
