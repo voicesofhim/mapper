@@ -196,7 +196,7 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
           <div className="ask-voice-header">
             <span>VOICE // LOCAL</span>
             <details className="ask-voice-diagnostics">
-              <summary>status / heard / mic</summary>
+              <summary>status</summary>
               <div className="ask-voice-diagnostics-menu">
                 <div className="ask-voice-status" aria-live="polite">
                   <span>STATUS</span>
