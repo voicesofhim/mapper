@@ -650,6 +650,7 @@ export class Renderer {
     ctx.scale(this._zoom, this._zoom);
 
     this._drawParticipantPaths(ctx, w, h);
+    this._drawEdgeSignalPass(ctx, w, h);
     this._drawPoints(ctx, w, h);
     this._drawVideos(ctx, w, h);
     this._drawVideoTrajectory(ctx, w, h);
@@ -718,11 +719,15 @@ export class Renderer {
         float d = length(uv) * 2.0;
         if (d > 1.0) discard;
         float pulse = 0.90 + 0.10 * sin(u_time * 1.7 + v_phase);
-        float core = smoothstep(0.24, 0.0, d);
-        float corona = pow(max(0.0, 1.0 - d), 2.6);
-        float rim = smoothstep(0.86, 0.42, d) * smoothstep(0.04, 0.28, d);
-        float alpha = (core * 0.82 + corona * 0.24 + rim * 0.075) * pulse * v_color.a;
-        vec3 color = v_color.rgb * (core * 1.7 + corona * 0.78 + rim * 0.36);
+        float angle = atan(uv.y, uv.x);
+        float core = smoothstep(0.18, 0.0, d);
+        float corona = pow(max(0.0, 1.0 - d), 2.15);
+        float rim = smoothstep(0.78, 0.46, d) * smoothstep(0.08, 0.30, d);
+        float rays = pow(abs(cos(angle * 4.0 + u_time * 0.55 + v_phase)), 18.0);
+        rays *= smoothstep(0.18, 0.54, d) * smoothstep(1.0, 0.38, d);
+        float alpha = (core * 0.95 + corona * 0.34 + rim * 0.12 + rays * 0.22) * pulse * v_color.a;
+        vec3 hotCore = mix(v_color.rgb, vec3(0.92, 1.0, 1.0), core * 0.62);
+        vec3 color = hotCore * (core * 1.9 + corona * 0.88 + rim * 0.46 + rays * 0.72);
         gl_FragColor = vec4(color, alpha);
       }
     `;
@@ -849,8 +854,8 @@ export class Renderer {
       const isHighlighted = this._highlightedIds.has(id);
       const isSelected = this._selectedPointId && id === this._selectedPointId;
       const muted = hasHighlightLens && !isHighlighted && !isSelected && !isHovered;
-      const alpha = muted ? 0.09 : isSelected ? 0.92 : isHighlighted ? 0.82 : isHovered ? 0.74 : 0.46;
-      const size = (isSelected ? 40 : isHighlighted ? 36 : isHovered ? 31 : 26) * this._dpr;
+      const alpha = muted ? 0.07 : isSelected ? 0.96 : isHighlighted ? 0.9 : isHovered ? 0.82 : 0.62;
+      const size = (isSelected ? 54 : isHighlighted ? 48 : isHovered ? 40 : 34) * this._dpr;
       const [cx, cy] = this._screenToClip(screen.x, screen.y, w, h);
       data.push(
         cx, cy,
@@ -913,13 +918,16 @@ export class Renderer {
       for (let i = 0; i < pts.length - 1; i++) {
         const a = this._worldToScreen(pts[i], w, h);
         const b = this._worldToScreen(pts[i + 1], w, h);
-        pushLine(lineData, a, b, color, hasHighlightLens ? 0.035 : 0.075);
+        pushLine(lineData, a, b, color, hasHighlightLens ? 0.045 : 0.105);
 
-        const phase = (time * 0.115 + pathIndex * 0.271 + i * 0.149) % 1;
-        const length = 0.18;
-        if (phase < 1 - length) {
-          const t0 = phase;
-          const t1 = phase + length;
+        const phase = (time * 0.145 + pathIndex * 0.271 + i * 0.149) % 1;
+        const length = 0.24;
+        const signalPasses = [phase, (phase + 0.48) % 1];
+        for (let pass = 0; pass < signalPasses.length; pass++) {
+          const signalPhase = signalPasses[pass];
+          if (signalPhase > 1 - length) continue;
+          const t0 = signalPhase;
+          const t1 = signalPhase + length;
           const ta = {
             x: a.x + (b.x - a.x) * t0,
             y: a.y + (b.y - a.y) * t0,
@@ -928,7 +936,7 @@ export class Renderer {
             x: a.x + (b.x - a.x) * t1,
             y: a.y + (b.y - a.y) * t1,
           };
-          pushLine(tracerData, ta, tb, color, hasHighlightLens ? 0.11 : 0.16);
+          pushLine(tracerData, ta, tb, color, hasHighlightLens ? 0.18 : 0.28);
           const beadT = Math.min(1, t1);
           const bead = {
             x: a.x + (b.x - a.x) * beadT,
@@ -938,9 +946,9 @@ export class Renderer {
           tracerSprites.push(
             cx, cy,
             color[0] / 255, color[1] / 255, color[2] / 255,
-            hasHighlightLens ? 0.18 : 0.26,
-            (18 + Math.sin(time * 2.4 + pathIndex + i) * 2.5) * this._dpr,
-            time * 0.4 + pathIndex + i
+            hasHighlightLens ? 0.24 : 0.38,
+            (30 + Math.sin(time * 2.4 + pathIndex + i + pass) * 4.0) * this._dpr,
+            time * 0.4 + pathIndex + i + pass * 2.1
           );
         }
       }
@@ -1101,13 +1109,13 @@ export class Renderer {
       const highlightScale = Math.max(1.45, 2.35 - rank * 0.16);
       const radius = baseR * (isSelected ? 1.9 : isHighlighted ? highlightScale + pulse * 0.24 : isHovered ? 1.38 : hasHighlightLens ? 0.72 : 1);
 
-      const halo = ctx.createRadialGradient(px, py, 0, px, py, radius * 7.5);
-      const haloScale = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? 0.26 : isHighlighted ? 1.45 : 1;
-      halo.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.22 * alpha * haloScale})`);
-      halo.addColorStop(0.45, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.075 * alpha * haloScale})`);
+      const halo = ctx.createRadialGradient(px, py, 0, px, py, radius * 5.2);
+      const haloScale = hasHighlightLens && !isHighlighted && !isSelected && !isHovered ? 0.18 : isHighlighted ? 0.72 : 0.38;
+      halo.addColorStop(0, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.14 * alpha * haloScale})`);
+      halo.addColorStop(0.45, `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.035 * alpha * haloScale})`);
       halo.addColorStop(1, `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0)`);
       ctx.beginPath();
-      ctx.arc(px, py, radius * 7.5, 0, Math.PI * 2);
+      ctx.arc(px, py, radius * 5.2, 0, Math.PI * 2);
       ctx.fillStyle = halo;
       ctx.fill();
 
@@ -1242,6 +1250,65 @@ export class Renderer {
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  _drawEdgeSignalPass(ctx, w, h) {
+    if (!this._participantPaths || this._participantPaths.length === 0) return;
+
+    const now = performance.now() / 1000;
+    const hasHighlightLens = this._highlightedIds.size > 0;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let pathIndex = 0; pathIndex < this._participantPaths.length; pathIndex++) {
+      const path = this._participantPaths[pathIndex];
+      const pts = path.points || [];
+      if (pts.length < 2) continue;
+      const c = path.color || [160, 220, 255];
+
+      for (let i = 0; i < pts.length - 1; i++) {
+        const a = { x: pts[i].x * w, y: pts[i].y * h };
+        const b = { x: pts[i + 1].x * w, y: pts[i + 1].y * h };
+        const phase = (now * 0.16 + pathIndex * 0.29 + i * 0.17) % 1;
+        const passes = [phase, (phase + 0.52) % 1];
+        const signalLength = 0.18;
+
+        for (let pass = 0; pass < passes.length; pass++) {
+          const t0 = passes[pass];
+          if (t0 > 1 - signalLength) continue;
+          const t1 = t0 + signalLength;
+          const sx = a.x + (b.x - a.x) * t0;
+          const sy = a.y + (b.y - a.y) * t0;
+          const ex = a.x + (b.x - a.x) * t1;
+          const ey = a.y + (b.y - a.y) * t1;
+          const alpha = hasHighlightLens ? 0.16 : 0.24;
+
+          const gradient = ctx.createLinearGradient(sx, sy, ex, ey);
+          gradient.addColorStop(0, `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0)`);
+          gradient.addColorStop(0.58, `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${alpha})`);
+          gradient.addColorStop(1, `rgba(230, 255, 255, ${alpha * 0.82})`);
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(ex, ey);
+          ctx.strokeStyle = gradient;
+          ctx.lineWidth = (1.65 + pass * 0.25) / this._zoom;
+          ctx.lineCap = 'round';
+          ctx.stroke();
+
+          const beadPulse = 0.5 + 0.5 * Math.sin(now * 3.0 + pathIndex + i + pass);
+          const beadRadius = (7.5 + beadPulse * 2.5) / this._zoom;
+          const glow = ctx.createRadialGradient(ex, ey, 0, ex, ey, beadRadius * 3.2);
+          glow.addColorStop(0, `rgba(240, 255, 255, ${alpha * 0.9})`);
+          glow.addColorStop(0.28, `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${alpha * 0.54})`);
+          glow.addColorStop(1, `rgba(${c[0]}, ${c[1]}, ${c[2]}, 0)`);
+          ctx.beginPath();
+          ctx.arc(ex, ey, beadRadius * 3.2, 0, Math.PI * 2);
+          ctx.fillStyle = glow;
+          ctx.fill();
+        }
+      }
     }
     ctx.restore();
   }
