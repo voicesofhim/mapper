@@ -39,6 +39,7 @@ export class Renderer {
     this._points = [];
     this._heatmapEstimates = [];
     this._heatmapRegion = null;
+    this._heatAttractors = [];
     this._answeredData = [];
     this._videoMarkers = [];
     this._videoTrajectories = new Map(); // videoId → [{x, y}] in temporal order
@@ -252,6 +253,17 @@ export class Renderer {
       }
     }
     this._scheduleRender();
+  }
+
+  setHeatAttractors(attractors = []) {
+    this._heatAttractors = (attractors || [])
+      .filter((attractor) => {
+        if (attractor?.id != null) return true;
+        return Number.isFinite(attractor?.x) && Number.isFinite(attractor?.y);
+      })
+      .slice(0, 80);
+    this._scheduleRender();
+    this._startWebGLAnimation();
   }
 
   setLabels(labels, region, gridSize) {
@@ -747,17 +759,59 @@ export class Renderer {
         gl_FragColor = v_color;
       }
     `;
+    const heatVertex = `
+      attribute vec2 a_position;
+      attribute vec4 a_color;
+      attribute float a_size;
+      attribute float a_intensity;
+      attribute float a_phase;
+      varying vec4 v_color;
+      varying float v_intensity;
+      varying float v_phase;
+      void main() {
+        gl_Position = vec4(a_position, 0.0, 1.0);
+        gl_PointSize = a_size;
+        v_color = a_color;
+        v_intensity = a_intensity;
+        v_phase = a_phase;
+      }
+    `;
+    const heatFragment = `
+      precision mediump float;
+      uniform float u_time;
+      varying vec4 v_color;
+      varying float v_intensity;
+      varying float v_phase;
+      void main() {
+        vec2 uv = gl_PointCoord - vec2(0.5);
+        float d = length(uv) * 2.0;
+        if (d > 1.0) discard;
+
+        float pulse = 0.88 + 0.12 * sin(u_time * 1.25 + v_phase);
+        float angle = atan(uv.y, uv.x);
+        float aura = pow(max(0.0, 1.0 - d), 2.45);
+        float core = smoothstep(0.22, 0.0, d);
+        float corona = smoothstep(1.0, 0.26, d) * smoothstep(0.02, 0.42, d);
+        float striation = 0.62 + 0.38 * pow(abs(cos(angle * 5.0 - u_time * 0.18 + v_phase)), 10.0);
+        float alpha = (aura * 0.42 + core * 0.34 + corona * 0.16 * striation) * v_intensity * pulse * v_color.a;
+        vec3 hot = mix(v_color.rgb, vec3(0.92, 1.0, 1.0), core * 0.58);
+        vec3 color = hot * (0.82 + core * 1.35 + aura * 0.5);
+        gl_FragColor = vec4(color, alpha);
+      }
+    `;
 
     const nodeProgram = this._createGLProgram(gl, nodeVertex, nodeFragment);
     const lineProgram = this._createGLProgram(gl, lineVertex, lineFragment);
-    if (!nodeProgram || !lineProgram) return;
+    const heatProgram = this._createGLProgram(gl, heatVertex, heatFragment);
+    if (!nodeProgram || !lineProgram || !heatProgram) return;
 
     this._gl = gl;
-    this._glPrograms = { node: nodeProgram, line: lineProgram };
+    this._glPrograms = { node: nodeProgram, line: lineProgram, heat: heatProgram };
     this._glBuffers = {
       node: gl.createBuffer(),
       line: gl.createBuffer(),
       tracer: gl.createBuffer(),
+      heat: gl.createBuffer(),
     };
     gl.disable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
@@ -793,12 +847,12 @@ export class Renderer {
   }
 
   _startWebGLAnimation() {
-    if (!this._gl || this._glAnimFrame || (!this._points.length && !this._participantPaths.length)) return;
+    if (!this._gl || this._glAnimFrame || (!this._points.length && !this._participantPaths.length && !this._heatAttractors.length)) return;
     const tick = () => {
       this._glAnimFrame = null;
       if (!this._gl || !this._width || !this._height) return;
       this._renderWebGLOverlay(this._width, this._height);
-      if (this._points.length || this._participantPaths.length) {
+      if (this._points.length || this._participantPaths.length || this._heatAttractors.length) {
         this._glAnimFrame = requestAnimationFrame(tick);
       }
     };
@@ -814,6 +868,7 @@ export class Renderer {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
 
     const time = performance.now() / 1000;
+    this._drawWebGLHeatAttractors(gl, w, h, time);
     this._drawWebGLEdges(gl, w, h, time);
     this._drawWebGLNodes(gl, w, h, time);
   }
@@ -865,6 +920,96 @@ export class Renderer {
     }
 
     this._drawWebGLSpriteData(gl, this._glBuffers.node, data, time);
+  }
+
+  _drawWebGLHeatAttractors(gl, w, h, time) {
+    if (!this._points.length) return;
+
+    const data = [];
+    const hasExplicitAttractors = this._heatAttractors.length > 0;
+    const highlightedSet = this._highlightedIds;
+    const pointById = new Map(this._points.map((point) => [String(point.id), point]));
+
+    if (hasExplicitAttractors) {
+      for (let index = 0; index < this._heatAttractors.length; index++) {
+        const attractor = this._heatAttractors[index];
+        const point = attractor.id != null ? (pointById.get(String(attractor.id)) || attractor) : attractor;
+        if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) continue;
+        const screen = this._worldToScreen(point, w, h);
+        const size = Math.max(46, Math.min(260, attractor.radius || 132)) * this._dpr;
+        const weight = Math.max(0.08, Math.min(1.25, attractor.weight ?? 0.85));
+        const color = attractor.color || this._heatColorForIndex(index);
+        const [cx, cy] = this._screenToClip(screen.x, screen.y, w, h);
+        data.push(
+          cx, cy,
+          color[0] / 255, color[1] / 255, color[2] / 255, 0.72,
+          size,
+          weight,
+          (index + 1) * 2.173
+        );
+      }
+    } else {
+      const visible = this._points.filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+      if (!visible.length) return;
+      const sampleLimit = 1500;
+      const stride = Math.max(1, Math.ceil(visible.length / sampleLimit));
+      for (let index = 0; index < visible.length; index += stride) {
+        const point = visible[index];
+        const screen = this._worldToScreen(point, w, h);
+        const margin = 90;
+        if (screen.x < -margin || screen.x > w + margin || screen.y < -margin || screen.y > h + margin) continue;
+        const [cx, cy] = this._screenToClip(screen.x, screen.y, w, h);
+        data.push(
+          cx, cy,
+          0.09, 0.84, 0.94, hasExplicitAttractors || highlightedSet.size ? 0.0 : 0.11,
+          84 * this._dpr,
+          0.34,
+          index * 0.713
+        );
+      }
+    }
+
+    this._drawWebGLHeatData(gl, this._glBuffers.heat, data, time);
+  }
+
+  _heatColorForIndex(index) {
+    const palette = [
+      [31, 247, 255],
+      [169, 255, 255],
+      [245, 222, 148],
+      [194, 132, 252],
+      [154, 163, 255],
+    ];
+    return palette[index % palette.length];
+  }
+
+  _drawWebGLHeatData(gl, buffer, data, time) {
+    if (!data.length) return;
+    const program = this._glPrograms.heat;
+    const stride = 9 * 4;
+    gl.useProgram(program);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STREAM_DRAW);
+
+    const positionLoc = gl.getAttribLocation(program, 'a_position');
+    const colorLoc = gl.getAttribLocation(program, 'a_color');
+    const sizeLoc = gl.getAttribLocation(program, 'a_size');
+    const intensityLoc = gl.getAttribLocation(program, 'a_intensity');
+    const phaseLoc = gl.getAttribLocation(program, 'a_phase');
+    const timeLoc = gl.getUniformLocation(program, 'u_time');
+
+    gl.uniform1f(timeLoc, time);
+    gl.enableVertexAttribArray(positionLoc);
+    gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, stride, 0);
+    gl.enableVertexAttribArray(colorLoc);
+    gl.vertexAttribPointer(colorLoc, 4, gl.FLOAT, false, stride, 2 * 4);
+    gl.enableVertexAttribArray(sizeLoc);
+    gl.vertexAttribPointer(sizeLoc, 1, gl.FLOAT, false, stride, 6 * 4);
+    gl.enableVertexAttribArray(intensityLoc);
+    gl.vertexAttribPointer(intensityLoc, 1, gl.FLOAT, false, stride, 7 * 4);
+    gl.enableVertexAttribArray(phaseLoc);
+    gl.vertexAttribPointer(phaseLoc, 1, gl.FLOAT, false, stride, 8 * 4);
+    gl.drawArrays(gl.POINTS, 0, data.length / 9);
   }
 
   _drawWebGLSpriteData(gl, buffer, data, time) {

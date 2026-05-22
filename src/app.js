@@ -616,6 +616,7 @@ function applyLensToMap() {
   setParticipantPathsForItems(filtered);
   videoPanel.setEvidence(evidenceToMarkers(filtered));
   renderer.highlightMapItems(activeLens.highlightedIds || []);
+  renderer.setHeatAttractors(heatAttractorsFromItems(activeLens.highlightedIds || []));
   window.dispatchEvent(new CustomEvent('mapper:lens-change', { detail: { ...activeLens, count: filtered.length } }));
 }
 
@@ -638,6 +639,43 @@ function evidenceToMarkers(items) {
     themes: item.themes || [],
     color: SOURCE_COLOR_CSS[item.source_type] || SOURCE_COLOR_CSS.interview,
   }));
+}
+
+function heatAttractorsFromItems(itemIds, options = {}) {
+  const scoresById = options.scoresById || {};
+  const ids = [...new Set((itemIds || []).map(String))].slice(0, 30);
+  const scores = ids
+    .map(id => Number(scoresById[id]))
+    .filter(Number.isFinite);
+  const maxScore = scores.length ? Math.max(...scores) : 1;
+  const minScore = scores.length ? Math.min(...scores) : 0;
+  const span = Math.max(0.0001, maxScore - minScore);
+  const palette = [
+    [31, 247, 255],
+    [169, 255, 255],
+    [245, 222, 148],
+    [194, 132, 252],
+    [154, 163, 255],
+  ];
+
+  return ids
+    .map((id, index) => {
+      const item = findMapItem(id);
+      if (!item) return null;
+      const rawScore = Number(scoresById[id]);
+      const weight = Number.isFinite(rawScore)
+        ? 0.55 + ((rawScore - minScore) / span) * 0.6
+        : Math.max(0.42, 1 - index * 0.1);
+      return {
+        id,
+        x: item.x ?? item.umap_x,
+        y: item.y ?? item.umap_y,
+        weight,
+        radius: Math.max(74, 162 - index * 12),
+        color: palette[index % palette.length],
+      };
+    })
+    .filter(Boolean);
 }
 
 function initMapLensControls(bundle) {
@@ -1233,6 +1271,7 @@ async function switchDomain(domainId) {
     setParticipantPathsForItems(currentDomainBundle.map_items || currentDomainBundle.articles);
     videoPanel.setEvidence(evidenceToMarkers(currentDomainBundle.map_items || currentDomainBundle.articles));
     renderer.highlightMapItems([]);
+    renderer.setHeatAttractors([]);
     renderer.setSelectedPoint(null);
   }
 
@@ -1385,8 +1424,11 @@ async function handleAskMap(queryText, question) {
           color: SOURCE_COLOR_CSS[item.source_type] || SOURCE_COLOR_CSS.interview,
         })),
       };
+      const scoresById = Object.fromEntries((localResponse.evidence || [])
+        .filter(item => item?.id)
+        .map(item => [String(item.id), item.score]));
       quiz.showAskResponse(response);
-      highlightMapItems(matchedIds, queryText, { focus: true, focusIds: matchedIds.slice(0, 3) });
+      highlightMapItems(matchedIds, queryText, { focus: true, focusIds: matchedIds.slice(0, 3), scoresById });
       showEvidencePanel(evidence, { close: true });
       return;
     }
@@ -1540,6 +1582,7 @@ function staticAskResponse(queryText) {
 function highlightMapItems(itemIds, reason = '', options = {}) {
   activeLens = { ...activeLens, highlightedIds: itemIds || [] };
   renderer.highlightMapItems(itemIds || []);
+  renderer.setHeatAttractors(heatAttractorsFromItems(itemIds || [], options));
   if (options.focus) {
     const focusIds = options.focusIds || itemIds || [];
     renderer.focusMapItems(focusIds, { maxZoom: 1.05, minSpan: 0.7, duration: 1800 });
@@ -1579,6 +1622,7 @@ function setMapLens({ theme, colorBy, highlightedIds } = {}) {
 function clearMapLens() {
   activeLens = { ...activeLens, highlightedIds: [] };
   renderer.highlightMapItems([]);
+  renderer.setHeatAttractors([]);
   renderer.setSelectedPoint(null);
 }
 
@@ -1845,6 +1889,7 @@ function handleReset() {
   renderer.setPoints([]);
   renderer.setVideos([]);
   renderer.setHeatmap([], GLOBAL_REGION);
+  renderer.setHeatAttractors([]);
   renderer.setLabels([]);
   renderer.setAnsweredQuestions([]);
   renderer.clearQuestions();
