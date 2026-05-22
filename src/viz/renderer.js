@@ -765,7 +765,7 @@ export class Renderer {
     const hoveredId = this._hoveredPoint?.id;
     const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 620);
     const hasHighlightLens = this._highlightedIds.size > 0;
-    const highlightBreath = 0.5 + 0.5 * Math.sin(performance.now() / 360);
+    const hoverBreath = 0.5 + 0.5 * Math.sin(performance.now() / 360);
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -774,7 +774,7 @@ export class Renderer {
       const py = p.y * h;
       const baseR = (p.radius || 2.2) / this._zoom;
       const color = p.color || defaultColor;
-      const isHovered = hoveredId && p.id === hoveredId;
+      const isHovered = hoveredId && String(p.id) === String(hoveredId);
       const isHighlighted = this._highlightedIds.has(String(p.id));
       const isSelected = this._selectedPointId && String(p.id) === this._selectedPointId;
       const rank = this._highlightRank.get(String(p.id)) ?? 0;
@@ -799,13 +799,13 @@ export class Renderer {
       ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`;
       ctx.fill();
 
-      if (isSelected || isHighlighted) {
+      if (isHovered) {
         ctx.save();
         ctx.globalCompositeOperation = 'source-over';
         ctx.beginPath();
-        ctx.arc(px, py, radius * (isSelected ? 3.1 : 3.05 + highlightBreath * 0.42), 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${isSelected ? 0.82 : 0.58 + pulse * 0.16})`;
-        ctx.lineWidth = (isSelected ? 1.35 : 1.25) / this._zoom;
+        ctx.arc(px, py, radius * (3.05 + hoverBreath * 0.42), 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.62 + pulse * 0.14})`;
+        ctx.lineWidth = 1.25 / this._zoom;
         ctx.stroke();
         ctx.restore();
       }
