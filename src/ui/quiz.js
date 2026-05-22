@@ -148,8 +148,8 @@ export function init(container) {
       .ask-map-chip {
         text-align: left;
         padding: 0.55rem 0.65rem;
-        font-size: 0.78rem;
-        line-height: 1.35;
+        font: 0.7rem/1.45 var(--font-heading);
+        letter-spacing: 0;
       }
       .ask-map-answer {
         border-top: 1px solid var(--color-border);
