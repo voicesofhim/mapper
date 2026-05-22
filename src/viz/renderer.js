@@ -1228,11 +1228,17 @@ export class Renderer {
       for (let i = 1; i < pts.length; i++) {
         ctx.lineTo(pts[i].x * w, pts[i].y * h);
       }
-      const alpha = this._highlightedIds.size > 0 ? 0.03 : 0.075;
-      ctx.strokeStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${alpha})`;
-      ctx.lineWidth = (this._highlightedIds.size > 0 ? 0.95 : 1.25) / this._zoom;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
+
+      const glowAlpha = this._highlightedIds.size > 0 ? 0.035 : 0.07;
+      ctx.strokeStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${glowAlpha})`;
+      ctx.lineWidth = (this._highlightedIds.size > 0 ? 4.5 : 5.5) / this._zoom;
+      ctx.stroke();
+
+      const alpha = this._highlightedIds.size > 0 ? 0.055 : 0.12;
+      ctx.strokeStyle = `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${alpha})`;
+      ctx.lineWidth = (this._highlightedIds.size > 0 ? 1.05 : 1.35) / this._zoom;
       ctx.stroke();
     }
     ctx.restore();
@@ -1553,29 +1559,33 @@ export class Renderer {
     const rw = region.x_max - region.x_min;
     const rh = region.y_max - region.y_min;
 
-    // 30% padding gives context around the domain
-    const padding = 1.3;
+    // Wide padding keeps the map in a constellation view instead of edge-to-edge.
+    const padding = options.padding ?? 1.55;
     const zoomX = 1 / (rw * padding);
     const zoomY = 1 / (rh * padding);
     const maxZoom = options.maxZoom ?? 10;
-    const zoom = Math.max(1, Math.min(maxZoom, Math.min(zoomX, zoomY)));
+    const minZoom = options.minZoom ?? 0.72;
+    const zoom = Math.max(minZoom, Math.min(maxZoom, Math.min(zoomX, zoomY)));
 
     const cx = (region.x_min + region.x_max) / 2;
     const cy = (region.y_min + region.y_max) / 2;
     let panX = w / 2 - cx * zoom * w;
     let panY = h / 2 - cy * zoom * h;
 
-    // Clamp so content always fills screen
+    // Clamp when zoomed in; center when zoomed out for a full constellation view.
     const contentW = zoom * w;
     const contentH = zoom * h;
-    panX = Math.max(w - contentW, Math.min(0, panX));
-    panY = Math.max(h - contentH, Math.min(0, panY));
+    if (contentW <= w) panX = (w - contentW) / 2;
+    else panX = Math.max(w - contentW, Math.min(0, panX));
+    if (contentH <= h) panY = (h - contentH) / 2;
+    else panY = Math.max(h - contentH, Math.min(0, panY));
 
     return { panX, panY, zoom };
   }
 
   _clampPanZoom() {
-    this._zoom = Math.max(1, Math.min(10, this._zoom));
+    const minZoom = 0.72;
+    this._zoom = Math.max(minZoom, Math.min(10, this._zoom));
 
     // Prevent panning beyond the [0,1] content
     const w = this._width;
@@ -1583,9 +1593,11 @@ export class Renderer {
     const contentW = this._zoom * w;
     const contentH = this._zoom * h;
 
-    // panX: left edge can't go right of 0, right edge can't go left of w
-    this._panX = Math.max(w - contentW, Math.min(0, this._panX));
-    this._panY = Math.max(h - contentH, Math.min(0, this._panY));
+    // Pan only when content is larger than the viewport; otherwise keep it centered.
+    if (contentW <= w) this._panX = (w - contentW) / 2;
+    else this._panX = Math.max(w - contentW, Math.min(0, this._panX));
+    if (contentH <= h) this._panY = (h - contentH) / 2;
+    else this._panY = Math.max(h - contentH, Math.min(0, this._panY));
   }
 
   // ======== PRIVATE: Event handlers ========
@@ -1611,7 +1623,7 @@ export class Renderer {
     const my = e.clientY - rect.top;
 
     const zoomFactor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-    const newZoom = Math.max(1, Math.min(10, this._zoom * zoomFactor));
+    const newZoom = Math.max(0.72, Math.min(10, this._zoom * zoomFactor));
 
     if (newZoom === this._zoom) return;
 
