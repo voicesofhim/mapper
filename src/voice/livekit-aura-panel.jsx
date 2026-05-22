@@ -32,8 +32,10 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
 
   const connectVoice = useCallback(async () => {
     setError('');
-    setStatus('Preparing local LiveKit room');
+    setStatus('Checking local microphone');
     try {
+      await assertMicrophoneAvailable();
+      setStatus('Preparing local LiveKit room');
       const endpoint = import.meta.env.VITE_LIVEKIT_TOKEN_ENDPOINT || DEFAULT_TOKEN_ENDPOINT;
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -99,7 +101,8 @@ function AskVoiceMode({ onModeChange, onTranscript }) {
                 onConnected={() => setStatus(`Local room: ${session.room}`)}
                 onDisconnected={() => setStatus('Local voice disconnected')}
                 onError={(err) => {
-                  setError(err?.message || 'LiveKit connection error');
+                  setError(formatConnectionError(err));
+                  setSession(null);
                   setStatus('Local voice unavailable');
                 }}
               >
@@ -270,10 +273,31 @@ function formatTokenEndpointError(status) {
 
 function formatConnectionError(err) {
   const message = err?.message || '';
+  if (/requested device not found|device not found|notfounderror|no media tracks/i.test(message)) {
+    return 'No microphone found. Check input device, then reconnect.';
+  }
+  if (/not supported|unavailable/i.test(message)) {
+    return 'Microphone access unavailable in this browser/session.';
+  }
+  if (/permission|notallowederror|denied/i.test(message)) {
+    return 'Microphone permission blocked. Allow mic access, then reconnect.';
+  }
   if (/failed to fetch|networkerror|load failed/i.test(message)) {
     return 'Local token server offline. Start ask:server.';
   }
   return message || 'Could not connect to local LiveKit';
+}
+
+async function assertMicrophoneAvailable() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new Error('Browser microphone access is unavailable.');
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    for (const track of stream.getTracks()) track.stop();
+  } catch (err) {
+    throw new Error(formatConnectionError(err));
+  }
 }
 
 function ensureVoiceStyles() {
