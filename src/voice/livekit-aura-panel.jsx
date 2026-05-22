@@ -678,11 +678,8 @@ function ensureVoiceStyles() {
       justify-self: center;
       width: min(100%, 276px);
       border: 1px solid rgba(31, 247, 255, 0.22);
-      background:
-        linear-gradient(rgba(31, 247, 255, 0.035) 1px, transparent 1px),
-        rgba(3, 9, 18, 0.58);
-      background-size: 100% 18px, auto;
-      box-shadow: inset 0 0 0 1px rgba(31, 247, 255, 0.035), 0 0 18px rgba(31, 247, 255, 0.04);
+      background: rgba(3, 9, 18, 0.58);
+      box-shadow: 0 0 18px rgba(31, 247, 255, 0.04);
       padding: 0.5rem;
     }
     .ask-voice-header {
@@ -794,10 +791,7 @@ function ensureVoiceStyles() {
       margin-top: 0.5rem;
       padding: 0.45rem;
       border: 1px solid rgba(31, 247, 255, 0.14);
-      background:
-        linear-gradient(rgba(31, 247, 255, 0.035) 1px, transparent 1px),
-        rgba(0, 0, 0, 0.16);
-      background-size: 100% 16px, auto;
+      background: rgba(0, 0, 0, 0.16);
       min-height: 3.8rem;
     }
     .ask-voice-mini-transcript div {
